@@ -1,36 +1,20 @@
-from peewee import Model, CharField, PostgresqlDatabase
-
-db = PostgresqlDatabase(
-    'nombre_base_datos',
-    user='tu_usuario',
-    password='tu_contraseña',
-    host='tu_host',
-    port='puerto'
-)
+from peewee import Model, CharField, AutoField
 
 class Team(Model):
+    id = AutoField()  # Clave primaria
     Franchise = CharField()
     Lg = CharField()
-    From_Year = CharField()  # 'From' es una palabra reservada en Python, por lo que se utiliza 'From_Year'
-    To_Year = CharField()    # 'To' es una palabra reservada en Python, por lo que se utiliza 'To_Year'
+    From_Year = CharField()
+    To_Year = CharField()
     Yrs = CharField()
     G = CharField()
     W = CharField()
     L = CharField()
-    WL_Percent = CharField()  # 'W/L%' contiene caracteres especiales, por lo que se usa 'WL_Percent'
+    WL_Percent = CharField()
     Plyfs = CharField()
     Div = CharField()
     Conf = CharField()
     Champ = CharField()
 
-
-    class Meta:
-        database = db
-        table_name = 'teams'
         
-
-db.connect()
-db.create_tables([Team])
-
 #Sería separar conexion de base de datos e insercion de base de datos de aqui, solo colocar la clase team como una especie de DTO
-#Habria que ver como quitar el playhouse, primero ver que es y luego ver si desde el df se puede hacer directamente a la base de datos

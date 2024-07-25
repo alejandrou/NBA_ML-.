@@ -1,0 +1,1 @@
+#clase intermedia que se encargue de la conexion a la base de datos y de la insercion de datos

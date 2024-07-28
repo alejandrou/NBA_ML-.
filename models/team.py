@@ -1,4 +1,5 @@
 from peewee import Model, CharField, AutoField
+from db_manager.database import db
 
 class Team(Model):
     id = AutoField()  # Clave primaria
@@ -15,3 +16,7 @@ class Team(Model):
     Div = CharField()
     Conf = CharField()
     Champ = CharField()
+
+    class Meta:
+        database = db
+        table_name = 'teams'

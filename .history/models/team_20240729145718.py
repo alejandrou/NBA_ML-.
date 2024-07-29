@@ -19,4 +19,4 @@ class Team(Model):
 
     class Meta:
         database = db
-        # table_name = 'teams'
+        table_name = 'teams'

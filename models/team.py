@@ -3,7 +3,7 @@ from db_manager.db_conf import db
 
 class Team(Model):
     id = AutoField()  # Clave primaria
-    Franchise = CharField()
+    Team = CharField()
     Lg = CharField()
     From_Year = CharField()
     To_Year = CharField()

@@ -31,7 +31,6 @@ def main():
             championships=row['Champ']
         )
     
-    db_ops.drop_tables(Team)
     print("Closing database connection...")
     db_ops.close_db()
 

@@ -11,8 +11,4 @@ class DBOperations():
         def close_db(self):
             db.close()
         
-        def create_tables(self, table):
-            db.create_tables([table])
-            
-        def drop_tables(self, table):
-            db.drop_tables([table])
+        

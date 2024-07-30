@@ -13,6 +13,3 @@ class DBOperations():
         
         def create_tables(self, table):
             db.create_tables([table])
-            
-        def drop_tables(self, table):
-            db.drop_tables([table])

@@ -19,7 +19,6 @@ class TeamScraper:
                 ]
 
                 df = pd.DataFrame(rows, columns=headers)
-                df = df.rename(columns={'Franchise':'Team'})
                 return df
             else:
                 raise ValueError("Could not find the table with id 'teams_active'")

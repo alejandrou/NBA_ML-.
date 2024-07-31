@@ -1,11 +1,7 @@
 from peewee import Model, CharField, AutoField
 from db_manager.db_conf import db
 
-class BaseModel(Model):
-    class Meta:
-        database = db
-
-class Team(BaseModel):
+class Team(Model):
     team = CharField()
     league = CharField()
     from_year = CharField()
@@ -19,3 +15,6 @@ class Team(BaseModel):
     division = CharField()
     conference = CharField()
     championships = CharField()
+    
+    class Meta:
+        database = db

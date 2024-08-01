@@ -2,6 +2,8 @@ from peewee import Model, CharField, AutoField
 from db_manager.db_conf import db
 
 class Team(Model):
+    
+    team_id = AutoField(primary_key=True)
     team = CharField()
     league = CharField()
     from_year = CharField()

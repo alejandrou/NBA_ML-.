@@ -11,8 +11,8 @@ class Player(Model):
         player_weight = CharField()
         player_birth_date = CharField()
         player_experience = CharField()
-        player_college = CharField()
-        id_team = ForeignKeyField(team, to_field="team_id")()
+        player_college = CharField(null = True)
+        # id_team = ForeignKeyField(team, to_field="team_id")()
         
         class Meta:
             database = db

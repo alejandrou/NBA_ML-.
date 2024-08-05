@@ -3,8 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 
 class TeamScraper:
-    def __init__(self, url):
-        self.url = url
+    def __init__(self):
+        self.url = 'https://www.basketball-reference.com/teams/'
 
     def get_team_table(self):
         response = requests.get(self.url)

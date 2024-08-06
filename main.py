@@ -49,14 +49,17 @@ def main():
             if not df.empty:
                 for _, row in df.iterrows():
                     player_data = {
-                        'team': team,
-                        'year': year,
-                        'player': row['Player'],
-                        'pos': row['Pos'],
-                        'height': row['Ht'],
-                        'weight': row['Wt'],
-                        'birth_date': row['Birth Date'],
-                        'college': row['College'] if 'College' in row and row['College'] else None
+                        'number_player': row['No.'], 
+                        'player_name': row['Player'],
+                        'player_position': row['Pos'],
+                        'player_height': row['Ht'],
+                        'player_weight': row['Wt'],
+                        'player_birth_date': row['Birth Date'],
+                        'birth': row['Birth'],
+                        'player_experience': row['Exp'],
+                        'college': row['College'],
+                        'player_team': team,
+                        'player_year_in_team': year
                     }
                     Player.create(**player_data)
     

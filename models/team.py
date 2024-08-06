@@ -5,6 +5,7 @@ class Team(Model):
     
     team_id = AutoField(primary_key=True)
     team = CharField()
+    team_name_abreviation = CharField()
     league = CharField()
     from_year = CharField()
     to_year = CharField()

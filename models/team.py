@@ -4,8 +4,7 @@ from db_manager.db_conf import db
 class Team(Model):
     
     team_id = AutoField(primary_key=True)
-    team = CharField()
-    team_name_abreviation = CharField()
+    team_name = CharField(unique=True)
     league = CharField()
     from_year = CharField()
     to_year = CharField()

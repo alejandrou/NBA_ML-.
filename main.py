@@ -18,7 +18,7 @@ def main():
     # print("Inserting teams...")
     # for index, row in team_df.iterrows():
     #     Team.create(
-    #         team=row['Team'],
+    #         team_name=row['Team'],
     #         league=row['Lg'],
     #         from_year=row['From'],
     #         to_year=row['To'],

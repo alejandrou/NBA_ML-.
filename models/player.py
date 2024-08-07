@@ -16,7 +16,7 @@ class Player(Model):
         player_team = CharField()
         player_year_in_team = CharField()
         # id_team = ForeignKeyField(team, to_field="team_id")()
-        team = ForeignKeyField(team, backref='players', to_field='nombre_equipo', null=True)
+        team = ForeignKeyField(team, backref='players', to_field='team_name', null=True)
         
         class Meta:
             database = db

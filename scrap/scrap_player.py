@@ -8,7 +8,7 @@ class PlayerScraper:
     def __init__(self):
         self.url = f'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = ['ATL', 'BOS']
-        self.years = ['2024']
+        self.years = ['2024', '2023']
 
     def get_players_team_year(self):
         dictionary_of_teams = {}

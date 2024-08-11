@@ -13,14 +13,14 @@ class TeamScraper:
             table = soup.find('table', {'id': 'teams_active'})
             if table:
                 headers = [th.text.strip() for th in table.find('thead').find_all('th')]
+                headers = ['Team' if header == 'Franchise' else header for header in headers]
+                
                 rows = [
-                    [cell.text.strip() for cell in tr.find_all(['th', 'td'])]
+                    {headers[i]: cell.text.strip() for i, cell in enumerate(tr.find_all(['th', 'td']))}
                     for tr in table.find('tbody').find_all('tr', class_='full_table')
                 ]
-
-                df = pd.DataFrame(rows, columns=headers)
-                df = df.rename(columns={'Franchise':'Team'})
-                return df
+                
+                return rows
             else:
                 raise ValueError("Could not find the table with id 'teams_active'")
         else:

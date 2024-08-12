@@ -35,23 +35,16 @@ def main():
             championships=team['Champ']
         )
 
-
-
     scraper_player = PlayerScraper()
     print("Creating player table...")
     db_ops.create_tables(Player)
     # Supongamos que tienes el diccionario resultante de get_players_team_year()
     players_data_by_team = scraper_player.get_players_team_year()
     
-    # Ahora quieres iterar sobre este diccionario para insertar los jugadores
     for team_name, years_data in players_data_by_team.items():
-        # Obtener la instancia del equipo
-        team_instance = Team.get(Team.team_name == team_name)
-
+        team_instance = Team.get(Team.team_abbreviation == team_name)
         for year, players_data in years_data.items():
-            if isinstance(players_data, list):  # Verificamos que players_data sea una lista
                 for player in players_data:
-                    if isinstance(player, dict):  # Verificamos que player sea un diccionario
                         player_data = {
                             'number_player': player.get('No.', None),
                             'player_name': player.get('Player', None),
@@ -63,15 +56,9 @@ def main():
                             'player_college': player.get('College', None),
                             'player_team': team_name,
                             'player_year_in_team': year,
-                            'id_team': team_instance.team_id  # Relacionar con el equipo
+                            'id_team': team_instance.team_id
                         }
                         Player.create(**player_data)
-                    else:
-                        print(
-                            f"Unexpected data type in players_data: {type(player)}")
-            else:
-                print(
-                    f"Unexpected data type for players_data: {type(players_data)}")
 
     # Asumiendo que `player_dict` tiene las abreviaturas de los equipos
     # for team_abbreviation, years_data in player_dict.items():

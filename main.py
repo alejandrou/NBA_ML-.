@@ -5,8 +5,10 @@ from models.player import Player
 from scrap.scrap_player import PlayerScraper
 from utils.team_name_abbrev import team_abbrev
 
+import asyncio
 
-def main():
+
+async def main():
     db_ops = DBOperations()
     print("Connecting to database...")
     db_ops.connect_db()
@@ -39,56 +41,49 @@ def main():
     print("Creating player table...")
     db_ops.create_tables(Player)
     # Supongamos que tienes el diccionario resultante de get_players_team_year()
-    players_data_by_team = scraper_player.get_players_team_year()
-    
-    for team_name, years_data in players_data_by_team.items():
+    # players_data_by_team = scraper_player.get_players_team_year()
+
+    # for team_name, years_data in players_data_by_team.items():
+    #     team_instance = Team.get(Team.team_abbreviation == team_name)
+    #     for year, players_data in years_data.items():
+    #         for player in players_data:
+    #             player_data = {
+    #                 'number_player': player.get('No.', None),
+    #                 'player_name': player.get('Player', None),
+    #                 'player_position': player.get('Pos', None),
+    #                 'player_height': player.get('Ht', None),
+    #                 'player_weight': player.get('Wt', None),
+    #                 'player_birth_date': player.get('Birth Date', None),
+    #                 'player_experience': player.get('Exp', None),
+    #                 'player_college': player.get('College', None),
+    #                 'player_team': team_name,
+    #                 'player_year_in_team': year,
+    #                 'id_team': team_instance.team_id
+    #             }
+    #             Player.create(**player_data)
+
+    # Ejecutar la obtención de datos
+    print("Iniciando scraping...")
+    teams_data = await scraper_player.get_players_team_year()
+
+    for team_name, years_data in teams_data.items():
         team_instance = Team.get(Team.team_abbreviation == team_name)
         for year, players_data in years_data.items():
-                for player in players_data:
-                        player_data = {
-                            'number_player': player.get('No.', None),
-                            'player_name': player.get('Player', None),
-                            'player_position': player.get('Pos', None),
-                            'player_height': player.get('Ht', None),
-                            'player_weight': player.get('Wt', None),
-                            'player_birth_date': player.get('Birth Date', None),
-                            'player_experience': player.get('Exp', None),
-                            'player_college': player.get('College', None),
-                            'player_team': team_name,
-                            'player_year_in_team': year,
-                            'id_team': team_instance.team_id
-                        }
-                        Player.create(**player_data)
-
-    # Asumiendo que `player_dict` tiene las abreviaturas de los equipos
-    # for team_abbreviation, years_data in player_dict.items():
-    # # Convertir la abreviatura al nombre completo del equipo
-    #     team_name = abbrev_to_team.get(team_abbreviation)
-
-    # # Asegurarse de que el equipo exista en el mapeo
-    #     if team_name:
-    #     # Obtener la instancia del equipo de la base de datos
-    #         team_instance = Team.get(Team.team_name == team_name)
-
-    #         for year, df in years_data.items():
-    #             if not df.empty:
-    #                 for _, row in df.iterrows():
-    #                     player_data = {
-    #                         'number_player': row['No.'],
-    #                         'player_name': row['Player'],
-    #                         'player_position': row['Pos'],
-    #                         'player_height': row['Ht'],
-    #                         'player_weight': row['Wt'],
-    #                         'player_birth_date': row['Birth Date'],
-    #                         'player_experience': row['Exp'],
-    #                         'player_college': row['College'],
-    #                         'player_team': team_name,
-    #                         'player_year_in_team': year,
-    #                         'id_team': team_instance.team_id  # Relacionar con el equipo
-    #                     }
-    #                     Player.create(**player_data)
-    #     else:
-    #         print(f"No se encontró el equipo para la abreviatura {team_abbreviation}")
+            for player in players_data:
+                player_data = {
+                    'number_player': player.get('No.', None),
+                    'player_name': player.get('Player', None),
+                    'player_position': player.get('Pos', None),
+                    'player_height': player.get('Ht', None),
+                    'player_weight': player.get('Wt', None),
+                    'player_birth_date': player.get('Birth Date', None),
+                    'player_experience': player.get('Exp', None),
+                    'player_college': player.get('College', None),
+                    'player_team': team_name,
+                    'player_year_in_team': year,
+                    'id_team': team_instance.team_id
+                }
+                Player.create(**player_data)
 
     # db_ops.drop_tables(Team)
     print("Closing database connection...")
@@ -96,4 +91,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

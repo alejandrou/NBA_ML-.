@@ -2,12 +2,12 @@ import aiohttp
 import asyncio
 from bs4 import BeautifulSoup
 
-class PlayerScraper:
+class PlayerScraperTotals:
     
     def __init__(self):
         self.url = 'https://www.basketball-reference.com/teams/'
-        self.teams_NBA_list = ['ATL', 'BOS']
-        self.years = ['2022', '2023', '2024']
+        self.teams_NBA_list = ['ATL']
+        self.years = ['2024']
 
     async def fetch(self, session, url):
         print(f"Fetching URL: {url}")
@@ -16,12 +16,12 @@ class PlayerScraper:
             print(f"Finished fetching URL: {url}")
             return content
 
-    async def scrape_team_year(self, session, nba_team, year):
+    async def scrape_team_year_totals(self, session, nba_team, year):
         print(f"Starting scrape for {nba_team} in {year}")
         url = f'https://www.basketball-reference.com/teams/{nba_team}/{year}.html'
         html_content = await self.fetch(session, url)
         soup = BeautifulSoup(html_content, 'html.parser')
-        table = soup.find('table', {'id': 'roster'})
+        table = soup.find('table', {'id': 'totals'})
         
         if table:
             print(f"Found roster table for {nba_team} in {year}")
@@ -36,7 +36,7 @@ class PlayerScraper:
             print(f"No roster table found for {nba_team} in {year}")
             return []
 
-    async def get_players_team_year(self):
+    async def get_players_team_year_totals(self):
         print("Starting to get players for all teams and years")
         dictionary_of_teams = {}
         async with aiohttp.ClientSession() as session:
@@ -59,23 +59,3 @@ class PlayerScraper:
 
         print("Finished getting players for all teams and years")
         return dictionary_of_teams
-
-async def main():
-    # Crear una instancia de PlayerScraperAsync
-    scraper = PlayerScraper()
-    
-    # Ejecutar la obtención de datos
-    print("Iniciando scraping...")
-    teams_data = await scraper.get_players_team_year()
-    
-    # Imprimir los resultados obtenidos
-    print("\nResultados obtenidos:")
-    for team, years in teams_data.items():
-        for year, players in years.items():
-            print(f"\nEquipo: {team}, Año: {year}")
-            for player in players:
-                print(player)
-
-if __name__ == "__main__":
-    # Ejecuta el bucle de eventos de asyncio
-    asyncio.run(main())

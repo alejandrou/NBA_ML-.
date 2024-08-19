@@ -7,11 +7,15 @@ async def main():
     print("Connecting to database...")
     data_manager.connect_db()
 
+    print("Creating schemas...")
+    data_manager.create_schemas('teams')
+    data_manager.create_schemas('players')
+    
     print("Creating team table and inserting data...")
     data_manager.scrape_and_save_teams()
 
     print("Creating player table and inserting data...")
-    await data_manager.scrape_and_save_players()
+    await data_manager.scrape_and_save_players_roster()
 
     print("Closing database connection...")
     data_manager.close_db()

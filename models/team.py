@@ -21,3 +21,5 @@ class Team(Model):
     
     class Meta:
         database = db
+        schema = 'teams'
+        table_name = 'team'

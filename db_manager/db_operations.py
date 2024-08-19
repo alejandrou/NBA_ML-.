@@ -1,6 +1,7 @@
 from db_manager.db_conf import db
 from scrap.scrap_team import TeamScraper
-from scrap.scrap_player import PlayerScraper
+from scrap.scrap_player_roster import PlayerScraperRoster
+from scrap.scrap_player_totals import PlayerScraperTotals
 from models.team import Team
 from models.player import Player
 from utils.team_name_abbrev import team_abbrev
@@ -9,7 +10,8 @@ class DBOperations():
     
         def __init__(self):
             self.scraper_team = TeamScraper()
-            self.scraper_player = PlayerScraper()
+            self.scraper_player_roster = PlayerScraperRoster()
+            self.scraper_player_totals = PlayerScraperTotals()
         
         def connect_db(self):
             db.connect()
@@ -22,6 +24,9 @@ class DBOperations():
             
         def drop_tables(self, table):
             db.drop_tables([table])
+        
+        def create_schemas(self, schema_name):
+             db.execute_sql(f'CREATE SCHEMA IF NOT EXISTS {schema_name};')
         
         def scrape_and_save_teams(self):
             team_data = self.scraper_team.get_team_table()
@@ -46,7 +51,7 @@ class DBOperations():
                 )
         
         
-        async def scrape_and_save_players(self):
+        async def scrape_and_save_players_roster(self):
             self.create_tables(Player)
             teams_data = await self.scraper_player.get_players_team_year()
 

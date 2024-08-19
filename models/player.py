@@ -19,3 +19,5 @@ class Player(Model):
         
         class Meta:
             database = db
+            schema = 'players'
+            table_name = 'player_roster'

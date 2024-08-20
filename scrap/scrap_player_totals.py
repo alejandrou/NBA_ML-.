@@ -45,7 +45,7 @@ class PlayerScraperTotals:
                 dictionary_of_teams[nba_team] = {}
                 for year in self.years:
                     print(f"Queueing task for {nba_team} in {year}")
-                    task = asyncio.create_task(self.scrape_team_year(session, nba_team, year))
+                    task = asyncio.create_task(self.scrape_team_year_totals(session, nba_team, year))
                     dictionary_of_teams[nba_team][year] = task
                     tasks.append(task)
 

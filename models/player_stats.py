@@ -1,9 +1,8 @@
-from peewee import Model, CharField, IntegerField
+from peewee import Model, CharField, IntegerField, ForeignKeyField
 from db_manager.db_conf import db
 from models.player import Player
 
 class PlayerStats(Model):
-    
     
     id_player = IntegerField()
     player = CharField()
@@ -33,4 +32,4 @@ class PlayerStats(Model):
     turnovers = IntegerField()
     personal_fouls = IntegerField()
     points = IntegerField()
-    id_team = ForeignKeyField(player, to_field="team_id", backref='players')
+    id_team = ForeignKeyField(player, to_field="id_team", backref='players')

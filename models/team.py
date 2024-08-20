@@ -3,7 +3,7 @@ from db_manager.db_conf import db
 
 class Team(Model):
     
-    team_id = AutoField(primary_key=True)
+    id_team = AutoField(primary_key=True)
     team_name = CharField(unique=True)
     team_abbreviation = CharField()
     league = CharField()

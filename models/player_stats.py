@@ -1,10 +1,10 @@
-from peewee import Model, CharField, IntegerField, ForeignKeyField
+from peewee import Model, CharField, IntegerField, ForeignKeyField, AutoField
 from db_manager.db_conf import db
 from models.player import Player
 
 class PlayerStats(Model):
     
-    id_player = IntegerField()
+    id_player = AutoField(primary_key=True)
     player = CharField()
     age = IntegerField()
     games = IntegerField()
@@ -32,4 +32,9 @@ class PlayerStats(Model):
     turnovers = IntegerField()
     personal_fouls = IntegerField()
     points = IntegerField()
-    id_team = ForeignKeyField(player, to_field="id_team", backref='players')
+    id_team = ForeignKeyField(player, to_field="id_player", backref='player_stats')
+
+    class Meta:
+        database = db
+        schema = 'players'
+        table_name = 'player_stats'

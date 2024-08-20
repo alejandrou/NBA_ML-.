@@ -4,7 +4,6 @@ from models.player import Player
 
 class PlayerStats(Model):
     
-    # Player	Age	G	GS	MP	FG	FGA	FG%	3P	3PA	3P%	2P	2PA	2P%	eFG%	FT	FTA	FT%	ORB	DRB	TRB	AST	STL	BLK	TOV	PF	PTS
     
     id_player = IntegerField()
     player = CharField()

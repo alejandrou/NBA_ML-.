@@ -4,6 +4,7 @@ from scrap.scrap_player_roster import PlayerScraperRoster
 from scrap.scrap_player_totals import PlayerScraperTotals
 from models.team import Team
 from models.player import Player
+from models.player_stats import PlayerStats
 from utils.team_name_abbrev import team_abbrev
 
 class DBOperations():
@@ -27,6 +28,9 @@ class DBOperations():
         
         def create_schemas(self, schema_name):
              db.execute_sql(f'CREATE SCHEMA IF NOT EXISTS {schema_name};')
+             
+        def drop_schemas(self, schema_name):
+            db.execute_sql(f'DROP SCHEMA IF EXISTS {schema_name} CASCADE;')
         
         def scrape_and_save_teams(self):
             team_data = self.scraper_team.get_team_table()
@@ -53,9 +57,9 @@ class DBOperations():
         
         async def scrape_and_save_players_roster(self):
             self.create_tables(Player)
-            teams_data = await self.scraper_player.get_players_team_year()
+            player_roster = await self.scraper_player_roster.get_players_team_year_roster()
 
-            for team_name, years_data in teams_data.items():
+            for team_name, years_data in player_roster.items():
                 team_instance = Team.get(Team.team_abbreviation == team_name)
                 for year, players_data in years_data.items():
                     for player in players_data:
@@ -70,6 +74,47 @@ class DBOperations():
                             'player_college': player.get('College', None),
                             'player_team': team_name,
                             'player_year_in_team': year,
-                            'id_team': team_instance.team_id
+                            'id_team': team_instance.id_team
                         }
                         Player.create(**player_data)
+        
+        async def scrape_and_save_players_totals(self):
+            self.create_tables(PlayerStats)
+            player_totals = await self.scraper_player_totals.get_players_team_year_totals()
+
+            for player_name, years_data in player_totals.items():
+                print(player_name, years_data)
+                player_instance = Player.get(Player.player_name == player_name)
+                for year, players_data in years_data.items():
+                    for player in players_data:
+                        player_data = {
+                            player_name: player_name,
+                            'age' : player.get('Age', None),
+                            'games' : player.get('G', None),
+                            'games_started' : player.get('GS', None),
+                            'minutes_played' : player.get('MP', None),
+                            'field_goals' : player.get('FG', None),
+                            'field_goals_attempted' : player.get('FGA', None),
+                            'field_goals_percentage' : player.get('FG%', None),
+                            'three_point_field_goals' : player.get('3P', None),
+                            'three_point_field_goals_attempted' : player.get('3PA', None),
+                            'three_point_field_goals_percentage' : player.get('3P%', None),
+                            'two_point_field_goals' : player.get('2P', None),
+                            'two_point_field_goals_attempted' : player.get('2PA', None),
+                            'two_point_field_goals_percentage' : player.get('2P%', None),
+                            'effective_field_goals_percentage' : player.get('eFG%', None),
+                            'free_throws' : player.get('FT', None),
+                            'free_throws_attempted' : player.get('FTA', None),
+                            'free_throws_percentage' : player.get('FT%', None),
+                            'offensive_rebounds' : player.get('ORB', None),
+                            'defensive_rebounds' : player.get('DRB', None),
+                            'total_rebounds' : player.get('TRB', None),
+                            'assists' : player.get('AST', None),
+                            'steals' : player.get('STL', None),
+                            'blocks' : player.get('BLK', None),
+                            'turnovers' : player.get('TOV', None),
+                            'personal_fouls' : player.get('PF', None),
+                            'points' : player.get('PTS', None),
+                            'id_team': player_instance.player_id,
+                        }
+                        PlayerStats.create(**player_data)

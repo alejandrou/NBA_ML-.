@@ -5,6 +5,7 @@ from models.team import Team
 class Player(Model):
         
         id_player = AutoField(primary_key=True)
+        id_team = ForeignKeyField(Team, to_field="id_team", backref='players')
         number_player = CharField()
         player_name = CharField()
         player_position = CharField()
@@ -15,7 +16,7 @@ class Player(Model):
         player_college = CharField(null=True)
         player_team = CharField(null=True)
         player_year_in_team = CharField()
-        id_team = ForeignKeyField(Team, to_field="id_team", backref='players')
+        
         
         class Meta:
             database = db

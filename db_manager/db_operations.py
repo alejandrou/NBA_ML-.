@@ -83,10 +83,9 @@ class DBOperations():
             player_totals = await self.scraper_player_totals.get_players_team_year_totals()
 
             for player_name, years_data in player_totals.items():
-                print(player_name, years_data)
-                player_instance = Player.get(Player.player_name == player_name)
                 for year, players_data in years_data.items():
                     for player in players_data:
+                        player_instance = Player.get(Player.player_name == player['Player'])
                         player_data = {
                             player_name: player_name,
                             'age' : player.get('Age', None),
@@ -115,6 +114,6 @@ class DBOperations():
                             'turnovers' : player.get('TOV', None),
                             'personal_fouls' : player.get('PF', None),
                             'points' : player.get('PTS', None),
-                            'id_team': player_instance.player_id,
+                            'player_id': player_instance.id_player,
                         }
                         PlayerStats.create(**player_data)

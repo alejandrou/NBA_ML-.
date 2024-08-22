@@ -18,8 +18,9 @@ async def main():
     await data_manager.scrape_and_save_players_roster()
     await data_manager.scrape_and_save_players_totals()
 
-    data_manager.drop_schemas('teams')
-    data_manager.drop_schemas('players')
+    # print("Dropping schemas...")
+    # data_manager.drop_schemas('teams')
+    # data_manager.drop_schemas('players')
     
     print("Closing database connection...")
     data_manager.close_db()

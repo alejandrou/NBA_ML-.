@@ -65,6 +65,7 @@ class DBOperations():
                     for player in players_data:
                         player_data = {
                             'number_player': player.get('No.', None),
+                            'id_team': team_instance.id_team,
                             'player_name': player.get('Player', None),
                             'player_position': player.get('Pos', None),
                             'player_height': player.get('Ht', None),
@@ -74,20 +75,30 @@ class DBOperations():
                             'player_college': player.get('College', None),
                             'player_team': team_name,
                             'player_year_in_team': year,
-                            'id_team': team_instance.id_team
                         }
                         Player.create(**player_data)
+                        
         
         async def scrape_and_save_players_totals(self):
             self.create_tables(PlayerStats)
             player_totals = await self.scraper_player_totals.get_players_team_year_totals()
 
-            for player_name, years_data in player_totals.items():
+            for nba_team, years_data in player_totals.items():
                 for year, players_data in years_data.items():
                     for player in players_data:
-                        player_instance = Player.get(Player.player_name == player['Player'])
+                        # Intenta obtener la instancia del jugador por nombre y equipo
+                        try:
+                            player_instance = Player.get(
+                                (Player.player_name == player['Player'])
+                            )
+                        except Player.DoesNotExist:
+                            print(f"Player {player['Player']} not found for {nba_team} in {year}. Skipping...")
+                            continue
+                        
+                        #Si se encuentra el jugador, crea el registro en PlayerStats
                         player_data = {
-                            player_name: player_name,
+                            'id_player': player_instance.id_player,  # Clave foránea de Player
+                            'player': player.get('Player', None),
                             'age' : player.get('Age', None),
                             'games' : player.get('G', None),
                             'games_started' : player.get('GS', None),
@@ -114,6 +125,5 @@ class DBOperations():
                             'turnovers' : player.get('TOV', None),
                             'personal_fouls' : player.get('PF', None),
                             'points' : player.get('PTS', None),
-                            'player_id': player_instance.id_player,
                         }
                         PlayerStats.create(**player_data)

@@ -4,8 +4,8 @@ from models.player import Player
 
 class PlayerStats(Model):
     
-    id_player = AutoField(primary_key=True)
-    id_team = ForeignKeyField(Player, to_field="id_player", backref='player_stats')
+    id_player_stat = AutoField(primary_key=True)
+    id_player = ForeignKeyField(Player, to_field="id_player")
     player = CharField()
     age = IntegerField()
     games = IntegerField()

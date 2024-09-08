@@ -2,9 +2,11 @@ from db_manager.db_conf import db
 from scrap.scrap_team import TeamScraper
 from scrap.scrap_player_roster import PlayerScraperRoster
 from scrap.scrap_player_totals import PlayerScraperTotals
+from scrap.scrap_player_advanced import PlayerScraperAdvanced
 from models.team import Team
 from models.player import Player
 from models.player_stats import PlayerStats
+from models.player_advanced import PlayerAdvancedStats
 from utils.team_name_abbrev import team_abbrev
 
 class DBOperations():
@@ -13,6 +15,7 @@ class DBOperations():
             self.scraper_team = TeamScraper()
             self.scraper_player_roster = PlayerScraperRoster()
             self.scraper_player_totals = PlayerScraperTotals()
+            self.scraper_player_advanced = PlayerScraperAdvanced()
         
         def connect_db(self):
             db.connect()
@@ -127,3 +130,55 @@ class DBOperations():
                             'points' : player.get('PTS', None),
                         }
                         PlayerStats.create(**player_data)
+
+
+        async def scrape_and_save_players_advanced(self):
+            self.create_tables(PlayerAdvancedStats)
+            player_advanced = await self.scraper_player_advanced.get_players_team_year_advanced()
+
+            for nba_team, years_data in player_advanced.items():
+                for year, players_data in years_data.items():
+                    for player in players_data:
+                        # Intenta obtener la instancia del jugador por nombre y equipo
+                            try:
+                                player_instance = Player.get(
+                                    (Player.player_name == player['Player'])
+                                )
+                            except Player.DoesNotExist:
+                                print(f"Player {player['Player']} not found for {nba_team} in {year}. Skipping...")
+                                continue
+                            
+                            #Si se encuentra el jugador, crea el registro en PlayerAdvancedStats
+                            player_data = {
+                                'id_player': player_instance.id_player,  # Clave foránea de Player
+                                'rk' : player.get('Rk', None),
+                                'player' : player.get('Player', None),
+                                'age' : player.get('Age', None),
+                                'games' : player.get('G', None),
+                                'minutes_played' : player.get('MP', None),
+                                'player_effiencey_rating' : player.get('PER', None),
+                                'true_shooting_percentage' : player.get('TS%', None),
+                                'three_point_attempt_rate' : player.get('3PAr', None),
+                                'free_throw_attempt_rate' : player.get('FTr', None),
+                                'offensive_rebound_percentage' : player.get('ORB%', None),
+                                'defensive_rebound_percentage' : player.get('DRB%', None),
+                                'total_rebound_percentage' : player.get('TRB%', None),
+                                'assist_percentage' : player.get('AST%', None),
+                                'steal_percentage' : player.get('STL%', None),
+                                'block_percentage' : player.get('BLK%', None),
+                                'turnover_percentage' : player.get('TOV%', None),
+                                'usage_percentage' : player.get('USG%', None),
+                                'offensive_win_shares' : player.get('OWS', None),
+                                'defensive_win_shares' : player.get('DWS', None),
+                                'win_shares' : player.get('WS', None),
+                                'win_shares_per_48_minutes' : player.get('WS/48', None),
+                                'offensive_box_plus_minus' : player.get('OBPM', None),
+                                'defensive_box_plus_minus' : player.get('DBPM', None),
+                                'box_plus_minus' : player.get('BPM', None),
+                                'value_over_replacement_player' : player.get('VORP', None),
+                            }
+                            PlayerAdvancedStats.create(**player_data)
+                    
+                       
+        
+

@@ -2,7 +2,7 @@ from peewee import Model, CharField, IntegerField, ForeignKeyField, AutoField
 from db_manager.db_conf import db
 from models.player import Player
 
-class PlayerAdvanced(Model):
+class PlayerAdvancedStats(Model):
     
     id_player_stat_advanced = AutoField(primary_key=True)
     id_player = ForeignKeyField(Player, to_field="id_player")
@@ -30,7 +30,7 @@ class PlayerAdvanced(Model):
     offensive_box_plus_minus = CharField()
     defensive_box_plus_minus = CharField()
     box_plus_minus = CharField()
-    value_over_replacement_player = CharField()
+    value_over_replacement_player = CharField(null = True)
     
     class Meta:
         database = db

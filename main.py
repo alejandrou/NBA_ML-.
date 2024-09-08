@@ -17,6 +17,7 @@ async def main():
     print("Creating player table and inserting data...")
     await data_manager.scrape_and_save_players_roster()
     await data_manager.scrape_and_save_players_totals()
+    await data_manager.scrape_and_save_players_advanced()
 
     # print("Dropping schemas...")
     # data_manager.drop_schemas('teams')

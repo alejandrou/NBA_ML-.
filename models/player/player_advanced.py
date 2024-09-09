@@ -1,6 +1,6 @@
 from peewee import Model, CharField, IntegerField, ForeignKeyField, AutoField
 from db_manager.db_conf import db
-from models.player import Player
+from models.player.player import Player
 
 class PlayerAdvancedStats(Model):
     

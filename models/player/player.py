@@ -1,6 +1,6 @@
 from peewee import Model, CharField, ForeignKeyField, AutoField
 from db_manager.db_conf import db
-from models.team import Team
+from models.team.team import Team
 
 class Player(Model):
         

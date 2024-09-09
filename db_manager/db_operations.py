@@ -1,12 +1,12 @@
 from db_manager.db_conf import db
-from scrap.scrap_team import TeamScraper
-from scrap.scrap_player_roster import PlayerScraperRoster
-from scrap.scrap_player_totals import PlayerScraperTotals
-from scrap.scrap_player_advanced import PlayerScraperAdvanced
-from models.team import Team
-from models.player import Player
-from models.player_stats import PlayerStats
-from models.player_advanced import PlayerAdvancedStats
+from scrap.scrap_team.scrap_team import TeamScraper
+from scrap.scrap_player.scrap_player_roster import PlayerScraperRoster
+from scrap.scrap_player.scrap_player_totals import PlayerScraperTotals
+from scrap.scrap_player.scrap_player_advanced import PlayerScraperAdvanced
+from models.team.team import Team
+from models.player.player import Player
+from models.player.player_stats import PlayerStats
+from models.player.player_advanced import PlayerAdvancedStats
 from utils.team_name_abbrev import team_abbrev
 
 class DBOperations():

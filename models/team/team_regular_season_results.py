@@ -4,31 +4,25 @@ from models.team.team import Team
 
 class TeamRegularSeasonResults(Model):
     
-    # ['g', 'date_game', 'game_start_time', 'network', 'box_score_text', 'game_location', 'opp_name', 'game_result', 
-    # 'overtimes', 'pts', 'opp_pts', 'wins', 'losses', 'game_streak', 'attendance', 'game_duration', 'game_remarks']
     id_team_regular_season_results = AutoField(primary_key=True)
     id_team = ForeignKeyField(Team, to_field="id_team")
-    game = IntegerField()
-    date = CharField()
-    hour_of_start = CharField()
-
-
-
-
-    team_name = CharField(unique=True)
-    team_abbreviation = CharField()
-    league = CharField()
-    from_year = CharField()
-    to_year = CharField()
-    years = CharField()
-    games = CharField()
+    game = IntegerField(null=True)
+    date_game = CharField()
+    game_start_time = CharField()
+    network = CharField(null = True)
+    box_score_text = CharField()
+    game_location = CharField(null=True)
+    opp_name = CharField()
+    game_result = CharField()
+    overtimes = CharField(null=True)
+    pts =  CharField()
+    opp_pts = CharField()
     wins = CharField()
     losses = CharField()
-    win_loss_percentage = CharField()
-    playoffs = CharField()
-    division = CharField()
-    conference = CharField()
-    championships = CharField()
+    game_streak = CharField()
+    attendance = CharField()
+    game_duration = CharField()
+    game_remarks = CharField(null=True)
     
     class Meta:
         database = db

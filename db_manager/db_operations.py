@@ -1,9 +1,11 @@
 from db_manager.db_conf import db
 from scrap.scrap_team.scrap_team import TeamScraper
+from scrap.scrap_team.scrap_team_regular_season_results import TeamScraperRegularSeasonResults
 from scrap.scrap_player.scrap_player_roster import PlayerScraperRoster
 from scrap.scrap_player.scrap_player_totals import PlayerScraperTotals
 from scrap.scrap_player.scrap_player_advanced import PlayerScraperAdvanced
 from models.team.team import Team
+from models.team.team_regular_season_results import TeamRegularSeasonResults
 from models.player.player import Player
 from models.player.player_stats import PlayerStats
 from models.player.player_advanced import PlayerAdvancedStats
@@ -16,6 +18,7 @@ class DBOperations():
             self.scraper_player_roster = PlayerScraperRoster()
             self.scraper_player_totals = PlayerScraperTotals()
             self.scraper_player_advanced = PlayerScraperAdvanced()
+            self.scraper_team_regultar_season_results = TeamScraperRegularSeasonResults()
         
         def connect_db(self):
             db.connect()
@@ -34,7 +37,9 @@ class DBOperations():
              
         def drop_schemas(self, schema_name):
             db.execute_sql(f'DROP SCHEMA IF EXISTS {schema_name} CASCADE;')
-        
+
+
+################ Teams #######################
         def scrape_and_save_teams(self):
             team_data = self.scraper_team.get_team_table()
             self.create_tables(Team)
@@ -56,8 +61,42 @@ class DBOperations():
                     conference=team['Conf'],
                     championships=team['Champ']
                 )
-        
-        
+                
+
+            
+        async def scrape_and_save_teams_season_results(self):
+            self.create_tables(TeamRegularSeasonResults)
+            team_regular_season_results = await self.scraper_team_regultar_season_results.get_team_regular_season_results()
+            
+                
+            for team_name, years_data in team_regular_season_results.items():
+                team_instance = Team.get(Team.team_abbreviation == team_name)
+                for year, teams in years_data.items():
+                    for team in teams:
+                            team_data = {
+                                'id_team': team_instance.id_team,
+                                'game': team.get('g', None),
+                                'date_game': team.get('date_game', None),
+                                'game_start_time': team.get('game_start_time', None),
+                                'network':team.get('network', None),
+                                'box_score_text':team.get('box_score_text', None),
+                                'game_location':team.get('game_location', None),
+                                'opp_name':team.get('opp_name', None),
+                                'game_result':team.get('game_result', None),
+                                'overtimes':team.get('overtimes', None),
+                                'pts':team.get('pts', None),
+                                'opp_pts':team.get('opp_pts', None),
+                                'wins':team.get('wins', None),
+                                'losses':team.get('losses', None),
+                                'game_streak':team.get('game_streak', None),
+                                'attendance':team.get('attendance', None),
+                                'game_duration':team.get('game_duration', None),
+                                'game_remarks':team.get('game_remarks', None),
+                                'year': year
+                            }
+                            TeamRegularSeasonResults.create(**team_data)
+
+################ Players #######################       
         async def scrape_and_save_players_roster(self):
             self.create_tables(Player)
             player_roster = await self.scraper_player_roster.get_players_team_year_roster()

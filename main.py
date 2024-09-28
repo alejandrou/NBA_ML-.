@@ -13,6 +13,7 @@ async def main():
     
     print("Creating team table and inserting data...")
     data_manager.scrape_and_save_teams()
+    await data_manager.scrape_and_save_teams_season_results()
 
     print("Creating player table and inserting data...")
     await data_manager.scrape_and_save_players_roster()

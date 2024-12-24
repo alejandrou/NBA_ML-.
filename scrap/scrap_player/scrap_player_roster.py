@@ -1,25 +1,32 @@
-import aiohttp
-import asyncio
+import requests
 from bs4 import BeautifulSoup
+from utils.team_name_abbrev import team_abbrev
+from ratelimit import limits, sleep_and_retry
+
+PERIOD = 60
+CALLS = 5
 
 class PlayerScraperRoster:
     
     def __init__(self):
         self.url = 'https://www.basketball-reference.com/teams/'
-        self.teams_NBA_list = ['ATL']
+        # self.teams_NBA_list = ['ATL']
+        self.teams_NBA_list = [teams for teams in team_abbrev.values()]
         self.years = ['2024']
 
-    async def fetch(self, session, url):
+    @sleep_and_retry 
+    @limits(calls=CALLS, period=PERIOD)
+    def fetch(self, url):
         print(f"Fetching URL: {url}")
-        async with session.get(url) as response:
-            content = await response.text()
-            print(f"Finished fetching URL: {url}")
-            return content
+        response = requests.get(url)
+        response.raise_for_status()
+        print(f"Finished fetching URL: {url}")
+        return response.text
 
-    async def scrape_team_year_roster(self, session, nba_team, year):
+    def scrape_team_year_roster(self, nba_team, year):
         print(f"Starting scrape for {nba_team} in {year}")
         url = f'https://www.basketball-reference.com/teams/{nba_team}/{year}.html'
-        html_content = await self.fetch(session, url)
+        html_content = self.fetch(url)
         soup = BeautifulSoup(html_content, 'html.parser')
         table = soup.find('table', {'id': 'roster'})
         
@@ -36,26 +43,16 @@ class PlayerScraperRoster:
             print(f"No roster table found for {nba_team} in {year}")
             return []
 
-    async def get_players_team_year_roster(self):
+    def get_players_team_year_roster(self):
         print("Starting to get players for all teams and years")
         dictionary_of_teams = {}
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for nba_team in self.teams_NBA_list:
-                dictionary_of_teams[nba_team] = {}
-                for year in self.years:
-                    print(f"Queueing task for {nba_team} in {year}")
-                    task = asyncio.create_task(self.scrape_team_year_roster(session, nba_team, year))
-                    dictionary_of_teams[nba_team][year] = task
-                    tasks.append(task)
 
-            print("All tasks queued, waiting for completion...")
-            results = await asyncio.gather(*tasks)
-            print("All tasks completed.")
-
-            for i, nba_team in enumerate(self.teams_NBA_list):
-                for j, year in enumerate(self.years):
-                    dictionary_of_teams[nba_team][year] = results[i * len(self.years) + j]
+        for nba_team in self.teams_NBA_list:
+            dictionary_of_teams[nba_team] = {}
+            for year in self.years:
+                print(f"Processing {nba_team} in {year}")
+                roster = self.scrape_team_year_roster(nba_team, year)
+                dictionary_of_teams[nba_team][year] = roster
 
         print("Finished getting players for all teams and years")
         return dictionary_of_teams

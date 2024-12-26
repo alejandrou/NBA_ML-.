@@ -1,25 +1,40 @@
-import requests
 import time
 from bs4 import BeautifulSoup
 from utils.team_name_abbrev import team_abbrev
+import httpx
+import asyncio
+
 
 class TeamScraperRegularSeasonResults:
     def __init__(self):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
         self.years = ['2024']
+        self.semaphore = asyncio.Semaphore(20)  # Allow up to 20 concurrent requests per minute
 
-    def fetch(self, url):
-        print(f"Fetching URL: {url}")
-        response = requests.get(url)
-        time.sleep(5)  # Simular el comportamiento de un usuario, esperando 3 segundos entre solicitudes
-        print(f"Finished fetching URL: {url}")
-        return response.text
+    async def fetch(self, url, client):
+        async with self.semaphore:  # Limit concurrent requests
+            print(f"Fetching URL: {url}")
+            try:
+                response = await client.get(url)
+                if response.status_code == 429:  # Too Many Requests
+                    print("Rate limit exceeded. Sleeping for 60 seconds...")
+                    await asyncio.sleep(60)  # Backoff strategy
+                    return await self.fetch(url, client)
+                await asyncio.sleep(3)  # Space out requests by 3 seconds
+                print(f"Finished fetching URL: {url}")
+                return response.text
+            except httpx.RequestError as exc:
+                print(f"An error occurred while requesting {url}: {exc}")
+                return None
 
-    def scrape_team_year_results(self, nba_team, year):
+    async def scrape_team_year_results(self, nba_team, year, client):
         print(f"Starting scrape for {nba_team} in {year}")
         url = f'https://www.basketball-reference.com/teams/{nba_team}/{year}_games.html'
-        html_content = self.fetch(url)
+        html_content = await self.fetch(url, client)
+        if not html_content:
+            return []
+
         soup = BeautifulSoup(html_content, 'html.parser')
         table = soup.find('table', {'id': 'games'})
 
@@ -38,15 +53,21 @@ class TeamScraperRegularSeasonResults:
             print(f"No game results table found for {nba_team} in {year}")
             return []
 
-    def get_team_regular_season_results(self):
-        print("Starting to get game results for all teams and years")
-        dictionary_of_teams = {}
-        for nba_team in self.teams_NBA_list:
-            dictionary_of_teams[nba_team] = {}
-            for year in self.years:
-                print(f"Scraping {nba_team} for {year}")
-                result = self.scrape_team_year_results(nba_team, year)
-                dictionary_of_teams[nba_team][year] = result
+    async def get_team_regular_season_results_async(self, client):
+        results = {}
+        tasks = []
 
-        print("Finished getting game results for all teams and years")
-        return dictionary_of_teams
+        # Prepare async tasks for each team and year
+        for nba_team in self.teams_NBA_list:
+            results[nba_team] = {}
+            for year in self.years:
+                tasks.append(self.scrape_team_year_results(nba_team, year, client))
+
+        # Gather results
+        scraped_data = await asyncio.gather(*tasks)
+
+        # Organize results by team and year
+        for i, (nba_team, year) in enumerate([(team, yr) for team in self.teams_NBA_list for yr in self.years]):
+            results[nba_team][year] = scraped_data[i]
+
+        return results

@@ -34,12 +34,16 @@ class TeamOperations:
                 championships=team['Champ']
             )
 
-    def scrape_and_save_teams_season_results(self):
+    async def scrape_and_save_teams_season_results_async(self, client):
         DBManager.create_tables(TeamRegularSeasonResults)
-        team_regular_season_results = self.scraper_team_regular_season.get_team_regular_season_results()
+
+        # Scrape data with respect to rate limits
+        team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async(client)
 
         for team_name, years_data in team_regular_season_results.items():
             team_instance = Team.get(Team.team_abbreviation == team_name)
+
+            batch_data = []  # Collect data for batch insertion
             for year, teams in years_data.items():
                 for team in teams:
                     team_data = {
@@ -63,4 +67,8 @@ class TeamOperations:
                         'game_remarks': team.get('game_remarks', None),
                         'year': year
                     }
-                    TeamRegularSeasonResults.create(**team_data)
+                    batch_data.append(team_data)
+
+            # Batch insert
+            if batch_data:
+                TeamRegularSeasonResults.insert_many(batch_data).execute()

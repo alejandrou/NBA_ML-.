@@ -23,6 +23,7 @@ class TeamRegularSeasonResults(Model):
     attendance = CharField()
     game_duration = CharField()
     game_remarks = CharField(null=True)
+    year = IntegerField(null=True)
     
     class Meta:
         database = db

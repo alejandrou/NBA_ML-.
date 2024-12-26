@@ -1,10 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from utils.team_name_abbrev import team_abbrev
-from ratelimit import limits, sleep_and_retry
 
-PERIOD = 60
-CALLS = 5
 
 class PlayerScraperTotals:
     
@@ -14,8 +11,6 @@ class PlayerScraperTotals:
         # self.teams_NBA_list = ['ATL']
         self.years = ['2024']
 
-    @sleep_and_retry 
-    @limits(calls=CALLS, period=PERIOD)
     def fetch(self, url):
         print(f"Fetching URL: {url}")
         response = requests.get(url)

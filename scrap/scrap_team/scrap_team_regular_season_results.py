@@ -1,4 +1,3 @@
-import time
 from bs4 import BeautifulSoup
 from utils.team_name_abbrev import team_abbrev
 import httpx
@@ -10,7 +9,7 @@ class TeamScraperRegularSeasonResults:
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
         self.years = ['2024']
-        self.semaphore = asyncio.Semaphore(20)  # Allow up to 20 concurrent requests per minute
+        self.semaphore = asyncio.Semaphore(1)  # Allow up to 1 concurrent request
 
     async def fetch(self, url, client):
         async with self.semaphore:  # Limit concurrent requests
@@ -21,7 +20,7 @@ class TeamScraperRegularSeasonResults:
                     print("Rate limit exceeded. Sleeping for 60 seconds...")
                     await asyncio.sleep(60)  # Backoff strategy
                     return await self.fetch(url, client)
-                await asyncio.sleep(3)  # Space out requests by 3 seconds
+                await asyncio.sleep(6)  # Space out requests by 6 seconds (10 requests per minute)
                 print(f"Finished fetching URL: {url}")
                 return response.text
             except httpx.RequestError as exc:

@@ -25,3 +25,7 @@ class DBManager:
     @staticmethod
     def drop_schemas(schema_name):
         db.execute_sql(f'DROP SCHEMA IF EXISTS {schema_name} CASCADE;')
+
+    @staticmethod
+    def table_exists(table_name):
+        return db.table_exists(table_name)

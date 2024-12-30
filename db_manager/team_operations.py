@@ -5,6 +5,7 @@ from models.team.team_regular_season_results import TeamRegularSeasonResults
 from utils.team_name_abbrev import team_abbrev
 from db_manager.db_manager import DBManager
 
+
 class TeamOperations:
     
     def __init__(self):
@@ -12,9 +13,10 @@ class TeamOperations:
         self.scraper_team_regular_season = TeamScraperRegularSeasonResults()
 
     def scrape_and_save_teams(self):
-        team_data = self.scraper_team.get_team_table()
         DBManager.create_tables(Team)
-
+        team_data = self.scraper_team.get_team_table()
+        
+               
         for team in team_data:
             team_name = team['Team']
             Team.create(
@@ -35,8 +37,7 @@ class TeamOperations:
             )
 
     async def scrape_and_save_teams_season_results_async(self, client):
-        DBManager.create_tables(TeamRegularSeasonResults)
-
+        DBManager.create_tables(TeamRegularSeasonResults) 
         # Scrape data with respect to rate limits
         team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async(client)
 

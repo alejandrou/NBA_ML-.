@@ -100,12 +100,13 @@ class PlayerOperations:
                 if batch_data:
                     PlayerStats.insert_many(batch_data).execute()
 
-    def scrape_and_save_players_advanced(self):
+    async def scrape_and_save_players_advanced(self, client):
         DBManager.create_tables(PlayerAdvancedStats)
-        player_advanced = self.scraper_advanced.get_players_team_year_advanced()
+        player_advanced = await self.scraper_advanced.get_players_team_year_advanced(client)
 
         for nba_team, years_data in player_advanced.items():
             for year, players_data in years_data.items():
+                batch_data = []
                 for player in players_data:
                     try:
                         player_instance = Player.get(
@@ -144,4 +145,8 @@ class PlayerOperations:
                         'box_plus_minus': player.get('BPM', None),
                         'value_over_replacement_player': player.get('VORP', None),
                     }
-                    PlayerAdvancedStats.create(**player_data)
+                    batch_data.append(player_data)
+
+                # Batch insert
+                if batch_data:
+                    PlayerAdvancedStats.insert_many(batch_data).execute()

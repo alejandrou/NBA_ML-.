@@ -27,6 +27,8 @@ async def main():
         await player_operations.scrape_and_save_players_roster_async(client)
         print("Scraping and saving player totals...")
         await player_operations.scrape_and_save_players_totals_async(client)
+        print("Scraping and saving player advanced...")
+        await player_operations.scrape_and_save_players_advanced(client)
  
     #De alguna manera hay que ver que si la tabla esta creada que no la vuelva a crear
 

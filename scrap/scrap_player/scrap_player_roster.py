@@ -1,4 +1,3 @@
-import requests
 from bs4 import BeautifulSoup
 from utils.team_name_abbrev import team_abbrev
 import asyncio

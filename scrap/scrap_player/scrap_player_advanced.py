@@ -9,7 +9,8 @@ class PlayerScraperAdvanced:
     def __init__(self):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
-        self.years = ['2024']
+        # self.years = range(2020, 2024)
+        self.years = [2024]
         self.semaphore = asyncio.Semaphore(1)  # 20 requests per minute
 
     async def fetch(self, url, client):

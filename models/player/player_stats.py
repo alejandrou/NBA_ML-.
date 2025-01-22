@@ -1,4 +1,4 @@
-from peewee import Model, CharField, IntegerField, ForeignKeyField, AutoField
+from peewee import Model, CharField, FloatField,IntegerField, ForeignKeyField, AutoField
 from db_manager.db_conf import db
 from models.player.player import Player
 
@@ -12,18 +12,18 @@ class PlayerStats(Model):
     games_started = IntegerField()
     minutes_played = IntegerField()
     field_goals = IntegerField()
-    field_goals_attempted = CharField()
-    field_goals_percentage = CharField()
+    field_goals_attempted = IntegerField()
+    field_goals_percentage = FloatField()
     three_point_field_goals = IntegerField()
     three_point_field_goals_attempted = IntegerField()
-    three_point_field_goals_percentage = CharField()
+    three_point_field_goals_percentage = FloatField()
     two_point_field_goals = IntegerField()
     two_point_field_goals_attempted = IntegerField()
-    two_point_field_goals_percentage = CharField()
-    effective_field_goals_percentage = CharField()
+    two_point_field_goals_percentage = FloatField()
+    effective_field_goals_percentage = FloatField()
     free_throws = IntegerField()
     free_throws_attempted = IntegerField()
-    free_throws_percentage = CharField()
+    free_throws_percentage = FloatField()
     offensive_rebounds = IntegerField()
     defensive_rebounds = IntegerField()
     total_rebounds = IntegerField()

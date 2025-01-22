@@ -8,7 +8,9 @@ class TeamScraperRegularSeasonResults:
     def __init__(self):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
-        self.years = ['2024']
+        # self.teams_NBA_list = ['ATL']
+        self.years = range(2022, 2024)
+        # self.years = [2024]
         self.semaphore = asyncio.Semaphore(1)  # Allow up to 1 concurrent request
 
     async def fetch(self, url, client):

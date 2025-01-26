@@ -17,14 +17,12 @@ class PlayerOperations:
 
     async def scrape_and_save_players_roster_async(self, client):
         DBManager.create_tables(Player)
-
-        # Fetch roster data asynchronously
         player_roster = await self.scraper_roster.get_players_team_year_roster(client)
 
         for team_name, years_data in player_roster.items():
             team_instance = Team.get(Team.team_abbreviation == team_name)
-
             batch_data = []  # Collect player data for batch insertion
+
             for year, players_data in years_data.items():
                 for player in players_data:
                     player_data = {
@@ -43,13 +41,12 @@ class PlayerOperations:
                     batch_data.append(player_data)
 
             # Batch insert
+
             if batch_data:
                 Player.insert_many(batch_data).execute()
 
     async def scrape_and_save_players_totals_async(self, client):
         DBManager.create_tables(PlayerStats)
-
-        # Fetch player totals asynchronously
         player_totals = await self.scraper_totals.get_players_team_year_totals(client)
 
         for nba_team, years_data in player_totals.items():
@@ -63,11 +60,9 @@ class PlayerOperations:
                         print(
                             f"Player {player['Player']} not found for {nba_team} in {year}. Skipping...")
                         continue
-
                     player_data = {
                         'id_player': player_instance.id_player,
                         'player': player.get('Player', None),
-                        'age': player.get('Age', None),
                         'games': player.get('G', None),
                         'games_started': player.get('GS', None),
                         'minutes_played': player.get('MP', None),
@@ -93,10 +88,13 @@ class PlayerOperations:
                         'turnovers': player.get('TOV', None),
                         'personal_fouls': player.get('PF', None),
                         'points': player.get('PTS', None),
+                        'triple_doubles': player.get('Trp-Dbl', None),
+                        'awards': player.get('Awards', None),
                     }
                     batch_data.append(player_data)
 
                 # Batch insert
+
                 if batch_data:
                     PlayerStats.insert_many(batch_data).execute()
 
@@ -115,13 +113,11 @@ class PlayerOperations:
                         print(
                             f"Player {player['Player']} not found for {nba_team} in {year}. Skipping...")
                         continue
-
                     # Si se encuentra el jugador, crea el registro en PlayerAdvancedStats
                     player_data = {
                         'id_player': player_instance.id_player,  # Clave foránea de Player
                         'rk': player.get('Rk', None),
                         'player': player.get('Player', None),
-                        'age': player.get('Age', None),
                         'games': player.get('G', None),
                         'minutes_played': player.get('MP', None),
                         'player_effiencey_rating': player.get('PER', None),
@@ -146,7 +142,6 @@ class PlayerOperations:
                         'value_over_replacement_player': player.get('VORP', None),
                     }
                     batch_data.append(player_data)
-
                 # Batch insert
-                if batch_data:
-                    PlayerAdvancedStats.insert_many(batch_data).execute()
+            if batch_data:
+                PlayerAdvancedStats.insert_many(batch_data).execute()

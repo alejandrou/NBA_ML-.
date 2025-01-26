@@ -5,6 +5,7 @@ from models.team.team_regular_season_results import TeamRegularSeasonResults
 from models.team.team_season import TeamSeason
 from utils.team_name_abbrev import team_abbrev
 from db_manager.db_manager import DBManager
+from utils.helpers import get_win_loss_win_loss_percentage
 
 
 class TeamOperations:
@@ -119,8 +120,7 @@ class TeamOperations:
             if batch_data:
                 try:
                     TeamRegularSeasonResults.insert_many(batch_data).execute()
-                    print(
-                        f"Resultados de la temporada {year} para '{team_name}' insertados.")
+                    # print(f"Resultados de la temporada {year} para '{team_name}' insertados.")
                 except Exception as e:
                     print(f"Error al insertar los datos: {e}")
 
@@ -129,28 +129,14 @@ class TeamOperations:
 
     async def get_regular_season_results_data(self, client):
 
-        print("Iniciando scraping de datos para la temporada regular...")
+        # print("Iniciando scraping de datos para la temporada regular...")
         team_data = self.scraper_team.get_team_table()
         team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async(client)
 
-        print("Insertando datos de la temporada regular...")
+        # print("Insertando datos de la temporada regular...")
         self.insert_teams(team_data)
         await self.insert_teams_season_async(team_regular_season_results)
         await self.insert_regular_season_results_with_teams_async(team_data, team_regular_season_results)
 
-        print("Scraping completado. Datos obtenidos para la temporada regular.")
+        # print("Scraping completado. Datos obtenidos para la temporada regular.")
         return team_regular_season_results
-
-
-def get_win_loss_win_loss_percentage(team_regular_season_results, team_name):
-    for team, years_data in team_regular_season_results.items():
-        if team == team_name:  # Match the team name
-            for year, stats in years_data.items():
-                if stats:
-                    last_game = stats[-1]
-                    wins = int(last_game.get('wins', 0))
-                    losses = int(last_game.get('losses', 0))
-                    games_played = wins + losses
-                    win_loss_percentage = round((wins / games_played) * 100, 2) if games_played > 0 else 0.0
-                    return wins, losses, win_loss_percentage
-    return 0, 0, 0.0  # Default if no data found

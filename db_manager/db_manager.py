@@ -29,3 +29,7 @@ class DBManager:
     @staticmethod
     def table_exists(table_name):
         return db.table_exists(table_name)
+    
+    @staticmethod
+    def transaction():
+        return db.atomic()

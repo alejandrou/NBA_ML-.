@@ -5,7 +5,7 @@ from models.team.team_season import TeamSeason
 
 class TeamRegularSeasonResults(Model):
     id_team_regular_season_results = AutoField(primary_key=True)
-    id_team = ForeignKeyField(TeamSeason, to_field="id_team", backref="results")
+    id_team = ForeignKeyField(Team, to_field="id_team", backref="main_team_games")
     opp_team = ForeignKeyField(Team, to_field="id_team", backref="opponent_games")
     game = IntegerField(null=True)
     date_game = CharField()

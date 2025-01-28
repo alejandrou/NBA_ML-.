@@ -1,2 +1,5 @@
 **/__pycache__/
 .history/
+geckodriver.exe
+docker-compose.yml
+.vscode/

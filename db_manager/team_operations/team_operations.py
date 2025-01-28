@@ -10,9 +10,9 @@ from utils.helpers import get_win_loss_win_loss_percentage
 
 class TeamOperations:
 
-    def __init__(self):
+    def __init__(self, years):
         self.scraper_team = TeamScraper()
-        self.scraper_team_regular_season = TeamScraperRegularSeasonResults()
+        self.scraper_team_regular_season = TeamScraperRegularSeasonResults(years)
 
     def insert_teams(self, team_data):
         DBManager.create_tables(Team)
@@ -62,7 +62,7 @@ class TeamOperations:
             TeamSeason.insert_many(batch_data).execute()
 
 
-    async def insert_regular_season_results_with_teams_async(self, team_data_season, team_regular_season_results):
+    async def insert_regular_season_results_with_teams_async(self, team_regular_season_results):
         DBManager.create_tables(TeamRegularSeasonResults)
         # Crear un mapeo abreviatura -> id_team
         team_abbrev_to_id = {
@@ -136,7 +136,7 @@ class TeamOperations:
         # print("Insertando datos de la temporada regular...")
         self.insert_teams(team_data)
         await self.insert_teams_season_async(team_regular_season_results)
-        await self.insert_regular_season_results_with_teams_async(team_data, team_regular_season_results)
+        await self.insert_regular_season_results_with_teams_async(team_regular_season_results)
 
         # print("Scraping completado. Datos obtenidos para la temporada regular.")
         return team_regular_season_results

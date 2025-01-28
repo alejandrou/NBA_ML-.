@@ -5,17 +5,22 @@ import asyncio
 import httpx
 import time
 from datetime import datetime
+import argparse
+import sys
+
+def parse_years():
+    if len(sys.argv) == 1:  # No arguments provided
+        return [2024]  # Default year
+    return [int(year) for year in sys.argv[1:]]  
 
 async def main():
+    years = parse_years()
     start_time = time.time()
     data_manager = DBManager()
-    player_operations = PlayerOperations()
-    team_operations = TeamOperations()
+    player_operations = PlayerOperations(years)
+    team_operations = TeamOperations(years)
 
-    # print("Connecting to database...")
     data_manager.connect_db()
-
-    # print("Creating schemas...")
     data_manager.create_schemas('teams')
     data_manager.create_schemas('players')
 
@@ -41,8 +46,10 @@ async def main():
 
     #Check class db_operations.py - nvm doesnt do anything, just deleted it :check:
     #calculate time of one year. We are here now. :check: it takes around 485 seconds which is around 8 minutes. Needs to be optimized.
-    #put years inside the method to scrape from command line. WE ARE HERE
+    #put years inside the method to scrape from command line. :check:
     #add 'helpers.py' to put functions that are used in multiple files or just to make the code more readable :check:
+    #delete useless files in github and try to do the git ignore thing to cache stuff
+    
     #add injury table
     
     

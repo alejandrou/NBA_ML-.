@@ -6,12 +6,12 @@ import httpx
 
 class PlayerScraperAdvanced:
 
-    def __init__(self):
+    def __init__(self, years):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
         # self.teams_NBA_list = ['BOS']
         # self.years = range(2020, 2024)
-        self.years = [2024]
+        self.years = years
         self.semaphore = asyncio.Semaphore(1)  # 20 requests per minute
 
     async def fetch(self, url, client):

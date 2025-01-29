@@ -114,7 +114,6 @@ class PlayerOperations:
                         print(
                             f"Player {player['Player']} not found for {nba_team} in {year}. Skipping...")
                         continue
-                    # Si se encuentra el jugador, crea el registro en PlayerAdvancedStats
                     player_data = {
                         'id_player': player_instance.id_player,  # Clave foránea de Player
                         'rk': player.get('Rk', None),

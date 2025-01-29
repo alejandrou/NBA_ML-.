@@ -17,6 +17,6 @@ class TeamSeason(Model):
         database = db
         schema = 'teams'
         table_name = 'team_season'
-        # indexes = (
-        #     (('id_team', 'year'), True),  # Índice único para evitar duplicados por equipo y año
-        # )
+        indexes = (
+            (('id_team', 'year'), True),  # Índice único para evitar duplicados por equipo y año
+        )

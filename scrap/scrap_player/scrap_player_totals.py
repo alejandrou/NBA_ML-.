@@ -7,22 +7,20 @@ class PlayerScraperTotals:
     def __init__(self, years):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
-        # self.teams_NBA_list = ['BOS']
-        # self.years = range(2020, 2024)
         self.years = years
         self.semaphore = asyncio.Semaphore(1)  # 20 requests per minute
 
     async def fetch(self, url, client):
         async with self.semaphore:
-            # print(f"Fetching URL: {url}")
+            print(f"Fetching URL: {url}")
             try:
                 response = await client.get(url)
                 if response.status_code == 429:  # Handle rate limiting
                     print("Rate limit exceeded. Sleeping for 60 seconds...")
                     await asyncio.sleep(60)
                     return await self.fetch(url, client)
-                await asyncio.sleep(3)  # Introduce delay
-                # print(f"Finished fetching URL: {url}")
+                await asyncio.sleep(3)
+                print(f"Finished fetching URL: {url}")
                 return response.text
             except httpx.RequestError as exc:
                 print(f"An error occurred: {exc}")
@@ -37,16 +35,14 @@ class PlayerScraperTotals:
             return []
 
         soup = BeautifulSoup(html_content, "html.parser")
-
-        # Locate the commented section
         comments = soup.find_all(string=lambda text: isinstance(text, Comment))
 
         for comment in comments:
-            if "totals_stats" in comment:  # Check if the desired table is inside the comment
-                comment_soup = BeautifulSoup(comment, "html.parser")  # Parse the commented content
+            if "totals_stats" in comment: 
+                comment_soup = BeautifulSoup(comment, "html.parser") 
                 table = comment_soup.find("table", {"id": "totals_stats"})
                 if table:
-                    # print(f"Found totals table for {nba_team} in {year}")
+                    print(f"Found totals table for {nba_team} in {year}")
                     headers = [th.text.strip() for th in table.find("thead").find_all("th")]
                     rows = [
                         {headers[i]: cell.text.strip() for i, cell in enumerate(tr.find_all(["th", "td"]))}

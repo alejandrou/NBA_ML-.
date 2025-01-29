@@ -120,7 +120,7 @@ class TeamOperations:
             if batch_data:
                 try:
                     TeamRegularSeasonResults.insert_many(batch_data).execute()
-                    # print(f"Resultados de la temporada {year} para '{team_name}' insertados.")
+                    print(f"Resultados de la temporada {year} para '{team_name}' insertados.")
                 except Exception as e:
                     print(f"Error al insertar los datos: {e}")
 

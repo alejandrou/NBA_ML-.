@@ -2,7 +2,7 @@
 
 To scrape data for specific years, run the following commands:
 
-- Scrape data for 2024:
+- Scrape data:
   ```bash
   python main.py
   python main.py 2023

@@ -1,8 +1,8 @@
 team_abbrev = {
     'Atlanta Hawks': 'ATL',
     'Boston Celtics': 'BOS',
-    'Brooklyn Nets': 'BRK',
-    'Charlotte Hornets': 'CHO',
+    'Brooklyn Nets': 'BRK', 'New Jersey Nets': 'BRK',  # Antes NJN
+    'Charlotte Hornets': 'CHO', 'Charlotte Bobcats': 'CHO', 'CHH': 'CHO', 'CHA': 'CHO',  # Variaciones
     'Chicago Bulls': 'CHI',
     'Cleveland Cavaliers': 'CLE',
     'Dallas Mavericks': 'DAL',
@@ -13,13 +13,13 @@ team_abbrev = {
     'Indiana Pacers': 'IND',
     'Los Angeles Clippers': 'LAC',
     'Los Angeles Lakers': 'LAL',
-    'Memphis Grizzlies': 'MEM',
+    'Memphis Grizzlies': 'MEM', 'Vancouver Grizzlies': 'MEM',  # Antes VAN
     'Miami Heat': 'MIA',
     'Milwaukee Bucks': 'MIL',
     'Minnesota Timberwolves': 'MIN',
-    'New Orleans Pelicans': 'NOP',
+    'New Orleans Pelicans': 'NOP', 'New Orleans Hornets': 'NOP', 'NOH': 'NOP',  # Antes NOH
     'New York Knicks': 'NYK',
-    'Oklahoma City Thunder': 'OKC',
+    'Oklahoma City Thunder': 'OKC', 'Seattle SuperSonics': 'OKC', 'SEA': 'OKC',  # Antes SEA
     'Orlando Magic': 'ORL',
     'Philadelphia 76ers': 'PHI',
     'Phoenix Suns': 'PHO',

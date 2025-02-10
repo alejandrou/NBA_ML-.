@@ -9,7 +9,7 @@ class TeamRegularSeasonResults(Model):
     opp_team = ForeignKeyField(Team, to_field="id_team", backref="opponent_games")
     game = IntegerField(null=True)
     date_game = CharField()
-    game_start_time = CharField()
+    game_start_time = CharField(null=True)
     game_result = CharField()
     overtimes = CharField(null=True)
     wins = IntegerField(null=True)

@@ -3,7 +3,7 @@ from scrap.scrap_team.scrap_team_regular_season_results import TeamScraperRegula
 from models.team.team import Team
 from models.team.team_regular_season_results import TeamRegularSeasonResults
 from models.team.team_season import TeamSeason
-from utils.team_name_abbrev import team_abbrev
+from utils.team_name_abbrev import team_abbrev, team_abbrev_old
 from db_manager.db_manager import DBManager
 from utils.helpers import get_win_loss_win_loss_percentage
 
@@ -13,7 +13,7 @@ class TeamOperations:
     def __init__(self, years):
         self.scraper_team = TeamScraper()
         self.scraper_team_regular_season = TeamScraperRegularSeasonResults(years)
-
+    
     def insert_teams(self, team_data):
         DBManager.create_tables(Team)
 
@@ -25,8 +25,6 @@ class TeamOperations:
                 league=team['Lg'],
                 from_year=team['From'],
                 to_year=team['To'],
-                years=team['Yrs'],
-                games=team['G'],
                 wins=team['W'],
                 losses=team['L'],
                 win_loss_percentage=team['W/L%'],
@@ -35,6 +33,34 @@ class TeamOperations:
                 conference=team['Conf'],
                 championships=team['Champ']
             )
+    
+    def insert_old_teams(self):
+        DBManager.create_tables(Team)  # Asegurar que la tabla existe
+
+        batch_data = []
+        for team_name, team_abbreviation in team_abbrev_old.items():
+            print(f"Insertando equipo antiguo: {team_name}")
+
+            team_entry = {
+                'team_name': team_name,
+                'team_abbreviation': team_abbreviation,
+                'league': None,
+                'from_year': None,
+                'to_year': None,
+                'wins': None,
+                'losses': None,
+                'win_loss_percentage': None,
+                'division': None,
+                'conference': None,
+                'championships': None,
+            }
+
+            batch_data.append(team_entry)
+
+    # Insertar en lote para mayor eficiencia
+        if batch_data:
+            Team.insert_many(batch_data).execute()
+            print("Equipos antiguos insertados correctamente.")
 
     async def insert_teams_season_async(self, team_regular_season_results):
         DBManager.create_tables(TeamSeason)
@@ -43,7 +69,6 @@ class TeamOperations:
 
         for team, years_data in team_regular_season_results.items():
             team_instance = Team.get(Team.team_abbreviation == team)
-           
             for year, stats in years_data.items():
                 wins, losses, win_loss_percentage = get_win_loss_win_loss_percentage(
                     {team: {year: stats}}, team  # Pasar datos específicos del equipo y el año
@@ -129,14 +154,15 @@ class TeamOperations:
 
     async def get_regular_season_results_data(self, client):
 
-        # print("Iniciando scraping de datos para la temporada regular...")
+        print("Iniciando scraping de datos para la temporada regular...")
         team_data = self.scraper_team.get_team_table()
         team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async(client)
 
-        # print("Insertando datos de la temporada regular...")
+        print("Insertando datos de la temporada regular...")
         self.insert_teams(team_data)
+        self.insert_old_teams()
         await self.insert_teams_season_async(team_regular_season_results)
         await self.insert_regular_season_results_with_teams_async(team_regular_season_results)
 
-        # print("Scraping completado. Datos obtenidos para la temporada regular.")
+        print("Scraping completado. Datos obtenidos para la temporada regular.")
         return team_regular_season_results

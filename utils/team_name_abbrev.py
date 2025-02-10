@@ -1,8 +1,8 @@
 team_abbrev = {
     'Atlanta Hawks': 'ATL',
     'Boston Celtics': 'BOS',
-    'Brooklyn Nets': 'BRK', 'New Jersey Nets': 'BRK',  # Antes NJN
-    'Charlotte Hornets': 'CHO', 'Charlotte Bobcats': 'CHO', 'CHH': 'CHO', 'CHA': 'CHO',  # Variaciones
+    'Brooklyn Nets': 'BRK',
+    'Charlotte Hornets': 'CHO',
     'Chicago Bulls': 'CHI',
     'Cleveland Cavaliers': 'CLE',
     'Dallas Mavericks': 'DAL',
@@ -13,13 +13,13 @@ team_abbrev = {
     'Indiana Pacers': 'IND',
     'Los Angeles Clippers': 'LAC',
     'Los Angeles Lakers': 'LAL',
-    'Memphis Grizzlies': 'MEM', 'Vancouver Grizzlies': 'MEM',  # Antes VAN
+    'Memphis Grizzlies': 'MEM',
     'Miami Heat': 'MIA',
     'Milwaukee Bucks': 'MIL',
     'Minnesota Timberwolves': 'MIN',
-    'New Orleans Pelicans': 'NOP', 'New Orleans Hornets': 'NOP', 'NOH': 'NOP',  # Antes NOH
+    'New Orleans Pelicans': 'NOP',
     'New York Knicks': 'NYK',
-    'Oklahoma City Thunder': 'OKC', 'Seattle SuperSonics': 'OKC', 'SEA': 'OKC',  # Antes SEA
+    'Oklahoma City Thunder': 'OKC',
     'Orlando Magic': 'ORL',
     'Philadelphia 76ers': 'PHI',
     'Phoenix Suns': 'PHO',
@@ -28,5 +28,22 @@ team_abbrev = {
     'San Antonio Spurs': 'SAS',
     'Toronto Raptors': 'TOR',
     'Utah Jazz': 'UTA',
-    'Washington Wizards': 'WAS'
+    'Washington Wizards': 'WAS',
+    'Vancouver Grizzlies': 'VAN',
+    'Seattle SuperSonics': 'SEA',
+    'New Jersey Nets': 'NJN',
+    'New Orleans Hornets': 'NOH',
+    'Charlotte Bobcats': 'CHA',
+    'Charlote Hornets Old': 'CHH',
+    'New Orleans/Oklahoma City Hornets': 'NOK'
+}
+
+team_abbrev_old = {
+    'Vancouver Grizzlies': 'VAN',
+    'Seattle SuperSonics': 'SEA',
+    'New Jersey Nets': 'NJN',
+    'New Orleans Hornets': 'NOH',
+    'Charlotte Bobcats': 'CHA',
+    'Charlote Hornets Old': 'CHH',
+    'New Orleans/Oklahoma City Hornets': 'NOK'
 }

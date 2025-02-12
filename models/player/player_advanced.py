@@ -10,7 +10,7 @@ class PlayerAdvancedStats(Model):
     player = CharField()
     games = IntegerField()
     minutes_played = IntegerField()
-    player_effiencey_rating = FloatField()
+    player_effiencey_rating = CharField(null=True)
     true_shooting_percentage = CharField(null=True)
     three_point_attempt_rate = CharField(null=True)
     free_throw_attempt_rate = CharField(null=True)
@@ -25,11 +25,12 @@ class PlayerAdvancedStats(Model):
     offensive_win_shares = FloatField()
     defensive_win_shares = FloatField()
     win_shares = FloatField()
-    win_shares_per_48_minutes = FloatField()
-    offensive_box_plus_minus = FloatField()
-    defensive_box_plus_minus = FloatField()
-    box_plus_minus = FloatField()
-    value_over_replacement_player = FloatField(null=True)
+    win_shares_per_48_minutes = CharField(null=True)
+    offensive_box_plus_minus = CharField(null=True)
+    defensive_box_plus_minus = CharField(null=True)
+    box_plus_minus = CharField(null=True)
+    value_over_replacement_player = CharField(null=True)
+    year = IntegerField()
     
     class Meta:
         database = db

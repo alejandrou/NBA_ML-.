@@ -33,7 +33,8 @@ class PlayerStats(Model):
     personal_fouls = IntegerField()
     points = IntegerField()
     triple_doubles = CharField(null=True)
-    awards = CharField(null=True) 
+    awards = CharField(null=True)
+    year = IntegerField()
     
 
     class Meta:

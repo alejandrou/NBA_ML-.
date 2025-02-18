@@ -9,7 +9,7 @@ class PlayerAdvancedStats(Model):
     rk = CharField()
     player = CharField()
     games = IntegerField()
-    minutes_played = IntegerField()
+    minutes_played = CharField(null=True)
     player_effiencey_rating = CharField(null=True)
     true_shooting_percentage = CharField(null=True)
     three_point_attempt_rate = CharField(null=True)

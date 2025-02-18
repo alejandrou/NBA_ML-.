@@ -19,6 +19,12 @@ class TeamOperations:
 
         for team in team_data:
             team_name = team['Team']
+
+            existing_team = Team.get_or_none(Team.team_name == team_name)
+            if existing_team:
+                print(f"Skipping {team_name}, already exists.")
+                continue  # Skip insertion if the team exists
+
             Team.create(
                 team_name=team_name,
                 team_abbreviation=team_abbrev.get(team_name, None),
@@ -41,6 +47,10 @@ class TeamOperations:
         for team_name, team_abbreviation in team_abbrev_old.items():
             print(f"Insertando equipo antiguo: {team_name}")
 
+            if Team.get_or_none(Team.team_name == team_name):
+                        print(f"Skipping {team_name}, already exists.")
+                        continue  # Skip insertion if the team exists
+            
             team_entry = {
                 'team_name': team_name,
                 'team_abbreviation': team_abbreviation,
@@ -118,7 +128,7 @@ class TeamOperations:
                         team_data = {
                             'opp_team': opp_team_id,  # ID numérico del oponente
                             'id_team': id_team,  # ID numérico de la temporada
-                            'game': game.get('g', None),
+                            'game': game.get('g', 0),
                             'date_game': game.get('date_game', None),
                             'game_start_time': game.get('game_start_time', None),
                             'game_location': game.get('game_location', None),

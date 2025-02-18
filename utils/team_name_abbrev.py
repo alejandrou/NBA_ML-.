@@ -35,7 +35,11 @@ team_abbrev = {
     'New Orleans Hornets': 'NOH',
     'Charlotte Bobcats': 'CHA',
     'Charlote Hornets Old': 'CHH',
-    'New Orleans/Oklahoma City Hornets': 'NOK'
+    'New Orleans/Oklahoma City Hornets': 'NOK',
+     'San Diego Clippers': 'SDC',
+    'Kansas City Kings': 'KCK',
+    'Los Angeles Kings': 'LAK',
+    'Washington Bullets': 'WSB',
 }
 
 team_abbrev_old = {
@@ -45,5 +49,9 @@ team_abbrev_old = {
     'New Orleans Hornets': 'NOH',
     'Charlotte Bobcats': 'CHA',
     'Charlote Hornets Old': 'CHH',
-    'New Orleans/Oklahoma City Hornets': 'NOK'
+    'New Orleans/Oklahoma City Hornets': 'NOK',
+    'San Diego Clippers': 'SDC',
+    'Kansas City Kings': 'KCK',
+    'Los Angeles Kings': 'LAK',
+    'Washington Bullets': 'WSB',
 }

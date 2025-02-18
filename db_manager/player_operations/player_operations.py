@@ -91,11 +91,11 @@ class PlayerOperations:
                         'points': player.get('PTS', None),
                         'triple_doubles': player.get('Trp-Dbl', None),
                         'awards': player.get('Awards', None),
+                        'year': year,
                     }
                     batch_data.append(player_data)
 
                 # Batch insert
-
                 if batch_data:
                     PlayerStats.insert_many(batch_data).execute()
 
@@ -140,8 +140,9 @@ class PlayerOperations:
                         'defensive_box_plus_minus': player.get('DBPM', None),
                         'box_plus_minus': player.get('BPM', None),
                         'value_over_replacement_player': player.get('VORP', None),
+                        'year': year,
                     }
                     batch_data.append(player_data)
                 # Batch insert
-            if batch_data:
-                PlayerAdvancedStats.insert_many(batch_data).execute()
+                if batch_data:
+                    PlayerAdvancedStats.insert_many(batch_data).execute()

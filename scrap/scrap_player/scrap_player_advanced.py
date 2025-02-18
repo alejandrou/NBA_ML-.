@@ -44,7 +44,7 @@ class PlayerScraperAdvanced:
                 comment_soup = BeautifulSoup(comment, "html.parser") 
                 table = comment_soup.find("table", {"id": "advanced"})
                 if table:
-                    # print(f"Found advanced table for {nba_team} in {year}")
+                    print(f"Found advanced table for {nba_team} in {year}")
                     headers = [th.text.strip() for th in table.find("thead").find_all("th")]
                     rows = [
                         {headers[i]: cell.text.strip() for i, cell in enumerate(tr.find_all(["th", "td"]))}

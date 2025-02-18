@@ -28,5 +28,30 @@ team_abbrev = {
     'San Antonio Spurs': 'SAS',
     'Toronto Raptors': 'TOR',
     'Utah Jazz': 'UTA',
-    'Washington Wizards': 'WAS'
+    'Washington Wizards': 'WAS',
+    'Vancouver Grizzlies': 'VAN',
+    'Seattle SuperSonics': 'SEA',
+    'New Jersey Nets': 'NJN',
+    'New Orleans Hornets': 'NOH',
+    'Charlotte Bobcats': 'CHA',
+    'Charlote Hornets Old': 'CHH',
+    'New Orleans/Oklahoma City Hornets': 'NOK',
+     'San Diego Clippers': 'SDC',
+    'Kansas City Kings': 'KCK',
+    'Los Angeles Kings': 'LAK',
+    'Washington Bullets': 'WSB',
+}
+
+team_abbrev_old = {
+    'Vancouver Grizzlies': 'VAN',
+    'Seattle SuperSonics': 'SEA',
+    'New Jersey Nets': 'NJN',
+    'New Orleans Hornets': 'NOH',
+    'Charlotte Bobcats': 'CHA',
+    'Charlote Hornets Old': 'CHH',
+    'New Orleans/Oklahoma City Hornets': 'NOK',
+    'San Diego Clippers': 'SDC',
+    'Kansas City Kings': 'KCK',
+    'Los Angeles Kings': 'LAK',
+    'Washington Bullets': 'WSB',
 }

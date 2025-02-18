@@ -8,7 +8,7 @@ class PlayerStats(Model):
     id_player = ForeignKeyField(Player, to_field="id_player")
     player = CharField()
     games = IntegerField()
-    games_started = IntegerField()
+    games_started = CharField(null=True)
     minutes_played = IntegerField()
     field_goals = IntegerField(null=True)
     field_goals_attempted = IntegerField(null=True)
@@ -33,7 +33,8 @@ class PlayerStats(Model):
     personal_fouls = IntegerField()
     points = IntegerField()
     triple_doubles = CharField(null=True)
-    awards = CharField(null=True) 
+    awards = CharField(null=True)
+    year = IntegerField()
     
 
     class Meta:

@@ -15,7 +15,7 @@ class TeamScraperRegularSeasonResults:
 
     async def fetch(self, url, client):
         async with self.semaphore:  # Limit concurrent requests
-            # print(f"Fetching URL: {url}")
+            print(f"Fetching URL: {url}")
             try:
                 response = await client.get(url)
                 if response.status_code == 429:  # Too Many Requests
@@ -23,14 +23,14 @@ class TeamScraperRegularSeasonResults:
                     await asyncio.sleep(60)  # Backoff strategy
                     return await self.fetch(url, client)
                 await asyncio.sleep(6)  # Space out requests by 6 seconds (10 requests per minute)
-                # print(f"Finished fetching URL: {url}")
+                print(f"Finished fetching URL: {url}")
                 return response.text
             except httpx.RequestError as exc:
                 print(f"An error occurred while requesting {url}: {exc}")
                 return None
 
     async def scrape_team_year_results(self, nba_team, year, client):
-        # print(f"Starting scrape for {nba_team} in {year}")
+        print(f"Starting scrape for {nba_team} in {year}")
         url = f'https://www.basketball-reference.com/teams/{nba_team}/{year}_games.html'
         html_content = await self.fetch(url, client)
         if not html_content:
@@ -40,7 +40,7 @@ class TeamScraperRegularSeasonResults:
         table = soup.find('table', {'id': 'games'})
 
         if table:
-            # print(f"Found game results table for {nba_team} in {year}")
+            print(f"Found game results table for {nba_team} in {year}")
             headers = [th['data-stat'] for th in table.find('thead').find_all('th')]
             rows = []
             for tr in table.find('tbody').find_all('tr'):
@@ -48,7 +48,7 @@ class TeamScraperRegularSeasonResults:
                     continue
                 row_data = {headers[i]: cell.text.strip() for i, cell in enumerate(tr.find_all(['th', 'td']))}
                 rows.append(row_data)
-            # print(f"Scraping complete for {nba_team} in {year}")
+            print(f"Scraping complete for {nba_team} in {year}")
             return rows
         else:
             print(f"No game results table found for {nba_team} in {year}")

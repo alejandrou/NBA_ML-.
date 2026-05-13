@@ -1,0 +1,286 @@
+{
+  "tasks": [
+    {
+      "id": "F1-001",
+      "title": "Create project harness documentation",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create AGENTS.md, docs/ai rules, skills index, architecture, domain, specs, roadmap, and ADR docs.",
+      "acceptance_criteria": [
+        "AGENTS.md exists",
+        "docs/ai/RULES.md exists",
+        "docs/ai/SKILLS_INDEX.md exists",
+        "docs/architecture/SYSTEM_DESIGN.md exists",
+        "docs/domain/BUSINESS_RULES.md exists",
+        "docs/specs/PROJECT_SPEC.md exists"
+      ],
+      "validation": [
+        "bash scripts/harness/init.sh"
+      ],
+      "expected_files": [
+        "AGENTS.md",
+        "docs/ai/RULES.md",
+        "docs/ai/SKILLS_INDEX.md",
+        "docs/architecture/SYSTEM_DESIGN.md",
+        "docs/domain/BUSINESS_RULES.md",
+        "docs/specs/PROJECT_SPEC.md"
+      ],
+      "out_of_scope": [
+        "API implementation",
+        "Frontend implementation",
+        "Live scraping"
+      ]
+    },
+    {
+      "id": "F1-002",
+      "title": "Add agent roles and progress memory",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create repo-scoped skills, roles, workflow, review protocol, and progress files.",
+      "acceptance_criteria": [
+        ".agents/skills contains required skills",
+        ".agents/roles contains leader, implementer, reviewer, researcher",
+        "progress files exist",
+        "workflow and review protocols exist"
+      ],
+      "validation": [
+        "bash scripts/harness/init.sh"
+      ],
+      "expected_files": [
+        ".agents/skills",
+        ".agents/roles",
+        "progress/current.md",
+        "progress/history.md",
+        "docs/ai/WORKFLOW_PROTOCOL.md",
+        "docs/ai/REVIEW_PROTOCOL.md"
+      ],
+      "out_of_scope": [
+        "External agent orchestration"
+      ]
+    },
+    {
+      "id": "F1-003",
+      "title": "Create feature list and specs",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create structured task list and specs for Phase 1 tasks.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json exists",
+        "specs/features contains F1 specs",
+        "tasks include acceptance criteria and validation"
+      ],
+      "validation": [
+        "bash scripts/harness/init.sh"
+      ],
+      "expected_files": [
+        "tasks/feature-list.json",
+        "specs/features"
+      ],
+      "out_of_scope": [
+        "Issue tracker automation"
+      ]
+    },
+    {
+      "id": "F1-004",
+      "title": "Add settings and uv project setup",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Add pyproject.toml, settings module, .env.example, and tests.",
+      "acceptance_criteria": [
+        "pyproject.toml exists",
+        ".env.example exists",
+        "Settings module reads defaults",
+        "Settings tests pass"
+      ],
+      "validation": [
+        "uv sync",
+        "uv run pytest tests/unit/test_settings.py"
+      ],
+      "expected_files": [
+        "pyproject.toml",
+        ".env.example",
+        "src/nba_data/config/settings.py",
+        "tests/unit/test_settings.py"
+      ],
+      "out_of_scope": [
+        "Production secrets management"
+      ]
+    },
+    {
+      "id": "F1-005",
+      "title": "Update Docker Compose, README, and gitignore",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Configure local PostgreSQL, fix ignored files, and document setup.",
+      "acceptance_criteria": [
+        "docker-compose.yml uses postgres:16",
+        ".gitignore ignores secrets and raw data",
+        "README documents uv, tests, lint, and legacy scraper command"
+      ],
+      "validation": [
+        "docker compose config",
+        "uv run pytest"
+      ],
+      "expected_files": [
+        "docker-compose.yml",
+        ".gitignore",
+        "README.md"
+      ],
+      "out_of_scope": [
+        "Production deployment"
+      ]
+    },
+    {
+      "id": "F1-006",
+      "title": "Create harness scripts",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Add init, validate, and close scripts.",
+      "acceptance_criteria": [
+        "scripts/harness/init.sh exists",
+        "scripts/harness/validate.sh exists",
+        "scripts/harness/close.sh exists",
+        "Scripts do not run live scraping"
+      ],
+      "validation": [
+        "bash scripts/harness/init.sh",
+        "bash scripts/harness/validate.sh"
+      ],
+      "expected_files": [
+        "scripts/harness/init.sh",
+        "scripts/harness/validate.sh",
+        "scripts/harness/close.sh"
+      ],
+      "out_of_scope": [
+        "Network checks"
+      ]
+    },
+    {
+      "id": "F1-007",
+      "title": "Add rate-limited client",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create central Basketball Reference HTTP client with conservative rate limits.",
+      "acceptance_criteria": [
+        "Client has default 10 requests/minute",
+        "Client enforces minimum delay",
+        "Client handles Retry-After",
+        "Client raises clear error on repeated 429",
+        "Tests use mocks only"
+      ],
+      "validation": [
+        "uv run pytest tests/unit/test_rate_limited_client.py"
+      ],
+      "expected_files": [
+        "src/nba_data/scraping/client.py",
+        "tests/unit/test_rate_limited_client.py"
+      ],
+      "out_of_scope": [
+        "Adapting legacy scrapers"
+      ]
+    },
+    {
+      "id": "F1-008",
+      "title": "Add HTML cache",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create compressed raw HTML cache.",
+      "acceptance_criteria": [
+        "Cache stores .html.gz",
+        "Cache key is stable by URL",
+        "Cache path stays under configured root",
+        "Tests do not use network"
+      ],
+      "validation": [
+        "uv run pytest tests/unit/test_html_cache.py"
+      ],
+      "expected_files": [
+        "src/nba_data/scraping/cache.py",
+        "tests/unit/test_html_cache.py"
+      ],
+      "out_of_scope": [
+        "S3 or R2 storage"
+      ]
+    },
+    {
+      "id": "F1-009",
+      "title": "Add parser pattern",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create a pure team-season parser example and fixture.",
+      "acceptance_criteria": [
+        "Parser receives HTML string",
+        "Parser makes no network requests",
+        "Parser does not touch DB",
+        "Parser supports commented tables",
+        "Fixture test passes"
+      ],
+      "validation": [
+        "uv run pytest tests/unit/test_team_season_parser.py"
+      ],
+      "expected_files": [
+        "src/nba_data/scraping/parsers/team_season.py",
+        "tests/fixtures/html/team_season_minimal.html",
+        "tests/unit/test_team_season_parser.py"
+      ],
+      "out_of_scope": [
+        "Full parser migration"
+      ]
+    },
+    {
+      "id": "F1-010",
+      "title": "Add SQLAlchemy foundation",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Create SQLAlchemy base, session, initial raw/core models, Alembic foundation, and Peewee migration note.",
+      "acceptance_criteria": [
+        "SQLAlchemy DeclarativeBase exists",
+        "Session helper exists",
+        "Initial raw/core models exist",
+        "Alembic foundation exists",
+        "Peewee migration doc exists"
+      ],
+      "validation": [
+        "uv run pytest",
+        "uv run alembic check"
+      ],
+      "expected_files": [
+        "src/nba_data/db/base.py",
+        "src/nba_data/db/session.py",
+        "src/nba_data/db/models",
+        "alembic.ini",
+        "alembic/env.py",
+        "docs/migration/PEEWEE_TO_SQLALCHEMY.md"
+      ],
+      "out_of_scope": [
+        "Migrating legacy tables"
+      ]
+    },
+    {
+      "id": "F1-011",
+      "title": "Add CI and Codex review prompt",
+      "phase": "phase-1-foundations",
+      "status": "done",
+      "description": "Add GitHub Actions CI and Codex review prompt documentation.",
+      "acceptance_criteria": [
+        "CI installs with uv",
+        "CI runs Ruff",
+        "CI runs Pytest",
+        "CI does not run scraping",
+        "Review prompt exists"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "expected_files": [
+        ".github/workflows/ci.yml",
+        ".github/codex/prompts/review.md",
+        "docs/ci/CODEX_GITHUB_ACTION.md"
+      ],
+      "out_of_scope": [
+        "Auto-modifying GitHub Actions"
+      ]
+    }
+  ]
+}

@@ -16,16 +16,7 @@ data/cache/
 *.dump
 *.sql.gz
 
-*.md
-*.json
 *.ipynb
-.agents/
-docs/
-progress/
-specs/
-tasks/
-scripts/harness/
-.github/codex/
 !tests/fixtures/**/*.html
 
 .DS_Store

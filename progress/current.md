@@ -1,35 +1,41 @@
 # Current Work
 
-Status: ready_for_next_task
+Status: phase_2_in_progress
 
 ## Active Task
 
-Phase 1 foundations are reviewed and closed.
+No task is approved or in progress.
+
+## Current Phase
+
+- Phase ID: `phase-2-scraper-cache-integration`
+- Phase status: `in_progress`
+- Last completed task: `F2-001` - Adapt team-season fetch/cache flow
+- Next recommended task: `F2-002` - Create pure parser flow for cached
+  team-season HTML
 
 ## Goal
 
-Select the first approved Phase 2 task before adapting any legacy scraper or
-running live scraping.
+Wait for owner approval before promoting the next Phase 2 `ready` task. Keep
+all validation offline and do not adapt the legacy scraper until a later
+approved task.
 
 ## Files Expected
 
-No implementation files are currently active.
+- `docs/roadmap/PHASE_GOVERNANCE.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/`
+- `tasks/feature-list.json`
+- `src/nba_data/scraping/team_season_pages.py`
+- `tests/unit/test_team_season_pages.py`
+- `docs/roadmap/TASKS.md`
 
 ## Notes
 
 Working branch: `feature/fase-1-foundations`.
 
-The Phase 1 tracking blocker was resolved by making project docs, specs,
-task/progress memory, harness scripts, and Codex prompts trackable. Harness
-init now fails if required repo memory files are ignored or untracked.
+Phase 1 is reviewed and closed. Phase 2 is in progress. `F2-001` is reviewed
+and done; `F2-002` and `F2-003` remain ready.
 
-Validation passed:
-
-- `.\.local\start-dev.ps1`
-- `uv run ruff check .`
-- `uv run pytest`
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`
-
-No live scraping was run, no request to Basketball Reference was made, and no
-commit or push was performed.
+No live scraping was run, no request to Basketball Reference was made, no
+database migration was applied, and no API/frontend/OVR work was implemented.

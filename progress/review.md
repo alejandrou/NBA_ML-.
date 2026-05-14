@@ -34,3 +34,19 @@ and tracked.
 - `bash` in the default PowerShell PATH may point to the Windows WSL launcher;
   Git Bash is installed at `C:\Program Files\Git\bin\bash.exe` and can run the
   harness scripts.
+
+## Phase 2 F2-001 Review
+
+Status: approved
+
+`F2-001` is approved for closure. The cache-first team-season helper is
+additive, keeps legacy scraper code untouched, and is covered by offline tests
+using fakes and local fixtures.
+
+## Phase 2 F2-001 Checks
+
+- `.\.local\start-dev.ps1`: passed; no live scraping was run.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 18 passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.

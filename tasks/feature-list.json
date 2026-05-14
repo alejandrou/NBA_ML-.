@@ -1,9 +1,41 @@
 {
+  "current_phase_id": "phase-2-scraper-cache-integration",
+  "current_phase_status": "in_progress",
+  "max_approved_tasks": 1,
+  "max_in_progress_tasks": 1,
+  "allow_auto_promote_ready_in_proposed_phase": false,
+  "valid_phase_statuses": [
+    "proposed",
+    "approved",
+    "in_progress",
+    "review",
+    "done",
+    "blocked"
+  ],
+  "valid_task_statuses": [
+    "pending",
+    "ready",
+    "approved",
+    "in_progress",
+    "blocked",
+    "needs_review",
+    "changes_requested",
+    "done",
+    "cancelled"
+  ],
+  "status_rules": [
+    "Only one task may be in_progress.",
+    "Multiple tasks may be ready.",
+    "There may be zero or one approved task.",
+    "No task may be marked done without validation.",
+    "Only the current phase may have ready tasks.",
+    "Tasks in future phases remain pending until their phase becomes current."
+  ],
   "tasks": [
     {
       "id": "F1-001",
       "title": "Create project harness documentation",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create AGENTS.md, docs/ai rules, skills index, architecture, domain, specs, roadmap, and ADR docs.",
       "acceptance_criteria": [
@@ -34,7 +66,7 @@
     {
       "id": "F1-002",
       "title": "Add agent roles and progress memory",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create repo-scoped skills, roles, workflow, review protocol, and progress files.",
       "acceptance_criteria": [
@@ -61,7 +93,7 @@
     {
       "id": "F1-003",
       "title": "Create feature list and specs",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create structured task list and specs for Phase 1 tasks.",
       "acceptance_criteria": [
@@ -83,7 +115,7 @@
     {
       "id": "F1-004",
       "title": "Add settings and uv project setup",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Add pyproject.toml, settings module, .env.example, and tests.",
       "acceptance_criteria": [
@@ -109,7 +141,7 @@
     {
       "id": "F1-005",
       "title": "Update Docker Compose, README, and gitignore",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Configure local PostgreSQL, fix ignored files, and document setup.",
       "acceptance_criteria": [
@@ -133,7 +165,7 @@
     {
       "id": "F1-006",
       "title": "Create harness scripts",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Add init, validate, and close scripts.",
       "acceptance_criteria": [
@@ -158,7 +190,7 @@
     {
       "id": "F1-007",
       "title": "Add rate-limited client",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create central Basketball Reference HTTP client with conservative rate limits.",
       "acceptance_criteria": [
@@ -182,7 +214,7 @@
     {
       "id": "F1-008",
       "title": "Add HTML cache",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create compressed raw HTML cache.",
       "acceptance_criteria": [
@@ -205,7 +237,7 @@
     {
       "id": "F1-009",
       "title": "Add parser pattern",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create a pure team-season parser example and fixture.",
       "acceptance_criteria": [
@@ -230,7 +262,7 @@
     {
       "id": "F1-010",
       "title": "Add SQLAlchemy foundation",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Create SQLAlchemy base, session, initial raw/core models, Alembic foundation, and Peewee migration note.",
       "acceptance_criteria": [
@@ -259,7 +291,7 @@
     {
       "id": "F1-011",
       "title": "Add CI and Codex review prompt",
-      "phase": "phase-1-foundations",
+      "phase_id": "phase-1-foundations",
       "status": "done",
       "description": "Add GitHub Actions CI and Codex review prompt documentation.",
       "acceptance_criteria": [
@@ -280,6 +312,434 @@
       ],
       "out_of_scope": [
         "Auto-modifying GitHub Actions"
+      ]
+    },
+    {
+      "id": "F2-001",
+      "title": "Adapt team-season fetch/cache flow",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "done",
+      "description": "Allow a teams/{TEAM}/{YEAR}.html page to be obtained once through BasketballReferenceClient and HtmlCache without real scraping in tests.",
+      "acceptance_criteria": [
+        "Team-season URL construction is deterministic",
+        "Cache is checked before any client request",
+        "Client is used only on cache miss",
+        "Tests use mocks and local fixtures only",
+        "No live scraping is run"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Migrating the whole database",
+        "Deleting Peewee",
+        "Live scraping",
+        "API implementation",
+        "Frontend implementation",
+        "OVR implementation",
+        "Complete SQLAlchemy loaders"
+      ]
+    },
+    {
+      "id": "F2-002",
+      "title": "Create pure parser flow for cached team-season HTML",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "ready",
+      "description": "Route cached team-season HTML into pure parser functions without network or database side effects.",
+      "acceptance_criteria": [
+        "Parser input is an HTML string",
+        "Parser flow does not touch network",
+        "Parser flow does not write to the database",
+        "Fixture-based tests cover the flow"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Full parser migration",
+        "Live scraping",
+        "Database loading"
+      ]
+    },
+    {
+      "id": "F2-003",
+      "title": "Add realistic HTML fixtures without live scraping in tests",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "ready",
+      "description": "Add representative local fixture HTML for team-season parser and cache tests without downloading during tests.",
+      "acceptance_criteria": [
+        "Fixtures are committed local test data",
+        "Tests do not contact Basketball Reference",
+        "Fixtures cover commented Basketball Reference tables where needed"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Large raw HTML dumps"
+      ]
+    },
+    {
+      "id": "F2-004",
+      "title": "Adapt legacy team-season scraper entrypoint to use client/cache",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "pending",
+      "description": "Wire the legacy team-season entrypoint through the central client/cache path while preserving legacy behavior.",
+      "acceptance_criteria": [
+        "Legacy entrypoint can use the central client/cache path",
+        "Tests mock network behavior",
+        "No real scraping is run in validation"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Deleting legacy scraper code",
+        "Full scraper rewrite"
+      ]
+    },
+    {
+      "id": "F2-005",
+      "title": "Design idempotent loader strategy",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "pending",
+      "description": "Document how parsed team-season data will be loaded idempotently in later phases.",
+      "acceptance_criteria": [
+        "Loader strategy document exists",
+        "Unique keys and rerun behavior are described",
+        "No production data is modified"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Full SQLAlchemy loader implementation",
+        "Database migration"
+      ]
+    },
+    {
+      "id": "F2-006",
+      "title": "Prepare SQLAlchemy core migration plan for team/player/season",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "pending",
+      "description": "Prepare a reviewed migration plan for core team, player, and season entities without applying a full migration.",
+      "acceptance_criteria": [
+        "Migration plan document exists",
+        "Peewee coexistence is addressed",
+        "No database migration is applied"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Full database migration",
+        "Deleting Peewee code"
+      ]
+    },
+    {
+      "id": "F3-001",
+      "title": "Expand cached team-season table parsers",
+      "phase_id": "phase-3-parser-normalization",
+      "status": "pending",
+      "description": "Add pure parsers for selected team-season tables using cached HTML fixtures.",
+      "acceptance_criteria": [
+        "Parsers accept HTML strings",
+        "Parsers make no network requests",
+        "Fixture tests cover selected tables"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Database loading",
+        "Live scraping"
+      ]
+    },
+    {
+      "id": "F3-002",
+      "title": "Normalize parsed team-season rows",
+      "phase_id": "phase-3-parser-normalization",
+      "status": "pending",
+      "description": "Convert parsed team-season rows into normalized records with stable identifiers where available.",
+      "acceptance_criteria": [
+        "Normalization is separate from parsing",
+        "Player names are not stable primary keys",
+        "TOT is handled as an aggregate, not a team"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Generated metrics",
+        "Database loading"
+      ]
+    },
+    {
+      "id": "F3-003",
+      "title": "Add parser data-quality checks",
+      "phase_id": "phase-3-parser-normalization",
+      "status": "pending",
+      "description": "Add checks for parser and normalization outputs before any loader work.",
+      "acceptance_criteria": [
+        "Checks run without network",
+        "Domain rules are tested",
+        "Failures are actionable"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Database migration",
+        "OVR implementation"
+      ]
+    },
+    {
+      "id": "F4-001",
+      "title": "Implement core team/player/season SQLAlchemy migrations",
+      "phase_id": "phase-4-sqlalchemy-migration",
+      "status": "pending",
+      "description": "Add reviewed SQLAlchemy/Alembic migrations for selected core entities.",
+      "acceptance_criteria": [
+        "Migrations are reviewable",
+        "Core identifiers are stable",
+        "Peewee coexistence is preserved"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest",
+        "uv run alembic check"
+      ],
+      "out_of_scope": [
+        "Deleting Peewee",
+        "Full database migration"
+      ]
+    },
+    {
+      "id": "F4-002",
+      "title": "Add idempotent loader repositories",
+      "phase_id": "phase-4-sqlalchemy-migration",
+      "status": "pending",
+      "description": "Add idempotent repository/loading behavior for normalized team-season data.",
+      "acceptance_criteria": [
+        "Loaders can be rerun safely",
+        "Unique constraints support idempotency",
+        "Tests cover duplicate input"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Full historical load"
+      ]
+    },
+    {
+      "id": "F4-003",
+      "title": "Add database integration validation path",
+      "phase_id": "phase-4-sqlalchemy-migration",
+      "status": "pending",
+      "description": "Define and test the local database validation path for migration and loader work.",
+      "acceptance_criteria": [
+        "Validation command is documented",
+        "Tests do not require live scraping",
+        "Local database setup is explicit"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Production deployment",
+        "Data deletion"
+      ]
+    },
+    {
+      "id": "F5-001",
+      "title": "Design read-only API foundation",
+      "phase_id": "phase-5-api",
+      "status": "pending",
+      "description": "Design the read-only API foundation and contracts over stable core data.",
+      "acceptance_criteria": [
+        "API contract is documented",
+        "Endpoints are read-only",
+        "API does not trigger scraping"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Frontend implementation",
+        "Live scraping"
+      ]
+    },
+    {
+      "id": "F5-002",
+      "title": "Add team-season API endpoint",
+      "phase_id": "phase-5-api",
+      "status": "pending",
+      "description": "Expose selected team-season data through a read-only endpoint.",
+      "acceptance_criteria": [
+        "Endpoint is read-only",
+        "Response schema is tested",
+        "Endpoint does not scrape"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Mutating endpoints",
+        "Frontend implementation"
+      ]
+    },
+    {
+      "id": "F5-003",
+      "title": "Add API tests and documentation",
+      "phase_id": "phase-5-api",
+      "status": "pending",
+      "description": "Add tests and docs for the read-only API surface.",
+      "acceptance_criteria": [
+        "API tests pass",
+        "Docs describe contracts",
+        "No endpoint performs scraping"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Production deployment"
+      ]
+    },
+    {
+      "id": "F6-001",
+      "title": "Create frontend app shell",
+      "phase_id": "phase-6-frontend",
+      "status": "pending",
+      "description": "Create the future frontend application shell against stable API contracts.",
+      "acceptance_criteria": [
+        "Frontend stack is documented",
+        "App shell can run locally",
+        "No frontend workflow triggers scraping"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "OVR implementation",
+        "Live scraping"
+      ]
+    },
+    {
+      "id": "F6-002",
+      "title": "Build team-season exploration page",
+      "phase_id": "phase-6-frontend",
+      "status": "pending",
+      "description": "Build a frontend page for inspecting team-season data through the read-only API.",
+      "acceptance_criteria": [
+        "Page uses the API contract",
+        "Page handles loading and empty states",
+        "No direct scraping or database access"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Generated metrics",
+        "Production deployment"
+      ]
+    },
+    {
+      "id": "F6-003",
+      "title": "Document frontend validation",
+      "phase_id": "phase-6-frontend",
+      "status": "pending",
+      "description": "Document local frontend run and validation commands once a frontend stack exists.",
+      "acceptance_criteria": [
+        "Commands are documented",
+        "Validation does not scrape",
+        "Docs fit the project harness"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Production deployment"
+      ]
+    },
+    {
+      "id": "F7-001",
+      "title": "Design generated metrics schema",
+      "phase_id": "phase-7-features-ovr",
+      "status": "pending",
+      "description": "Design storage for generated metrics separately from scraped stats.",
+      "acceptance_criteria": [
+        "Generated metrics are separate from official stats",
+        "Data lineage is documented",
+        "Leakage risks are identified"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "User-facing rankings"
+      ]
+    },
+    {
+      "id": "F7-002",
+      "title": "Prototype leakage-safe player rating calculation",
+      "phase_id": "phase-7-features-ovr",
+      "status": "pending",
+      "description": "Prototype a reviewed player rating calculation with explicit leakage controls.",
+      "acceptance_criteria": [
+        "Inputs are documented",
+        "Formula is testable",
+        "Leakage controls are tested"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Production ranking launch",
+        "ML training"
+      ]
+    },
+    {
+      "id": "F7-003",
+      "title": "Add similarity and OVR validation notes",
+      "phase_id": "phase-7-features-ovr",
+      "status": "pending",
+      "description": "Document validation strategy for future similarity and OVR features.",
+      "acceptance_criteria": [
+        "Validation strategy is documented",
+        "Limitations are explicit",
+        "Generated metrics stay separate from scraped stats"
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest"
+      ],
+      "out_of_scope": [
+        "Production ML deployment"
       ]
     }
   ]

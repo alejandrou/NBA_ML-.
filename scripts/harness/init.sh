@@ -5,35 +5,55 @@ echo "Running harness init checks..."
 
 required_files=(
   "AGENTS.md"
-  "README.md"
-  ".agents/skills/scraping-pipeline/SKILL.md"
-  ".agents/roles/leader.md"
-  "docs/ai/RULES.md"
   "docs/ai/WORKFLOW_PROTOCOL.md"
-  "docs/ai/REVIEW_PROTOCOL.md"
-  "docs/ai/SKILLS_INDEX.md"
-  "docs/architecture/SYSTEM_DESIGN.md"
-  "docs/domain/BUSINESS_RULES.md"
-  "docs/specs/PROJECT_SPEC.md"
+  "docs/roadmap/PHASE_GOVERNANCE.md"
   "docs/roadmap/CURRENT_PHASE.md"
-  "docs/roadmap/TASKS.md"
-  "docs/roadmap/CHANGELOG_LEARNING.md"
-  "specs/features/F1-001-project-harness.md"
   "tasks/feature-list.json"
   "progress/current.md"
   "progress/history.md"
-  "progress/review.md"
-  "progress/blockers.md"
-  "scripts/harness/init.sh"
-  "scripts/harness/validate.sh"
-  "scripts/harness/close.sh"
-  ".github/codex/prompts/review.md"
 )
 
 for file in "${required_files[@]}"; do
   if [ ! -f "$file" ]; then
     echo "Missing required file: $file"
     exit 1
+  fi
+done
+
+current_phase_id="$(python - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path("tasks/feature-list.json").read_text(encoding="utf-8"))
+phase_id = data.get("current_phase_id")
+if not phase_id:
+    raise SystemExit("tasks/feature-list.json missing current_phase_id")
+print(phase_id)
+PY
+)"
+
+current_phase_spec="specs/phases/${current_phase_id}.md"
+
+if [ ! -f "$current_phase_spec" ]; then
+  echo "Missing current phase spec: $current_phase_spec"
+  exit 1
+fi
+
+required_files+=("$current_phase_spec")
+
+future_phase_specs=(
+  "specs/phases/phase-1-foundations.md"
+  "specs/phases/phase-2-scraper-cache-integration.md"
+  "specs/phases/phase-3-parser-normalization.md"
+  "specs/phases/phase-4-sqlalchemy-migration.md"
+  "specs/phases/phase-5-api.md"
+  "specs/phases/phase-6-frontend.md"
+  "specs/phases/phase-7-features-ovr.md"
+)
+
+for spec in "${future_phase_specs[@]}"; do
+  if [ "$spec" != "$current_phase_spec" ] && [ ! -f "$spec" ]; then
+    echo "Warning: future phase spec is missing: $spec"
   fi
 done
 

@@ -1,29 +1,43 @@
 # Current Phase
 
-Phase 1: Foundations, harness, rate limiter, cache, CI.
+Phase ID: `phase-2-scraper-cache-integration`
+Status: `in_progress`
 
-## Goals
+## Phase 2 - Scraper Cache Integration
 
-- Add project instructions and skills.
-- Add agent roles.
-- Add workflow and review protocol.
-- Add feature-list and progress memory.
-- Add harness scripts.
-- Add configuration.
-- Add `pyproject.toml`.
-- Add Docker Compose for local PostgreSQL.
-- Add rate-limited HTTP client.
-- Add HTML cache.
-- Add parser pattern.
-- Add SQLAlchemy/Alembic foundation.
-- Add CI.
-- Add tests.
-- Update README.
+## Goal
 
-## Out of Scope
+Integrate the current scraping flow with `BasketballReferenceClient` and
+`HtmlCache` without rewriting the whole scraper.
 
-- Full DB migration.
+## Allowed Work
+
+- Adapt fetch/cache boundaries for team-season pages.
+- Add tests with mocks only.
+- Add and use local HTML fixtures.
+- Build parser flow from cached HTML.
+- Update documentation and progress memory.
+- Keep all validation offline.
+
+## Forbidden Without Owner Approval
+
+- Live scraping.
+- Contacting Basketball Reference.
+- Deleting Peewee or legacy scraper code.
+- Migrating the whole database.
 - API implementation.
 - Frontend implementation.
-- OVR implementation.
-- Historical scraping.
+- OVR, ranking, similarity, or ML feature implementation.
+- Full SQLAlchemy loader migration.
+
+## Current Backlog State
+
+- `F2-001` is reviewed and done.
+- `F2-002` and `F2-003` remain `ready`.
+- No Phase 2 task is currently `approved` or `in_progress`.
+
+## References
+
+- `docs/roadmap/PHASE_GOVERNANCE.md`
+- `specs/phases/phase-2-scraper-cache-integration.md`
+- `tasks/feature-list.json`

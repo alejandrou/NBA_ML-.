@@ -2,24 +2,28 @@
 
 ## Done
 
-- Automated implementation and validation for Phase 1 foundations is complete.
-- Phase 1 review is closed and F1-001 through F1-011 are marked `done`.
-- Git tracking guardrails now prevent required repo memory files from being
-  ignored or untracked.
+- Phase 1 foundations are complete and reviewed.
+- F1-001 through F1-011 are marked `done`.
+- Global phase governance now defines rolling backlog behavior across phases.
+- `F2-001`: Adapt team-season fetch/cache flow.
 
-## Doing
+## Current
 
-- Select the next approved Phase 2 task.
+- Current phase: `phase-2-scraper-cache-integration`.
+- Current phase status: `in_progress`.
+- No task is `approved` or `in_progress`.
+
+## Ready
+
+- `F2-002`: Create pure parser flow for cached team-season HTML.
+- `F2-003`: Add realistic HTML fixtures without live scraping in tests.
 
 ## Next
 
-- Adapt legacy scrapers to the central client and cache in Phase 2.
+- Ask the owner whether to approve `F2-002`.
 
 ## Later
 
-- Idempotent loaders.
-- Broader parser coverage.
-- Core SQLAlchemy migration.
-- Read-only FastAPI.
-- Next.js frontend.
-- OVR and similarity metrics.
+- Phase 2 pending tasks: legacy entrypoint adaptation, loader strategy, and
+  SQLAlchemy migration planning.
+- Phase 3-7 tasks remain `pending` until their phase becomes current.

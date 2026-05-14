@@ -11,18 +11,21 @@ a read-only API, and a future web application.
 
 Read `docs/roadmap/CURRENT_PHASE.md`.
 
-Phase 1 builds the project harness, local development foundation, responsible
-scraping guardrails, cache, parser pattern, SQLAlchemy foundation, tests, and CI.
+Phase governance lives in `docs/roadmap/PHASE_GOVERNANCE.md`. The current
+phase is tracked in `docs/roadmap/CURRENT_PHASE.md` and
+`tasks/feature-list.json`.
 
 ## Mandatory Startup Protocol
 
 1. Read this file.
 2. Run `scripts/harness/init.sh` if available.
 3. Read `docs/ai/WORKFLOW_PROTOCOL.md`.
-4. Read `docs/roadmap/CURRENT_PHASE.md`.
-5. Read `tasks/feature-list.json`.
-6. Read `progress/current.md`.
-7. Work only on the current approved task or propose the next task.
+4. Read `docs/roadmap/PHASE_GOVERNANCE.md`.
+5. Read `docs/roadmap/CURRENT_PHASE.md`.
+6. Read `tasks/feature-list.json`.
+7. Read the current phase spec under `specs/phases/`.
+8. Read `progress/current.md`.
+9. Follow the rolling backlog rules for the current phase.
 
 ## Commands
 
@@ -94,6 +97,7 @@ must use `src/nba_data/scraping/cache.py` unless explicitly disabled.
 - `tasks/feature-list.json`: structured task source of truth.
 - `progress/`: current work, history, review notes, blockers, and research.
 - `specs/features/`: acceptance specs for each task.
+- `specs/phases/`: phase contracts and governance details.
 - `src/nba_data/`: new platform foundation.
 - `scrap/`, `models/`, `db_manager/`: legacy prototype code.
 
@@ -111,12 +115,12 @@ must use `src/nba_data/scraping/cache.py` unless explicitly disabled.
 
 ## Prohibitions
 
-- No API implementation in Phase 1.
-- No frontend implementation in Phase 1.
-- No OVR/ranking implementation in Phase 1.
-- No historical scrape in Phase 1.
-- No full Peewee removal in Phase 1.
-- No full database migration in Phase 1.
+- No API implementation before its approved phase.
+- No frontend implementation before its approved phase.
+- No OVR/ranking implementation before its approved phase.
+- No historical scrape without explicit owner approval.
+- No full Peewee removal without explicit owner approval.
+- No full database migration without explicit owner approval.
 - No committed `.env`, raw HTML, dumps, or local database files.
 
 ## Skills

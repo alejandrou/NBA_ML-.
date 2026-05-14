@@ -411,3 +411,82 @@ check .`, and `uv run pytest`.
 ### Review Questions
 
 - Which Phase 2 scraper adaptation should be approved first?
+
+## Checkpoint 14 - Global Phase Governance
+
+### What Changed
+
+Added global phase governance, phase specs, rolling backlog metadata, and a
+current-phase-aware harness init check.
+
+### Why
+
+Agents could block when no task was `approved` because the workflow only said to
+prefer `approved` tasks or propose `pending` tasks. It did not explain how to
+handle `ready` tasks, proposed phases, blocked phases, or phase transitions.
+
+### Concepts Learned
+
+- A rolling backlog lets the repo carry the next likely work without pretending
+  everything is already approved.
+- `pending` means a task exists but is not ready for execution.
+- `ready` means the task is ready for owner approval in the current phase.
+- `approved` means the task is selected for implementation.
+- `in_progress` means one task is actively being implemented, and no other task
+  should start.
+- Phase governance keeps future phases designed while preventing accidental API,
+  frontend, migration, or OVR implementation.
+
+### Files to Read
+
+- `docs/roadmap/PHASE_GOVERNANCE.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-2-scraper-cache-integration.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should the owner approve `F2-001` as the first Phase 2 task?
+
+## Checkpoint 15 - Phase 2 Team-Season Fetch Cache Flow
+
+### What Changed
+
+Added a small team-season page helper that builds deterministic Basketball
+Reference team-season URLs and fetches HTML through a cache-first flow.
+
+### Why
+
+Phase 2 needs one safe boundary where a `teams/{TEAM}/{YEAR}.html` page can be
+obtained through `HtmlCache` and `BasketballReferenceClient` without rewriting
+the legacy scraper.
+
+### Concepts Learned
+
+- Team-season pages can share one URL builder before parser and legacy adapter
+  work.
+- The cache coordination can be tested with a fake client and local fixture HTML.
+- `force_refresh` should be explicit so normal validation remains offline.
+- A cache miss in the outer helper should not force-refresh the inner client
+  unless the caller explicitly asks for it.
+
+### Files to Read
+
+- `src/nba_data/scraping/team_season_pages.py`
+- `tests/unit/test_team_season_pages.py`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_team_season_pages.py`, then run `uv run ruff
+check .`, `uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should `F2-002` route this cached HTML directly into
+  `parse_team_season_page` next?

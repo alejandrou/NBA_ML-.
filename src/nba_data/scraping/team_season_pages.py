@@ -1,10 +1,39 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
 from nba_data.scraping.parsers.team_season import parse_team_season_page
 
 BASE_URL = "https://www.basketball-reference.com"
+
+
+class TeamSeasonHtmlProvider(Protocol):
+    def get_html(self, team_abbreviation: str, year: int) -> str:
+        """Return raw HTML for one team-season page."""
+
+
+class CachedTeamSeasonHtmlProvider:
+    def __init__(
+        self,
+        *,
+        cache: HtmlCache,
+        client: BasketballReferenceClient,
+        force_refresh: bool = False,
+    ) -> None:
+        self.cache = cache
+        self.client = client
+        self.force_refresh = force_refresh
+
+    def get_html(self, team_abbreviation: str, year: int) -> str:
+        return fetch_team_season_html(
+            team_abbreviation,
+            year,
+            cache=self.cache,
+            client=self.client,
+            force_refresh=self.force_refresh,
+        )
 
 
 def build_team_season_url(team_abbreviation: str, year: int) -> str:

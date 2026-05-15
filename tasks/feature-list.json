@@ -388,7 +388,7 @@
       "id": "F2-004",
       "title": "Adapt legacy team-season scraper entrypoint to use client/cache",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "pending",
+      "status": "needs_review",
       "description": "Wire the legacy team-season entrypoint through the central client/cache path while preserving legacy behavior.",
       "acceptance_criteria": [
         "Legacy entrypoint can use the central client/cache path",
@@ -402,6 +402,48 @@
       "out_of_scope": [
         "Deleting legacy scraper code",
         "Full scraper rewrite"
+      ]
+    },
+    {
+      "id": "F2-LIVE-001",
+      "title": "Run one-page live smoke test for adapted team-season scraper",
+      "phase_id": "phase-2-scraper-cache-integration",
+      "status": "pending",
+      "depends_on": [
+        "F2-004"
+      ],
+      "description": "Run one explicitly approved live request against one Basketball Reference team-season page to validate the adapted legacy team-season scraper flow using BasketballReferenceClient and HtmlCache.",
+      "sensitive_gates": [
+        "live_scraping",
+        "contact_basketball_reference"
+      ],
+      "acceptance_criteria": [
+        "F2-004 is done before execution.",
+        "Owner approves the exact URL before execution.",
+        "At most one live request is made.",
+        "If cache exists, no live request is made.",
+        "No concurrency is used.",
+        "Rate limit settings are respected.",
+        "HTTP 429 stops execution.",
+        "HTML is stored as .html.gz.",
+        "No DB writes are performed.",
+        "No historical scraping is performed.",
+        "The adapted entrypoint can read the fetched/cached HTML.",
+        "Results are reported in progress/history.md and CHANGELOG_LEARNING.md."
+      ],
+      "validation": [
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/init.sh",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Full season scraping",
+        "Historical scraping",
+        "DB loading",
+        "API",
+        "Frontend",
+        "OVR"
       ]
     },
     {

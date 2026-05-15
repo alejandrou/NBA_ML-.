@@ -565,3 +565,45 @@ tests/unit/test_team_season_parser.py`, then run `uv run ruff check .`,
 
 - Should `F2-003` be closed as done after review, leaving F2-004/F2-005/F2-006
   for explicit owner approval?
+
+## Checkpoint 18 - Phase 2 Legacy Team-Season Cache Adapter
+
+### What Changed
+
+Added a cached team-season HTML provider and wired it into the legacy roster,
+totals, and advanced team-season page scrapers as an optional path.
+
+### Why
+
+`F2-004` needs the legacy team-season scraper boundary to use the central
+client/cache path without rewriting the whole legacy workflow or changing the
+loader-facing row keys.
+
+### Concepts Learned
+
+- The central cache/client path can be injected into legacy scrapers without
+  removing the existing async `httpx` fallback.
+- The legacy parser path must keep label-based keys such as `Player`, `G`,
+  `PTS`, and `PER`; the pure parser's `data-stat` keys are intentionally kept
+  separate for now.
+- Offline tests can prove cache-first behavior and legacy output compatibility
+  with fake providers and local fixture HTML.
+
+### Files to Read
+
+- `src/nba_data/scraping/team_season_pages.py`
+- `scrap/scrap_player/scrap_player_roster.py`
+- `scrap/scrap_player/scrap_player_totals.py`
+- `scrap/scrap_player/scrap_player_advanced.py`
+- `tests/unit/test_legacy_team_season_scrapers.py`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_team_season_pages.py
+tests/unit/test_legacy_team_season_scrapers.py`, then run `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should `F2-004` be closed as done after review, leaving the gated
+  `F2-LIVE-001` smoke test pending until explicit URL approval?

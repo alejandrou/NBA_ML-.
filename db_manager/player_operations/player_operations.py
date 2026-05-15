@@ -10,11 +10,11 @@ from models.team.team import Team
 
 class PlayerOperations:
 
-    def __init__(self, years):
+    def __init__(self, years, team_season_html_provider=None):
         self.years = years
-        self.scraper_roster = PlayerScraperRoster(years)
-        self.scraper_totals = PlayerScraperTotals(years)
-        self.scraper_advanced = PlayerScraperAdvanced(years)
+        self.scraper_roster = PlayerScraperRoster(years, team_season_html_provider)
+        self.scraper_totals = PlayerScraperTotals(years, team_season_html_provider)
+        self.scraper_advanced = PlayerScraperAdvanced(years, team_season_html_provider)
 
     async def scrape_and_save_players_roster_async(self, client):
         DBManager.create_tables(Player)

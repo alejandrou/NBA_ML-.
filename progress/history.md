@@ -176,3 +176,58 @@ Completed checkpoints and tasks will be recorded here.
 - Did not start `F2-004`, run live scraping, contact Basketball Reference,
   migrate the database, remove Peewee/legacy code, or implement API/frontend/OVR
   work.
+
+## Phase 2 Backlog Update - F2-LIVE-001
+
+- Added `F2-LIVE-001` as a pending gated live smoke-test task immediately after
+  `F2-004`.
+- Recorded the dependency on `F2-004` and the sensitive gates for live scraping
+  and contacting Basketball Reference.
+- Kept `F2-004`, `F2-LIVE-001`, `F2-005`, and `F2-006` as `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 23 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Did not approve or start the task, make a live request, contact Basketball
+  Reference, migrate the database, or implement API/frontend/OVR work.
+
+## Phase 2 F2-004 Implementation
+
+- Owner approved implementing `F2-004`.
+- Added a cached team-season HTML provider backed by `HtmlCache`,
+  `BasketballReferenceClient`, and the existing cache-first team-season fetch
+  helper.
+- Wired the provider into the legacy roster, totals, and advanced team-season
+  page scrapers as an optional path while preserving the old async `httpx`
+  fallback.
+- Preserved legacy parser output keys such as `Player`, `G`, `PTS`, and `PER`
+  for existing loaders.
+- Passed the optional provider through `PlayerOperations` without changing DB
+  write methods.
+- Added offline tests with fake providers/clients and local fixture HTML only.
+- Ran `uv run pytest tests/unit/test_team_season_pages.py tests/unit/test_legacy_team_season_scrapers.py`:
+  15 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Moved `F2-004` to `needs_review`.
+- Did not start `F2-LIVE-001`, run live scraping, contact Basketball Reference,
+  write DB data, remove Peewee/legacy code, or implement API/frontend/OVR work.
+
+## Phase 2 F2-004 Commit/Push Handoff
+
+- Prepared the `F2-004` implementation and backlog/progress updates for commit
+  and push on `feature/fase-1-foundations`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Next safe action after push: review `F2-004` and either mark it `done` or
+  request changes.
+- `F2-LIVE-001` remains pending and must not run without explicit owner
+  approval for the exact live URL.

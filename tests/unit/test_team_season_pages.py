@@ -5,6 +5,7 @@ import pytest
 
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.team_season_pages import (
+    CachedTeamSeasonHtmlProvider,
     build_team_season_url,
     fetch_team_season_html,
     parse_cached_team_season_page,
@@ -74,6 +75,34 @@ def test_fetch_team_season_html_force_refresh_bypasses_cache(tmp_path) -> None:
     )
     assert client.calls == [(url, True)]
     assert cache.get(url) == "<html>fresh</html>"
+
+
+@pytest.mark.unit
+def test_cached_team_season_html_provider_uses_cache_before_client(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+    html = REALISTIC_FIXTURE.read_text(encoding="utf-8")
+    cache.set(url, html)
+    client = FakeClient()
+    provider = CachedTeamSeasonHtmlProvider(cache=cache, client=client)
+
+    assert provider.get_html("bos", 2024) == html
+    assert client.calls == []
+
+
+@pytest.mark.unit
+def test_cached_team_season_html_provider_fetches_once_and_stores_gzip(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    html = REALISTIC_FIXTURE.read_text(encoding="utf-8")
+    client = FakeClient(html)
+    provider = CachedTeamSeasonHtmlProvider(cache=cache, client=client)
+    url = build_team_season_url("BOS", 2024)
+
+    assert provider.get_html("BOS", 2024) == html
+    assert provider.get_html("BOS", 2024) == html
+    assert client.calls == [(url, False)]
+    assert cache.get(url) == html
+    assert cache.path_for_url(url).name.endswith(".html.gz")
 
 
 @pytest.mark.unit

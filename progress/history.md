@@ -86,3 +86,93 @@ Completed checkpoints and tasks will be recorded here.
 - Kept `F2-002` and `F2-003` as `ready`; no next task was approved.
 - No live scraping was run, no request to Basketball Reference was made, no
   database migration was applied, and no API/frontend/OVR work was implemented.
+
+## Phase 2 F2-002 Implementation
+
+- Owner approved implementing `F2-002` from the Phase 2 backlog.
+- Added a cached team-season parser flow that reads HTML from `HtmlCache` and
+  passes the HTML string into the pure parser.
+- Cache misses raise `FileNotFoundError` and do not fall back to network.
+- Added fixture-based unit tests for cached parser output, cache misses, and
+  the no-client parser-flow boundary.
+- Ran `uv run pytest tests/unit/test_team_season_pages.py tests/unit/test_team_season_parser.py`:
+  10 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 21 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Moved `F2-002` to `needs_review`.
+- Did not run live scraping, contact Basketball Reference, migrate the
+  database, or implement API/frontend/OVR work.
+
+## Phase 2 F2-002 Handoff
+
+- Current task state: `F2-002` is `needs_review`.
+- Current phase state: `phase-2-scraper-cache-integration` remains
+  `in_progress`.
+- Next safe action: review the F2-002 diff and either close the task as `done`
+  after approval or request changes.
+- `F2-003` remains `ready` but is not approved for implementation yet.
+- Continue using Git Bash at `C:\Program Files\Git\bin\bash.exe` for harness
+  scripts on this Windows environment.
+
+## Phase 2 F2-002 Review Closure
+
+- Reviewed the cached parser flow and approved `F2-002`.
+- Marked `F2-002` as `done`.
+- Owner approved starting `F2-003`; moved `F2-003` into active work.
+- No live scraping was run, no request to Basketball Reference was made, no
+  database migration was applied, and no API/frontend/OVR work was implemented.
+
+## Phase 2 F2-003 Implementation
+
+- Owner approved implementing `F2-003`.
+- Added a compact hand-authored team-season fixture that mimics the relevant
+  Basketball Reference table structure without using a raw downloaded page.
+- Covered visible roster parsing, commented wrapped totals and advanced tables,
+  multiple player rows, and repeated `tbody` header rows.
+- Added parser and cached-flow tests using only local fixture HTML.
+- Ran `uv run pytest tests/unit/test_team_season_pages.py tests/unit/test_team_season_parser.py`:
+  12 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 23 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Moved `F2-003` to `needs_review`.
+- Did not run live scraping, contact Basketball Reference, migrate the
+  database, or implement API/frontend/OVR work.
+
+## Phase 2 F2-003 Handoff
+
+- Current task state: `F2-003` is `needs_review`.
+- Current phase state: `phase-2-scraper-cache-integration` remains
+  `in_progress`.
+- `F2-001` and `F2-002` are reviewed and marked `done`.
+- Next safe action: review the F2-003 diff and either close the task as `done`
+  after validation or request changes.
+- Do not start `F2-004`, run live scraping, contact Basketball Reference,
+  migrate the database, remove Peewee/legacy code, or implement API/frontend/OVR
+  work without explicit owner approval.
+- Continue using Git Bash at `C:\Program Files\Git\bin\bash.exe` for harness
+  scripts on this Windows environment.
+
+## Phase 2 F2-003 Review Closure
+
+- Reviewed and approved `F2-003`.
+- Verified `tests/fixtures/html/team_season_realistic.html` is a compact local
+  hand-authored fixture rather than a raw downloaded page dump.
+- Verified the fixture covers a visible roster table, commented wrapped
+  `totals_stats` and `advanced` tables, multiple player rows, and repeated
+  `tbody` header rows with `class="thead"`.
+- Verified tests cover both the pure parser and cached offline flow.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 23 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Marked `F2-003` as `done`.
+- Did not start `F2-004`, run live scraping, contact Basketball Reference,
+  migrate the database, remove Peewee/legacy code, or implement API/frontend/OVR
+  work.

@@ -33,8 +33,11 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 ## Current Backlog State
 
 - `F2-001` is reviewed and done.
-- `F2-002` and `F2-003` remain `ready`.
+- `F2-002` is reviewed and done.
+- `F2-003` is reviewed and done.
 - No Phase 2 task is currently `approved` or `in_progress`.
+- `F2-004` and later Phase 2 tasks remain `pending` until explicit owner
+  approval.
 
 ## References
 

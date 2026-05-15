@@ -50,3 +50,36 @@ using fakes and local fixtures.
 - `uv run pytest`: 18 passed.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
+
+## Phase 2 F2-002 Review
+
+Status: approved
+
+`F2-002` is approved for closure. The cached parser helper reads only through
+`HtmlCache`, raises `FileNotFoundError` on cache miss, and passes the cached
+HTML string to the pure parser without accepting a client or touching the
+database.
+
+## Phase 2 F2-002 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 21 passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
+
+## Phase 2 F2-003 Review
+
+Status: approved
+
+`F2-003` is approved for closure. The realistic team-season fixture is compact,
+local, and hand-authored rather than a raw downloaded dump. It covers visible
+roster parsing, commented wrapped `totals_stats` and `advanced` tables, multiple
+player rows, and repeated `tbody` header rows. Parser and cached-flow tests stay
+offline and do not contact Basketball Reference.
+
+## Phase 2 F2-003 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 23 passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.

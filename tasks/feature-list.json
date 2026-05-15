@@ -346,7 +346,7 @@
       "id": "F2-002",
       "title": "Create pure parser flow for cached team-season HTML",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "ready",
+      "status": "done",
       "description": "Route cached team-season HTML into pure parser functions without network or database side effects.",
       "acceptance_criteria": [
         "Parser input is an HTML string",
@@ -368,7 +368,7 @@
       "id": "F2-003",
       "title": "Add realistic HTML fixtures without live scraping in tests",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "ready",
+      "status": "done",
       "description": "Add representative local fixture HTML for team-season parser and cache tests without downloading during tests.",
       "acceptance_criteria": [
         "Fixtures are committed local test data",

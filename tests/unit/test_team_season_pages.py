@@ -1,11 +1,17 @@
+import inspect
 from pathlib import Path
 
 import pytest
 
 from nba_data.scraping.cache import HtmlCache
-from nba_data.scraping.team_season_pages import build_team_season_url, fetch_team_season_html
+from nba_data.scraping.team_season_pages import (
+    build_team_season_url,
+    fetch_team_season_html,
+    parse_cached_team_season_page,
+)
 
 FIXTURE = Path("tests/fixtures/html/team_season_minimal.html")
+REALISTIC_FIXTURE = Path("tests/fixtures/html/team_season_realistic.html")
 
 
 class FakeClient:
@@ -68,3 +74,49 @@ def test_fetch_team_season_html_force_refresh_bypasses_cache(tmp_path) -> None:
     )
     assert client.calls == [(url, True)]
     assert cache.get(url) == "<html>fresh</html>"
+
+
+@pytest.mark.unit
+def test_parse_cached_team_season_page_routes_cached_html_to_parser(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+    html = FIXTURE.read_text(encoding="utf-8")
+    cache.set(url, html)
+
+    parsed = parse_cached_team_season_page("bos", 2024, cache=cache)
+
+    assert parsed["roster"] == [{"No.": "0", "Player": "Jayson Tatum", "Pos": "SF"}]
+    assert parsed["totals"] == [{"player": "Jayson Tatum", "g": "74", "pts": "1987"}]
+    assert parsed["advanced"] == [{"player": "Jayson Tatum", "per": "22.3"}]
+
+
+@pytest.mark.unit
+def test_parse_cached_team_season_page_reads_realistic_fixture(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+    html = REALISTIC_FIXTURE.read_text(encoding="utf-8")
+    cache.set(url, html)
+
+    parsed = parse_cached_team_season_page("BOS", 2024, cache=cache)
+
+    assert [row["player"] for row in parsed["roster"]] == [
+        "Jayson Tatum",
+        "Jaylen Brown",
+    ]
+    assert [row["pts"] for row in parsed["totals"]] == ["1987", "1644"]
+    assert [row["per"] for row in parsed["advanced"]] == ["22.3", "19.1"]
+
+
+@pytest.mark.unit
+def test_parse_cached_team_season_page_raises_on_cache_miss(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="Cached team-season HTML not found"):
+        parse_cached_team_season_page("BOS", 2024, cache=cache)
+
+
+@pytest.mark.unit
+def test_parse_cached_team_season_page_does_not_accept_client() -> None:
+    signature = inspect.signature(parse_cached_team_season_page)
+
+    assert "client" not in signature.parameters

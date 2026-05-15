@@ -490,3 +490,78 @@ check .`, `uv run pytest`, and Git Bash harness validation.
 
 - Should `F2-002` route this cached HTML directly into
   `parse_team_season_page` next?
+
+## Checkpoint 16 - Phase 2 Cached Parser Flow
+
+### What Changed
+
+Added a cached team-season parser helper that reads a team-season page from
+`HtmlCache` and routes the HTML string into the existing pure parser.
+
+### Why
+
+Phase 2 needs a parser flow that starts from cached HTML and cannot accidentally
+make network requests or write to the database.
+
+### Concepts Learned
+
+- Cache-backed parser flows should fail clearly on cache miss instead of
+  fetching live pages.
+- A single cached team-season HTML page can feed roster, totals, and advanced
+  parser output.
+
+### Files to Read
+
+- `src/nba_data/scraping/team_season_pages.py`
+- `tests/unit/test_team_season_pages.py`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_team_season_pages.py
+tests/unit/test_team_season_parser.py`, then run `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should `F2-003` add more realistic local fixtures before expanding parser
+  coverage in Phase 3?
+
+## Checkpoint 17 - Phase 2 Realistic Team-Season Fixture
+
+### What Changed
+
+Added a compact hand-authored team-season HTML fixture that more closely
+resembles Basketball Reference table structure without downloading or storing a
+large raw page.
+
+### Why
+
+`F2-003` needs representative local HTML so parser/cache tests can exercise
+commented wrapped tables and repeated table header rows while staying fully
+offline.
+
+### Concepts Learned
+
+- A small fixture can cover the important parser structure without becoming a
+  raw page dump.
+- Commented wrapped `totals_stats` and `advanced` tables still flow through the
+  existing pure parser.
+- Repeated `tbody` header rows should be present in fixtures so parser tests
+  prove they are ignored.
+
+### Files to Read
+
+- `tests/fixtures/html/team_season_realistic.html`
+- `tests/unit/test_team_season_parser.py`
+- `tests/unit/test_team_season_pages.py`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_team_season_pages.py
+tests/unit/test_team_season_parser.py`, then run `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should `F2-003` be closed as done after review, leaving F2-004/F2-005/F2-006
+  for explicit owner approval?

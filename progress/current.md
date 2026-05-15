@@ -80,7 +80,7 @@ now cover that fixture offline.
 No live scraping was run, no request to Basketball Reference was made, no
 database migration was applied, and no API/frontend/OVR work was implemented.
 
-The branch still has uncommitted Phase 2 implementation/progress changes. No
-commit or push has been performed yet in this handoff. After commit/push, use
-the next conversation to review and close `F2-004`; do not start `F2-LIVE-001`
-without explicit owner approval for the exact live URL.
+The `F2-004` implementation was committed and pushed to
+`feature/fase-1-foundations` in this handoff. Use the next conversation to
+review and close `F2-004`; do not start `F2-LIVE-001` without explicit owner
+approval for the exact live URL.

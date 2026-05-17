@@ -35,7 +35,7 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - `F2-001` is reviewed and done.
 - `F2-002` is reviewed and done.
 - `F2-003` is reviewed and done.
-- `F2-004` is `needs_review`.
+- `F2-004` is reviewed and done.
 - No Phase 2 task is currently `approved` or `in_progress`.
 - `F2-LIVE-001` and later Phase 2 tasks remain `pending` until explicit owner
   approval.

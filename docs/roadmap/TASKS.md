@@ -8,6 +8,7 @@
 - `F2-001`: Adapt team-season fetch/cache flow.
 - `F2-002`: Create pure parser flow for cached team-season HTML.
 - `F2-003`: Add realistic HTML fixtures without live scraping in tests.
+- `F2-004`: Adapt legacy team-season scraper entrypoint to use client/cache.
 
 ## Current
 
@@ -17,12 +18,11 @@
 
 ## Needs Review
 
-- `F2-004`: Adapt legacy team-season scraper entrypoint to use client/cache.
+- None.
 
 ## Next
 
-- Review `F2-004`. Do not start `F2-LIVE-001` or any other task without
-  explicit approval.
+- Do not start `F2-LIVE-001` or any other task without explicit approval.
 
 ## Later
 

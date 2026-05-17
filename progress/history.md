@@ -233,3 +233,23 @@ Completed checkpoints and tasks will be recorded here.
   approval for the exact live URL.
 - Committed and pushed the `F2-004` implementation to
   `origin/feature/fase-1-foundations`.
+
+## Phase 2 F2-004 Review Closure
+
+- Reviewed and approved `F2-004`.
+- Verified the cached team-season provider delegates to the central
+  `HtmlCache` and `BasketballReferenceClient` path.
+- Verified the legacy roster, totals, and advanced scrapers accept the injected
+  provider while preserving loader-facing keys such as `Player`, `G`, `PTS`,
+  and `PER`.
+- Verified tests use local fixtures, fakes, and mocked HTTP only.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Marked `F2-004` as `done`.
+- Kept `F2-LIVE-001`, `F2-005`, and `F2-006` pending.
+- Did not start `F2-LIVE-001`, run live scraping, contact Basketball Reference,
+  write DB data, migrate the database, remove Peewee/legacy code, or implement
+  API/frontend/OVR work.

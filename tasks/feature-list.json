@@ -388,7 +388,7 @@
       "id": "F2-004",
       "title": "Adapt legacy team-season scraper entrypoint to use client/cache",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "needs_review",
+      "status": "done",
       "description": "Wire the legacy team-season entrypoint through the central client/cache path while preserving legacy behavior.",
       "acceptance_criteria": [
         "Legacy entrypoint can use the central client/cache path",

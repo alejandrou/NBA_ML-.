@@ -83,3 +83,23 @@ offline and do not contact Basketball Reference.
 - `uv run ruff check .`: passed.
 - `uv run pytest`: 23 passed.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
+
+## Phase 2 F2-004 Review
+
+Status: approved
+
+`F2-004` is approved for closure. The implementation adds an injectable cached
+team-season HTML provider backed by the central `HtmlCache` and
+`BasketballReferenceClient` path, wires it through `PlayerOperations` into the
+legacy roster, totals, and advanced scrapers, and preserves legacy
+loader-facing keys such as `Player`, `G`, `PTS`, and `PER`. `scrape_main.py`
+was intentionally left unchanged to avoid activating live scraping or DB writes
+as part of this review task.
+
+## Phase 2 F2-004 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 29 passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
+- No live scraping was run and no request to Basketball Reference was made.

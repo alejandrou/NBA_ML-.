@@ -38,10 +38,12 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 ## Current Task State
 
 - `F2-001`: Adapt team-season fetch/cache flow - done.
-- `F2-002`: Create pure parser flow for cached team-season HTML.
-- `F2-003`: Add realistic HTML fixtures without live scraping in tests.
-
-`F2-001` was the first approved Phase 2 task.
+- `F2-002`: Create pure parser flow for cached team-season HTML - done.
+- `F2-003`: Add realistic HTML fixtures without live scraping in tests - done.
+- `F2-004`: Adapt legacy team-season scraper entrypoint to use client/cache -
+  done.
+- `F2-LIVE-001`: Run one-page live smoke test for adapted team-season scraper -
+  pending and gated by explicit owner approval.
 
 ## Done Criteria
 

@@ -279,3 +279,99 @@ Completed checkpoints and tasks will be recorded here.
 - Did not run historical scraping, use concurrency, request any other URL,
   write DB data, migrate the database, remove Peewee/legacy code, or implement
   API/frontend/OVR work.
+
+## Phase 2 F2-LIVE-001 Continuation Handoff
+
+- Current branch: `feature/fase-1-foundations`.
+- Latest commits: `499d613 Close F2-004 review` and
+  `33232cc Run F2-LIVE-001 smoke test`.
+- Current task state: `F2-LIVE-001` is `needs_review`, not `done`.
+- Next safe action: review the F2-LIVE-001 result and either close it as
+  `done` or request changes.
+- Do not rerun the live request unless the owner explicitly approves another
+  live request and exact URL.
+- Do not start `F2-005`, `F2-006`, or any other task without explicit owner
+  approval.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Branch: feature/fase-1-foundations
+
+Trabaja en modo seguro.
+
+Primero sigue el startup protocol:
+1. Lee AGENTS.md.
+2. Ejecuta C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh
+3. Lee docs/ai/WORKFLOW_PROTOCOL.md.
+4. Lee docs/roadmap/PHASE_GOVERNANCE.md.
+5. Lee docs/roadmap/CURRENT_PHASE.md.
+6. Lee specs/phases/phase-2-scraper-cache-integration.md.
+7. Lee tasks/feature-list.json.
+8. Lee progress/current.md, progress/history.md y progress/review.md.
+9. Revisa git status.
+
+Contexto:
+- F2-004 está done.
+- F2-LIVE-001 fue ejecutada una sola vez para:
+  https://www.basketball-reference.com/teams/BOS/2024.html
+- Resultado registrado:
+  - cache miss antes de ejecutar;
+  - live_requests=1;
+  - http_status=200;
+  - html_chars=928025;
+  - cache path:
+    data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz
+  - cache_exists_after=True;
+  - parsed_tables=['advanced', 'roster', 'totals'];
+  - legacy_roster_rows=19;
+  - legacy_totals_rows=19;
+  - legacy_advanced_rows=19.
+- Validaciones posteriores registradas:
+  - uv run ruff check .: passed.
+  - uv run pytest: 29 passed, 3 Peewee deprecation warnings.
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed.
+- F2-LIVE-001 está en needs_review, no done.
+- La rama contiene estos commits locales:
+  - 499d613 Close F2-004 review
+  - 33232cc Run F2-LIVE-001 smoke test
+
+Restricciones:
+- No rerun live request.
+- No contactes Basketball Reference.
+- No escribas DB.
+- No migres DB.
+- No borres Peewee ni legacy.
+- No implementes API/frontend/OVR.
+- No empieces F2-005, F2-006 ni otra tarea sin aprobación explícita.
+- No hagas reset, checkout ni descartes cambios locales.
+
+Tarea:
+- Revisa el estado de F2-LIVE-001 desde los archivos.
+- Resume si cumple aceptación.
+- Si está correcto, prepara el cierre de F2-LIVE-001 como done con docs/progress
+  actualizados y validaciones offline.
+- Si encuentras algún problema, deja F2-LIVE-001 en changes_requested y explica
+  el mínimo fix.
+```
+
+## Phase 2 F2-LIVE-001 Cached Result Inspection
+
+- Inspected the cached BOS 2024 team-season HTML at
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- Used `CachedTeamSeasonHtmlProvider` with a no-network HTTP transport fuse, so
+  the adapted legacy parser path was exercised through a forced cache hit.
+- Cache result: hit.
+- Network requests: 0.
+- Cache file size: 141649 bytes.
+- HTML chars: 928025.
+- Detected and exported all expected tables: roster, totals, and advanced.
+- Row counts: roster 19, totals 19, advanced 19.
+- Exported local inspection artifacts under
+  `data/exports/smoke-tests/BOS-2024/`: `roster.json`, `totals.json`,
+  `advanced.json`, and `summary.md`.
+- `data/exports` is not currently ignored by Git, so the exported artifacts
+  must not be staged or committed unless the owner explicitly approves.
+- No live request was made, no database write or migration was performed, no
+  historical scraping was run, and no legacy/Peewee code was deleted.

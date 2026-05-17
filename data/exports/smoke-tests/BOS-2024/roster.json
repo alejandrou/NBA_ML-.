@@ -1,0 +1,211 @@
+[
+  {
+    "No.": "45",
+    "Player": "Dalano Banton",
+    "Pos": "PG",
+    "Ht": "6-8",
+    "Wt": "203",
+    "Birth Date": "November 7, 1999",
+    "Birth": "ca CA",
+    "Exp": "2",
+    "College": "Nebraska"
+  },
+  {
+    "No.": "12",
+    "Player": "Oshae Brissett",
+    "Pos": "SF",
+    "Ht": "6-7",
+    "Wt": "210",
+    "Birth Date": "June 20, 1998",
+    "Birth": "ca CA",
+    "Exp": "4",
+    "College": "Syracuse"
+  },
+  {
+    "No.": "7",
+    "Player": "Jaylen Brown",
+    "Pos": "SF",
+    "Ht": "6-6",
+    "Wt": "223",
+    "Birth Date": "October 24, 1996",
+    "Birth": "us US",
+    "Exp": "7",
+    "College": "California"
+  },
+  {
+    "No.": "20",
+    "Player": "JD Davison",
+    "Pos": "SG",
+    "Ht": "6-1",
+    "Wt": "195",
+    "Birth Date": "October 3, 2002",
+    "Birth": "us US",
+    "Exp": "1",
+    "College": "Alabama"
+  },
+  {
+    "No.": "30",
+    "Player": "Sam Hauser",
+    "Pos": "SF",
+    "Ht": "6-7",
+    "Wt": "217",
+    "Birth Date": "December 8, 1997",
+    "Birth": "us US",
+    "Exp": "2",
+    "College": "Marquette, Virginia"
+  },
+  {
+    "No.": "4",
+    "Player": "Jrue Holiday",
+    "Pos": "PG",
+    "Ht": "6-4",
+    "Wt": "220",
+    "Birth Date": "June 12, 1990",
+    "Birth": "us US",
+    "Exp": "14",
+    "College": "UCLA"
+  },
+  {
+    "No.": "42",
+    "Player": "Al Horford",
+    "Pos": "C",
+    "Ht": "6-8",
+    "Wt": "240",
+    "Birth Date": "June 3, 1986",
+    "Birth": "do DO",
+    "Exp": "16",
+    "College": "Florida"
+  },
+  {
+    "No.": "40",
+    "Player": "Luke Kornet",
+    "Pos": "C",
+    "Ht": "7-1",
+    "Wt": "250",
+    "Birth Date": "July 15, 1995",
+    "Birth": "us US",
+    "Exp": "6",
+    "College": "Vanderbilt"
+  },
+  {
+    "No.": "50",
+    "Player": "Svi Mykhailiuk",
+    "Pos": "SF",
+    "Ht": "6-7",
+    "Wt": "205",
+    "Birth Date": "June 10, 1997",
+    "Birth": "ua UA",
+    "Exp": "5",
+    "College": "Kansas"
+  },
+  {
+    "No.": "13",
+    "Player": "Drew Peterson",
+    "Pos": "PF",
+    "Ht": "6-8",
+    "Wt": "205",
+    "Birth Date": "November 9, 1999",
+    "Birth": "us US",
+    "Exp": "R",
+    "College": "Rice University, USC"
+  },
+  {
+    "No.": "8",
+    "Player": "Kristaps Porziņģis",
+    "Pos": "C",
+    "Ht": "7-2",
+    "Wt": "240",
+    "Birth Date": "August 2, 1995",
+    "Birth": "lv LV",
+    "Exp": "7",
+    "College": ""
+  },
+  {
+    "No.": "11",
+    "Player": "Payton Pritchard",
+    "Pos": "PG",
+    "Ht": "6-1",
+    "Wt": "195",
+    "Birth Date": "January 28, 1998",
+    "Birth": "us US",
+    "Exp": "3",
+    "College": "Oregon"
+  },
+  {
+    "No.": "88",
+    "Player": "Neemias Queta",
+    "Pos": "C",
+    "Ht": "7-0",
+    "Wt": "248",
+    "Birth Date": "July 13, 1999",
+    "Birth": "pt PT",
+    "Exp": "2",
+    "College": "Utah State University"
+  },
+  {
+    "No.": "44",
+    "Player": "Jaden Springer",
+    "Pos": "SG",
+    "Ht": "6-4",
+    "Wt": "202",
+    "Birth Date": "September 25, 2002",
+    "Birth": "us US",
+    "Exp": "2",
+    "College": "Tennessee"
+  },
+  {
+    "No.": "77",
+    "Player": "Lamar Stevens",
+    "Pos": "PF",
+    "Ht": "6-7",
+    "Wt": "230",
+    "Birth Date": "July 9, 1997",
+    "Birth": "us US",
+    "Exp": "3",
+    "College": "Penn State"
+  },
+  {
+    "No.": "0",
+    "Player": "Jayson Tatum",
+    "Pos": "PF",
+    "Ht": "6-8",
+    "Wt": "210",
+    "Birth Date": "March 3, 1998",
+    "Birth": "us US",
+    "Exp": "6",
+    "College": "Duke"
+  },
+  {
+    "No.": "26",
+    "Player": "Xavier Tillman Sr.",
+    "Pos": "PF",
+    "Ht": "6-8",
+    "Wt": "245",
+    "Birth Date": "January 12, 1999",
+    "Birth": "us US",
+    "Exp": "3",
+    "College": "Michigan State"
+  },
+  {
+    "No.": "27",
+    "Player": "Jordan Walsh",
+    "Pos": "SF",
+    "Ht": "6-6",
+    "Wt": "205",
+    "Birth Date": "March 3, 2004",
+    "Birth": "us US",
+    "Exp": "R",
+    "College": "Arkansas"
+  },
+  {
+    "No.": "9",
+    "Player": "Derrick White",
+    "Pos": "SG",
+    "Ht": "6-4",
+    "Wt": "190",
+    "Birth Date": "July 2, 1994",
+    "Birth": "us US",
+    "Exp": "6",
+    "College": "Colorado-Colorado Springs, Colorado"
+  }
+]

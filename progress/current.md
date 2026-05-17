@@ -20,6 +20,13 @@ No task is approved or in progress.
 Review the controlled one-page live smoke test result for the approved URL and
 either close `F2-LIVE-001` as `done` or request changes.
 
+## Next Safe Action
+
+Start a fresh review pass for `F2-LIVE-001`. Do not rerun the live request
+unless the owner explicitly approves another live request and exact URL. The
+expected next outcome is either marking `F2-LIVE-001` as `done` after review or
+requesting changes.
+
 ## Smoke Test Result
 
 - URL: `https://www.basketball-reference.com/teams/BOS/2024.html`
@@ -52,3 +59,8 @@ No database writes were performed, no database migration was applied, no
 historical scraping was run, no concurrency was used, no additional URLs were
 requested, no Peewee or legacy code was deleted, and no API/frontend/OVR work
 was implemented.
+
+## Continuation Prompt
+
+Use the prompt recorded in `progress/history.md` under
+`Phase 2 F2-LIVE-001 Continuation Handoff` to continue in another window.

@@ -649,3 +649,39 @@ Run `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
 
 - Should `F2-LIVE-001` be closed as done after review, leaving `F2-005` and
   `F2-006` pending for explicit owner approval?
+
+## Checkpoint 20 - Phase 2 Cached Smoke-Test Export
+
+### What Changed
+
+Inspected the cached BOS 2024 team-season HTML from the `F2-LIVE-001` smoke
+test and exported the parsed legacy roster, totals, and advanced outputs to
+local JSON/Markdown files under `data/exports/smoke-tests/BOS-2024/`.
+
+### Why
+
+The live smoke test proved that the page could be fetched and cached. The
+cached inspection makes the parsed result visible for review without contacting
+Basketball Reference again.
+
+### Concepts Learned
+
+- `CachedTeamSeasonHtmlProvider` can be paired with a no-network transport fuse
+  to prove a cache hit while exercising the same adapted legacy parser path.
+- The cached BOS 2024 page provides roster, totals, and advanced tables with 19
+  rows each.
+- `data/exports` is not ignored by Git, so local export artifacts must remain
+  unstaged unless the owner explicitly approves tracking them.
+
+### Result
+
+- Cache result: hit.
+- Network requests: 0.
+- Cache file size: 141649 bytes.
+- HTML chars: 928025.
+- Exported files: `roster.json`, `totals.json`, `advanced.json`, and
+  `summary.md`.
+
+### How to Test
+
+Run `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.

@@ -607,3 +607,45 @@ tests/unit/test_legacy_team_season_scrapers.py`, then run `uv run ruff check .`,
 
 - Should `F2-004` be closed as done after review, leaving the gated
   `F2-LIVE-001` smoke test pending until explicit URL approval?
+
+## Checkpoint 19 - Phase 2 One-Page Live Smoke Test
+
+### What Changed
+
+Ran the gated `F2-LIVE-001` smoke test for the owner-approved URL
+`https://www.basketball-reference.com/teams/BOS/2024.html` and moved the task
+to `needs_review`.
+
+### Why
+
+The adapted legacy team-season scraper path needed one controlled real-page
+check after offline tests proved the cache/client integration.
+
+### Concepts Learned
+
+- The central `BasketballReferenceClient` and `HtmlCache` path can fetch and
+  store one Basketball Reference team-season page for downstream parser use.
+- A one-request injected HTTP fuse can verify the live request count while
+  still keeping the production request path inside `BasketballReferenceClient`.
+- One cached team-season page can feed the pure parser and the adapted legacy
+  roster, totals, and advanced scrapers.
+
+### Result
+
+- Cache result: miss before execution.
+- Live requests: 1.
+- HTTP status: 200.
+- HTML chars: 928025.
+- Cache path:
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- Parsed tables: `['advanced', 'roster', 'totals']`.
+- Legacy rows: roster 19, totals 19, advanced 19.
+
+### How to Test
+
+Run `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
+
+### Review Questions
+
+- Should `F2-LIVE-001` be closed as done after review, leaving `F2-005` and
+  `F2-006` pending for explicit owner approval?

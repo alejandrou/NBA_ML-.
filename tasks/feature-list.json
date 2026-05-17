@@ -408,7 +408,7 @@
       "id": "F2-LIVE-001",
       "title": "Run one-page live smoke test for adapted team-season scraper",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F2-004"
       ],

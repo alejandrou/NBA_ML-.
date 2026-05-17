@@ -103,3 +103,36 @@ as part of this review task.
 - `uv run pytest`: 29 passed.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
 - No live scraping was run and no request to Basketball Reference was made.
+
+## Phase 2 F2-LIVE-001 Review
+
+Status: needs_review
+
+`F2-LIVE-001` is ready for review. The smoke test used the owner-approved URL
+`https://www.basketball-reference.com/teams/BOS/2024.html`, routed through
+`BasketballReferenceClient`, stored the HTML in `HtmlCache`, and verified that
+the adapted legacy roster, totals, and advanced scrapers can read the fetched
+or cached HTML.
+
+## Phase 2 F2-LIVE-001 Result
+
+- Cache result: miss before execution.
+- Live requests: 1.
+- HTTP status: 200.
+- HTML chars: 928025.
+- Cache path:
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- Cache exists after: `True`.
+- Parsed tables: `['advanced', 'roster', 'totals']`.
+- Legacy roster rows: 19.
+- Legacy totals rows: 19.
+- Legacy advanced rows: 19.
+
+## Phase 2 F2-LIVE-001 Checks
+
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  29 passed, 3 Peewee deprecation warnings.
+- No DB writes, DB migrations, historical scraping, concurrency, extra URLs,
+  Peewee/legacy deletion, API/frontend/OVR work, or retry after 429 occurred.

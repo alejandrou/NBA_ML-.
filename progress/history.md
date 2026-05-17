@@ -253,3 +253,29 @@ Completed checkpoints and tasks will be recorded here.
 - Did not start `F2-LIVE-001`, run live scraping, contact Basketball Reference,
   write DB data, migrate the database, remove Peewee/legacy code, or implement
   API/frontend/OVR work.
+
+## Phase 2 F2-LIVE-001 Controlled Smoke Test
+
+- Owner explicitly approved running one live request for
+  `https://www.basketball-reference.com/teams/BOS/2024.html`.
+- Promoted `F2-LIVE-001` from `pending` to `approved` to `in_progress`.
+- Confirmed the smoke test still routed through `BasketballReferenceClient`;
+  the injected `OneRequestHttpClient` acted only as a one-request fuse and
+  printed the HTTP status.
+- Cache state before execution: miss.
+- Live requests: 1.
+- HTTP status: 200.
+- HTML chars: 928025.
+- Cache path:
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- Cache exists after execution: `True`.
+- Parsed tables: `['advanced', 'roster', 'totals']`.
+- Legacy scraper rows: roster 19, totals 19, advanced 19.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 29 passed, 3 Peewee deprecation warnings.
+- Moved `F2-LIVE-001` to `needs_review`.
+- Did not run historical scraping, use concurrency, request any other URL,
+  write DB data, migrate the database, remove Peewee/legacy code, or implement
+  API/frontend/OVR work.

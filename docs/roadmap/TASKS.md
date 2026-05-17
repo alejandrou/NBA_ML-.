@@ -18,16 +18,14 @@
 
 ## Needs Review
 
-- None.
+- `F2-LIVE-001`: Run one-page live smoke test for adapted team-season scraper.
 
 ## Next
 
-- Do not start `F2-LIVE-001` or any other task without explicit approval.
+- Review `F2-LIVE-001`. Do not start `F2-005`, `F2-006`, or any other task
+  without explicit approval.
 
 ## Later
 
-- Phase 2 pending tasks: gated one-page live smoke test, loader strategy, and
-  SQLAlchemy migration planning.
-- `F2-LIVE-001` depends on `F2-004` and still requires explicit owner approval
-  of the exact URL before any live request.
+- Phase 2 pending tasks: loader strategy and SQLAlchemy migration planning.
 - Phase 3-7 tasks remain `pending` until their phase becomes current.

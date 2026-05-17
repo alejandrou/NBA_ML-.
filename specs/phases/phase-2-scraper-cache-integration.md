@@ -43,7 +43,7 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - `F2-004`: Adapt legacy team-season scraper entrypoint to use client/cache -
   done.
 - `F2-LIVE-001`: Run one-page live smoke test for adapted team-season scraper -
-  pending and gated by explicit owner approval.
+  needs_review after one approved live request.
 
 ## Done Criteria
 

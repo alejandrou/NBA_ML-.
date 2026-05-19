@@ -4,11 +4,12 @@ import asyncio
 import httpx
 
 class PlayerScraperTotals:
-    def __init__(self, years):
+    def __init__(self, years, team_season_html_provider=None):
         self.url = 'https://www.basketball-reference.com/teams/'
         self.teams_NBA_list = [teams for teams in team_abbrev.values()]
         self.years = years
         self.semaphore = asyncio.Semaphore(1)  # 20 requests per minute
+        self.team_season_html_provider = team_season_html_provider
 
     async def fetch(self, url, client):
         async with self.semaphore:
@@ -26,9 +27,16 @@ class PlayerScraperTotals:
                 print(f"An error occurred: {exc}")
                 return None
 
-    async def scrape_team_year_totals(self, nba_team, year, client):
+    async def get_team_season_html(self, nba_team, year, client=None):
+        if self.team_season_html_provider is not None:
+            return self.team_season_html_provider.get_html(nba_team, year)
+        if client is None:
+            raise ValueError("client is required when team_season_html_provider is not configured")
         url = f"https://www.basketball-reference.com/teams/{nba_team}/{year}.html"
-        html_content = await self.fetch(url, client)
+        return await self.fetch(url, client)
+
+    async def scrape_team_year_totals(self, nba_team, year, client=None):
+        html_content = await self.get_team_season_html(nba_team, year, client)
 
         if not html_content:
             print(f"No content found for {nba_team} in {year}.")
@@ -53,7 +61,7 @@ class PlayerScraperTotals:
         print(f"Totals table not found for {nba_team} in {year}.")
         return []
 
-    async def get_players_team_year_totals(self, client):
+    async def get_players_team_year_totals(self, client=None):
         results = {}
         tasks = []
 

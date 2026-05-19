@@ -1,0 +1,72 @@
+[project]
+name = "nba-data-platform"
+version = "0.1.0"
+description = "NBA data platform foundation for Basketball Reference scraping, caching, parsing, and analytics."
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.13",
+    "beautifulsoup4>=4.12",
+    "httpx>=0.27",
+    "lxml>=5.2",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+    "rich>=13.7",
+    "sqlalchemy>=2.0",
+    "tenacity>=8.3",
+    "typer>=0.12",
+    "peewee>=3.17",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+nba-data = "nba_data.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nba_data"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = [
+    "db_manager",
+    "etl_process.ipynb",
+    "ml_main.py",
+    "models",
+    "scrap",
+    "scrape_main.py",
+    "utils",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: fast unit tests with no network",
+    "integration: integration tests that may need services",
+    "live: manual live tests, skipped by default",
+]
+addopts = "-m 'not live'"
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+ignore_missing_imports = true

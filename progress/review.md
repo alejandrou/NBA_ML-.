@@ -106,13 +106,13 @@ as part of this review task.
 
 ## Phase 2 F2-LIVE-001 Review
 
-Status: needs_review
+Status: approved
 
-`F2-LIVE-001` is ready for review. The smoke test used the owner-approved URL
+`F2-LIVE-001` is approved for closure. The smoke test used the owner-approved URL
 `https://www.basketball-reference.com/teams/BOS/2024.html`, routed through
 `BasketballReferenceClient`, stored the HTML in `HtmlCache`, and verified that
 the adapted legacy roster, totals, and advanced scrapers can read the fetched
-or cached HTML.
+or cached HTML. The task meets all acceptance criteria and is marked `done`.
 
 ## Phase 2 F2-LIVE-001 Result
 
@@ -134,5 +134,59 @@ or cached HTML.
 - `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   29 passed, 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed.
 - No DB writes, DB migrations, historical scraping, concurrency, extra URLs,
   Peewee/legacy deletion, API/frontend/OVR work, or retry after 429 occurred.
+
+## Phase 2 F2-005 Review
+
+Status: approved
+
+`F2-005` is approved for closure. The loader strategy is documented in
+`docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`, describes natural keys and
+rerun behavior for future idempotent loaders, and stays within Phase 2 by not
+implementing loaders, writing production data, or applying database migrations.
+
+## Phase 2 F2-005 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- No live scraping was run, no request to Basketball Reference was made, no DB
+  write occurred, and no database migration was applied.
+
+## Phase 2 F2-006 Review
+
+Status: approved
+
+`F2-006` is approved for closure. The core migration plan is documented in
+`docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`, addresses
+SQLAlchemy/Peewee coexistence, and keeps Phase 2 as planning-only by avoiding
+new Alembic migrations, DB writes, and legacy/Peewee deletion.
+
+## Phase 2 F2-006 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- No live scraping was run, no request to Basketball Reference was made, no DB
+  write occurred, and no database migration was applied.
+
+## Phase 2 Cleanup Audit Review
+
+Status: approved
+
+The cleanup checkpoint was completed as a conservative audit only. Legacy
+folders and dependencies still have active references or are explicitly retained
+for coexistence, so no folders or dependencies were removed. `tenacity` has no
+active imports outside lock/data, but it was left untouched because dependency
+removal was out of scope and `uv.lock` must not be edited manually.
+
+## Phase 2 Closure Review
+
+Status: approved
+
+Phase 2 is approved for closure. `F2-001`, `F2-002`, `F2-003`, `F2-004`,
+`F2-LIVE-001`, `F2-005`, and `F2-006` are done. The phase remains the current
+phase with status `done`; Phase 3 is not active and all F3 tasks remain
+`pending`.

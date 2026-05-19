@@ -4,14 +4,18 @@ This repository is evolving from a Basketball Reference scraping prototype into
 a maintainable NBA data platform.
 
 The current codebase still contains the legacy prototype in `scrape_main.py`,
-`scrap/`, `models/`, and `db_manager/`. Phase 1 adds the project harness,
-configuration, cache, parser pattern, SQLAlchemy foundation, tests, and CI
-without running live scraping.
+`scrap/`, `models/`, and `db_manager/`. The new platform foundation adds the
+project harness, configuration, cache, parser pattern, SQLAlchemy foundation,
+tests, CI, and a reviewed scraper/cache integration path without running
+unapproved live scraping.
 
 ## Current Phase
 
-Phase 1: foundations, harness, rate limiter, HTML cache, parser pattern,
-SQLAlchemy/Alembic foundation, and basic CI.
+Phase 2 is complete: team-season fetch/cache integration, cached parser flow,
+legacy team-season cache adapter, one approved live smoke test, loader strategy
+planning, and SQLAlchemy core migration planning are reviewed. Phase 3 is the
+recommended next phase, but it is not active until the owner explicitly approves
+the transition.
 
 Planned later:
 

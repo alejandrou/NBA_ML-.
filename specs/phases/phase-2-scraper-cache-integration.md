@@ -1,6 +1,6 @@
 # Phase 2 - Scraper Cache Integration
 
-Status: in_progress
+Status: done
 Phase ID: `phase-2-scraper-cache-integration`
 
 ## Goal
@@ -15,6 +15,7 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - Add and use local HTML fixtures.
 - Add pure parser flow for cached team-season HTML.
 - Document scraper/cache integration decisions.
+- Document future idempotent loader and SQLAlchemy migration boundaries.
 - Avoid real scraping in tests and validation.
 
 ## Forbidden Without Owner Approval
@@ -43,7 +44,10 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - `F2-004`: Adapt legacy team-season scraper entrypoint to use client/cache -
   done.
 - `F2-LIVE-001`: Run one-page live smoke test for adapted team-season scraper -
-  needs_review after one approved live request.
+  done after one approved live request and review.
+- `F2-005`: Design idempotent loader strategy - done.
+- `F2-006`: Prepare SQLAlchemy core migration plan for team/player/season -
+  done.
 
 ## Done Criteria
 
@@ -52,6 +56,8 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - Cached HTML can feed pure parser work.
 - Legacy behavior remains available unless explicitly approved for change.
 - Documentation and progress history are updated.
+- Future loader and migration boundaries are documented without applying DB
+  changes.
 
 ## Default Validations
 
@@ -63,5 +69,5 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 
 ## Next Phase Recommendation
 
-Proceed to `phase-3-parser-normalization` after the fetch/cache path is
-integrated and reviewed.
+Proceed to `phase-3-parser-normalization` only after an explicit
+owner-approved phase transition. Phase 3 tasks remain `pending` until then.

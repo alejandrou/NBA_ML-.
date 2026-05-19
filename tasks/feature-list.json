@@ -1,6 +1,6 @@
 {
   "current_phase_id": "phase-2-scraper-cache-integration",
-  "current_phase_status": "in_progress",
+  "current_phase_status": "done",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -408,7 +408,7 @@
       "id": "F2-LIVE-001",
       "title": "Run one-page live smoke test for adapted team-season scraper",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F2-004"
       ],
@@ -450,7 +450,7 @@
       "id": "F2-005",
       "title": "Design idempotent loader strategy",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "pending",
+      "status": "done",
       "description": "Document how parsed team-season data will be loaded idempotently in later phases.",
       "acceptance_criteria": [
         "Loader strategy document exists",
@@ -470,7 +470,7 @@
       "id": "F2-006",
       "title": "Prepare SQLAlchemy core migration plan for team/player/season",
       "phase_id": "phase-2-scraper-cache-integration",
-      "status": "pending",
+      "status": "done",
       "description": "Prepare a reviewed migration plan for core team, player, and season entities without applying a full migration.",
       "acceptance_criteria": [
         "Migration plan document exists",

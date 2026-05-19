@@ -685,3 +685,120 @@ Basketball Reference again.
 ### How to Test
 
 Run `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 21 - Phase 2 Live Smoke Review Closure
+
+### What Changed
+
+Reviewed and closed `F2-LIVE-001` as `done` after confirming the one-page live
+smoke test met its acceptance criteria and passed offline validation.
+
+### Why
+
+The live/cache integration task needed a formal review gate before Phase 2
+could move on to loader strategy planning.
+
+### Concepts Learned
+
+- One approved live request is enough to validate the adapted team-season
+  cache/client path when offline tests and cached inspection already cover the
+  parser behavior.
+- The next Phase 2 step should return to non-live planning work unless the
+  owner explicitly approves another gated live action.
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 22 - Phase 2 Loader And Migration Planning
+
+### What Changed
+
+Added `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md` and
+`docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`. Closed `F2-005`
+and `F2-006` through `approved`, `in_progress`, `needs_review`, and `done`.
+
+### Why
+
+Phase 2 needed to finish with clear future boundaries for idempotent loading and
+SQLAlchemy migration work without implementing loaders or applying migrations.
+
+### Concepts Learned
+
+- Idempotent loaders need stable natural keys and duplicate-key validation
+  before writes.
+- `TOT` should be modeled as a player-season aggregate, not as a real team.
+- Peewee can coexist with SQLAlchemy while new DB work moves through Alembic.
+
+### Files to Read
+
+- `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
+- `docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`
+- `docs/migration/PEEWEE_TO_SQLALCHEMY.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`, and
+`uv run pytest`.
+
+## Checkpoint 23 - Phase 2 Conservative Cleanup Audit
+
+### What Changed
+
+Audited imports, dependencies, tracked legacy folders, docs, config, and CI.
+No dependency or folder was deleted, and `uv.lock` was not edited manually.
+
+### Why
+
+The cleanup checkpoint needed to identify obsolete code safely without crossing
+sensitive gates such as deleting legacy/Peewee code or removing dependencies.
+
+### Concepts Learned
+
+- Legacy folders still have active imports from tests, `scrape_main.py`, and
+  legacy operations.
+- `peewee`, `requests`, and `httpx` remain active dependencies.
+- `tenacity` has no active imports outside lock/data, but dependency cleanup is
+  better handled as a separate approved dependency task.
+
+### Files to Read
+
+- `pyproject.toml`
+- `.github/workflows/ci.yml`
+- `progress/review.md`
+
+### How to Test
+
+Run `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 24 - Phase 2 Closure
+
+### What Changed
+
+Marked `phase-2-scraper-cache-integration` as `done`, marked all Phase 2 tasks
+as `done`, and kept Phase 3 tasks `pending`.
+
+### Why
+
+The scraper/cache integration phase met its done criteria and the remaining
+planning tasks are reviewed. Phase 3 should start only after an explicit owner
+phase transition.
+
+### Concepts Learned
+
+- Closing a phase is separate from activating the next one.
+- A done current phase can remain the current source of truth until the owner
+  approves a transition.
+
+### Files to Read
+
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-2-scraper-cache-integration.md`
+- `tasks/feature-list.json`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.

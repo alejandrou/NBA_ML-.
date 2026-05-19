@@ -37,3 +37,8 @@ New database code uses:
 - Legacy player matching uses `player_name`.
 - The current scraper does not consistently extract Basketball Reference player IDs.
 - Legacy scrapers directly make HTTP requests and must be adapted in Phase 2.
+
+## Related Phase 2 Plans
+
+- `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
+- `docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`

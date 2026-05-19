@@ -1,7 +1,7 @@
 # Current Phase
 
 Phase ID: `phase-2-scraper-cache-integration`
-Status: `in_progress`
+Status: `done`
 
 ## Phase 2 - Scraper Cache Integration
 
@@ -36,10 +36,21 @@ Integrate the current scraping flow with `BasketballReferenceClient` and
 - `F2-002` is reviewed and done.
 - `F2-003` is reviewed and done.
 - `F2-004` is reviewed and done.
-- `F2-LIVE-001` is complete and awaiting review.
-- No Phase 2 task is currently `approved` or `in_progress`.
-- `F2-005`, `F2-006`, and later Phase 2 tasks remain `pending` until explicit
-  owner approval.
+- `F2-LIVE-001` is reviewed and done.
+- `F2-005` is reviewed and done.
+- `F2-006` is reviewed and done.
+- No Phase 2 task is currently `approved`, `in_progress`, or `needs_review`.
+- Phase 3 is not active. Future phase tasks remain `pending` until an explicit
+  owner-approved phase transition.
+
+## Closure Notes
+
+- Phase 2 closed after offline validation and conservative cleanup audit.
+- Loader strategy and SQLAlchemy migration planning are documented under
+  `docs/migration/`.
+- No live scraping, Basketball Reference contact, DB writes, DB migrations,
+  legacy/Peewee deletion, dependency removal, API/frontend/OVR work, branch, or
+  PR action occurred during closure.
 
 ## References
 

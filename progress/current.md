@@ -1,66 +1,57 @@
 # Current Work
 
-Status: phase_2_f2_live_001_needs_review
+Status: phase_2_done
 
 ## Active Task
 
-No task is approved or in progress.
+No task is approved, in progress, or needs review.
 
 ## Current Phase
 
 - Phase ID: `phase-2-scraper-cache-integration`
-- Phase status: `in_progress`
-- Awaiting review: `F2-LIVE-001` - Run one-page live smoke test for adapted
-  team-season scraper.
-- Last completed task: `F2-004` - Adapt legacy team-season scraper entrypoint
-  to use client/cache.
+- Phase status: `done`
+- Last completed tasks:
+  - `F2-005` - Design idempotent loader strategy.
+  - `F2-006` - Prepare SQLAlchemy core migration plan for team/player/season.
+- `F2-001`, `F2-002`, `F2-003`, `F2-004`, `F2-LIVE-001`, `F2-005`, and
+  `F2-006` are reviewed and done.
+- Phase 3 is not active; all F3 tasks remain `pending`.
 
 ## Goal
 
-Review the controlled one-page live smoke test result for the approved URL and
-either close `F2-LIVE-001` as `done` or request changes.
+Phase 2 is closed. The next safe step is to ask the owner whether to transition
+the current phase to `phase-3-parser-normalization`.
 
 ## Next Safe Action
 
-Start a fresh review pass for `F2-LIVE-001`. Do not rerun the live request
-unless the owner explicitly approves another live request and exact URL. The
-expected next outcome is either marking `F2-LIVE-001` as `done` after review or
-requesting changes.
+Ask for explicit owner approval before changing phases, approving F3 work,
+running live scraping, contacting Basketball Reference, writing DB data,
+applying migrations, deleting legacy/Peewee code, removing dependencies, or
+creating branches/PRs.
 
-## Smoke Test Result
+## Latest Review Result
 
-- URL: `https://www.basketball-reference.com/teams/BOS/2024.html`
-- Cache result: miss before execution.
-- Cache path:
-  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`
-- Cache exists after: `True`.
-- Live requests: 1.
-- HTTP status: 200.
-- HTML chars: 928025.
-- Parsed tables: `['advanced', 'roster', 'totals']`.
-- Legacy roster rows: 19.
-- Legacy totals rows: 19.
-- Legacy advanced rows: 19.
+- `F2-005` review status: approved and done.
+- `F2-006` review status: approved and done.
+- Cleanup checkpoint: conservative audit only; no dependency or folder was
+  deleted.
+- `tenacity` has no active imports outside lock/data, but remains untouched
+  because dependency removal was out of scope and `uv.lock` was not edited
+  manually.
 
 ## Latest Validation
 
+- `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
 - `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  29 passed, 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed.
 
 ## Notes
 
-The live request went through `BasketballReferenceClient`. `OneRequestHttpClient`
-was only injected as the underlying HTTP transport fuse and printed
-`http_status=200`.
-
-No database writes were performed, no database migration was applied, no
-historical scraping was run, no concurrency was used, no additional URLs were
-requested, no Peewee or legacy code was deleted, and no API/frontend/OVR work
-was implemented.
-
-## Continuation Prompt
-
-Use the prompt recorded in `progress/history.md` under
-`Phase 2 F2-LIVE-001 Continuation Handoff` to continue in another window.
+No new live request was run during Phase 2 closure. No Basketball Reference
+contact occurred, no database writes were performed, no database migration was
+applied, no historical scraping was run, no dependency or folder was deleted,
+no Peewee or legacy code was deleted, and no API/frontend/OVR work was
+implemented.

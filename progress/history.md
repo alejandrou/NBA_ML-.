@@ -375,3 +375,91 @@ Tarea:
   must not be staged or committed unless the owner explicitly approves.
 - No live request was made, no database write or migration was performed, no
   historical scraping was run, and no legacy/Peewee code was deleted.
+
+## Phase 2 F2-LIVE-001 Review Closure
+
+- Reviewed `F2-LIVE-001` against its acceptance criteria and approved closure.
+- Verified `F2-004` was done before execution.
+- Verified the owner-approved URL was
+  `https://www.basketball-reference.com/teams/BOS/2024.html`.
+- Verified exactly one live request was made, with HTTP status 200.
+- Verified the fetched HTML was stored as
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- Verified the adapted legacy scraper path could read the fetched/cached HTML:
+  roster 19 rows, totals 19 rows, advanced 19 rows.
+- Verified the request went through `BasketballReferenceClient` and `HtmlCache`
+  with the one-request transport fuse used only to enforce the request limit.
+- Verified no DB writes, DB migrations, historical scraping, concurrency,
+  extra URLs, Peewee/legacy deletion, API/frontend/OVR work, or 429 retry
+  occurred.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 29 passed, 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed.
+- Marked `F2-LIVE-001` as `done`.
+- Left `F2-005`, `F2-006`, and later tasks pending until explicit owner
+  approval.
+
+## Phase 2 F2-005 Loader Strategy Closure
+
+- Owner approved closing the remaining Phase 2 planning tasks.
+- Moved `F2-005` through `approved`, `in_progress`, `needs_review`, and `done`.
+- Added `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`.
+- Documented target loader boundaries: cached HTML, pure parsers, normalizers,
+  validators, and future idempotent loaders.
+- Documented natural keys, rerun behavior, duplicate-key validation, `TOT` as an
+  aggregate rather than a team, and the rule that `player_name` is not a stable
+  primary key.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- Marked `F2-005` as `done`.
+- Did not run live scraping, contact Basketball Reference, write DB data,
+  apply migrations, implement loaders, delete Peewee/legacy code, or implement
+  API/frontend/OVR work.
+
+## Phase 2 F2-006 Core Migration Plan Closure
+
+- Moved `F2-006` through `approved`, `in_progress`, `needs_review`, and `done`.
+- Added `docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`.
+- Documented SQLAlchemy core migration planning for teams, players, and seasons
+  without applying an Alembic migration.
+- Documented Peewee coexistence boundaries and future Phase 4 migration steps.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- Marked `F2-006` as `done`.
+- Did not write DB data, apply migrations, delete Peewee/legacy code, or
+  activate Phase 3.
+
+## Phase 2 Conservative Cleanup Audit
+
+- Audited imports, tracked legacy folders, dependencies, docs, config, and CI.
+- Confirmed `scrap/`, `models/`, `db_manager/`, `utils/`, `peewee`, `requests`,
+  and `httpx` still have active legacy or test references and were not removed.
+- Confirmed `tenacity` has no active imports outside lock/data, but left it in
+  place because dependency removal was out of scope and `uv.lock` must not be
+  edited manually.
+- Confirmed `.github/workflows/ci.yml` still runs `uv sync --all-groups`,
+  Ruff, and Pytest without live scraping.
+- Deleted no folders, removed no dependencies, and did not edit `uv.lock`.
+
+## Phase 2 Closure
+
+- Marked `phase-2-scraper-cache-integration` as `done`.
+- Left `current_phase_id` set to `phase-2-scraper-cache-integration`.
+- Left Phase 3 tasks as `pending`; Phase 3 was not activated.
+- Updated phase, task, progress, review, migration, README, and learning docs.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed.
+- Did not run live scraping, contact Basketball Reference, write DB data,
+  apply migrations, delete data, delete legacy/Peewee code, remove
+  dependencies, edit `uv.lock`, create a branch/PR, or implement
+  API/frontend/OVR work.

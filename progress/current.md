@@ -1,6 +1,6 @@
 # Current Work
 
-Status: phase_2_done
+Status: phase_3_done
 
 ## Active Task
 
@@ -8,50 +8,59 @@ No task is approved, in progress, or needs review.
 
 ## Current Phase
 
-- Phase ID: `phase-2-scraper-cache-integration`
+- Phase ID: `phase-3-parser-normalization`
 - Phase status: `done`
 - Last completed tasks:
-  - `F2-005` - Design idempotent loader strategy.
-  - `F2-006` - Prepare SQLAlchemy core migration plan for team/player/season.
-- `F2-001`, `F2-002`, `F2-003`, `F2-004`, `F2-LIVE-001`, `F2-005`, and
-  `F2-006` are reviewed and done.
-- Phase 3 is not active; all F3 tasks remain `pending`.
+  - `F3-001` - Expand cached team-season table parsers.
+  - `F3-002` - Normalize parsed team-season rows.
+  - `F3-003` - Add parser data-quality checks.
+- Phase 4 is not active; all F4 tasks remain `pending`.
 
 ## Goal
 
-Phase 2 is closed. The next safe step is to ask the owner whether to transition
-the current phase to `phase-3-parser-normalization`.
+Phase 3 is complete and reviewed after offline parser, normalizer, and
+validator implementation. The next safe step is to ask the owner whether to
+transition to `phase-4-sqlalchemy-migration`.
 
 ## Next Safe Action
 
-Ask for explicit owner approval before changing phases, approving F3 work,
+Ask for explicit owner approval before activating Phase 4, approving F4 work,
 running live scraping, contacting Basketball Reference, writing DB data,
-applying migrations, deleting legacy/Peewee code, removing dependencies, or
-creating branches/PRs.
+applying migrations, deleting legacy/Peewee code, creating branches/PRs, or
+implementing API/frontend/OVR work.
 
 ## Latest Review Result
 
-- `F2-005` review status: approved and done.
-- `F2-006` review status: approved and done.
-- Cleanup checkpoint: conservative audit only; no dependency or folder was
-  deleted.
-- `tenacity` has no active imports outside lock/data, but remains untouched
-  because dependency removal was out of scope and `uv.lock` was not edited
-  manually.
+- Phase 3 parser expansion supports roster, totals, per-game, per-minute,
+  per-possession, advanced, shooting, adjusted shooting, and play-by-play
+  tables from cached HTML.
+- Normalized rows include league, season, team, source table, stat scope,
+  player identifier, identifier status, and conservative scraped values.
+- Validation checks cover missing context, `TOT` aggregate handling, missing
+  player IDs, duplicate natural keys, and required empty tables.
+- Phase 3 tasks `F3-001`, `F3-002`, and `F3-003` are reviewed and done.
 
 ## Latest Validation
 
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: 29 passed, 3 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
 
 ## Notes
 
-No new live request was run during Phase 2 closure. No Basketball Reference
-contact occurred, no database writes were performed, no database migration was
-applied, no historical scraping was run, no dependency or folder was deleted,
-no Peewee or legacy code was deleted, and no API/frontend/OVR work was
-implemented.
+No live scraping was run during Phase 3. No Basketball Reference contact
+occurred, no DB writes or migrations were performed, no legacy/Peewee code was
+deleted, and no API/frontend/OVR/ranking/similarity/ML work was implemented.
+
+The pre-existing branch note remains relevant: Phase 2 was merged through PR
+#3, `origin/main` contains merge commit `7ff8e2a`, and the current working
+branch is `feature/fase-3-parser-normalization`.
+
+## Continuation Prompt
+
+Use the prompt under `progress/history.md` section
+`Phase 3 Continuation Handoff` when continuing in a new window.

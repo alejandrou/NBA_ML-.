@@ -1,5 +1,5 @@
 {
-  "current_phase_id": "phase-2-scraper-cache-integration",
+  "current_phase_id": "phase-3-parser-normalization",
   "current_phase_status": "done",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
@@ -490,7 +490,7 @@
       "id": "F3-001",
       "title": "Expand cached team-season table parsers",
       "phase_id": "phase-3-parser-normalization",
-      "status": "pending",
+      "status": "done",
       "description": "Add pure parsers for selected team-season tables using cached HTML fixtures.",
       "acceptance_criteria": [
         "Parsers accept HTML strings",
@@ -510,7 +510,7 @@
       "id": "F3-002",
       "title": "Normalize parsed team-season rows",
       "phase_id": "phase-3-parser-normalization",
-      "status": "pending",
+      "status": "done",
       "description": "Convert parsed team-season rows into normalized records with stable identifiers where available.",
       "acceptance_criteria": [
         "Normalization is separate from parsing",
@@ -530,7 +530,7 @@
       "id": "F3-003",
       "title": "Add parser data-quality checks",
       "phase_id": "phase-3-parser-normalization",
-      "status": "pending",
+      "status": "done",
       "description": "Add checks for parser and normalization outputs before any loader work.",
       "acceptance_criteria": [
         "Checks run without network",

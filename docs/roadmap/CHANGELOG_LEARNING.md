@@ -711,6 +711,39 @@ could move on to loader strategy planning.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, and Git Bash harness close.
 
+## Checkpoint 25 - Phase 3 Parser Normalization
+
+### What Changed
+
+Activated and completed Phase 3. Expanded pure team-season table parsing, added
+separated normalization, added offline data-quality checks, and documented the
+parser/normalizer/validator boundary.
+
+### Why
+
+Future idempotent loaders need stable normalized rows and validation before any
+database write or migration work begins.
+
+### Concepts Learned
+
+- A single cached team-season page can expose multiple safe player stat tables.
+- `basketball_reference_player_id` should be carried from parser output through
+  normalization and validation.
+- Missing player IDs should be explicit debt, not inferred from `player_name`.
+- `TOT` rows belong to player-season aggregate handling rather than team rows.
+
+### Files to Read
+
+- `src/nba_data/scraping/parsers/team_season.py`
+- `src/nba_data/scraping/normalizers/team_season.py`
+- `src/nba_data/validation/team_season.py`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
 ## Checkpoint 22 - Phase 2 Loader And Migration Planning
 
 ### What Changed

@@ -190,3 +190,32 @@ Phase 2 is approved for closure. `F2-001`, `F2-002`, `F2-003`, `F2-004`,
 `F2-LIVE-001`, `F2-005`, and `F2-006` are done. The phase remains the current
 phase with status `done`; Phase 3 is not active and all F3 tasks remain
 `pending`.
+
+## Phase 3 Review
+
+Status: approved
+
+Phase 3 is approved for closure. `F3-001`, `F3-002`, and `F3-003` are done.
+The parser, normalizer, and validator are separated, fixture-tested, and
+offline-only.
+
+## Phase 3 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 3 Notes
+
+- Supported parser tables: roster, totals, per-game, per-minute,
+  per-possession, advanced, shooting, adjusted shooting, and play-by-play.
+- Normalized player rows preserve `basketball_reference_player_id` when
+  available and leave missing IDs as explicit validation debt.
+- `TOT` is handled as a player-season aggregate, not a real team.
+- No live scraping, Basketball Reference contact, DB writes, DB migrations,
+  legacy/Peewee deletion, branch/PR/commit/push, or API/frontend/OVR work
+  occurred.

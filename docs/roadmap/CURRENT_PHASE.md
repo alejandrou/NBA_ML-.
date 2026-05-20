@@ -1,59 +1,54 @@
 # Current Phase
 
-Phase ID: `phase-2-scraper-cache-integration`
+Phase ID: `phase-3-parser-normalization`
 Status: `done`
 
-## Phase 2 - Scraper Cache Integration
+## Phase 3 - Parser Normalization
 
 ## Goal
 
-Integrate the current scraping flow with `BasketballReferenceClient` and
-`HtmlCache` without rewriting the whole scraper.
+Expand pure parsing and normalization for cached NBA source HTML while keeping
+network, parsing, normalization, validation, and loading responsibilities
+separate.
 
-## Allowed Work
+## Completed Work
 
-- Adapt fetch/cache boundaries for team-season pages.
-- Add tests with mocks only.
-- Add and use local HTML fixtures.
-- Build parser flow from cached HTML.
-- Update documentation and progress memory.
-- Keep all validation offline.
+- `F3-001` expanded pure team-season table parsing.
+- `F3-002` added separated normalization for parsed team-season rows.
+- `F3-003` added offline data-quality checks for normalized rows.
 
-## Forbidden Without Owner Approval
+## Supported Parser Tables
 
-- Live scraping.
-- Contacting Basketball Reference.
-- Deleting Peewee or legacy scraper code.
-- Migrating the whole database.
-- API implementation.
-- Frontend implementation.
-- OVR, ranking, similarity, or ML feature implementation.
-- Full SQLAlchemy loader migration.
-
-## Current Backlog State
-
-- `F2-001` is reviewed and done.
-- `F2-002` is reviewed and done.
-- `F2-003` is reviewed and done.
-- `F2-004` is reviewed and done.
-- `F2-LIVE-001` is reviewed and done.
-- `F2-005` is reviewed and done.
-- `F2-006` is reviewed and done.
-- No Phase 2 task is currently `approved`, `in_progress`, or `needs_review`.
-- Phase 3 is not active. Future phase tasks remain `pending` until an explicit
-  owner-approved phase transition.
+- `roster` from table id `roster`
+- `totals` from table id `totals_stats`
+- `per_game` from table id `per_game_stats`
+- `per_minute` from table id `per_minute_stats`
+- `per_poss` from table id `per_poss`
+- `advanced` from table id `advanced`
+- `shooting` from table id `shooting`
+- `adj_shooting` from table id `adj_shooting`
+- `pbp` from table id `pbp_stats`
 
 ## Closure Notes
 
-- Phase 2 closed after offline validation and conservative cleanup audit.
-- Loader strategy and SQLAlchemy migration planning are documented under
-  `docs/migration/`.
-- No live scraping, Basketball Reference contact, DB writes, DB migrations,
-  legacy/Peewee deletion, dependency removal, API/frontend/OVR work, branch, or
-  PR action occurred during closure.
+- Parsers remain pure HTML-string functions with no network or DB access.
+- Normalized rows carry league, season, team, source table, stat scope,
+  player identifier, identifier status, and conservative scraped values.
+- `TOT` is classified as a player-season aggregate, not as a real team.
+- `player_name` remains descriptive only and is not used as a stable key.
+- Validation passed offline; no live scraping, Basketball Reference contact,
+  DB writes, DB migrations, legacy/Peewee deletion, API/frontend/OVR work,
+  branch, PR, commit, or push occurred.
+
+## Next Phase Recommendation
+
+Recommended next phase: `phase-4-sqlalchemy-migration`.
+
+Do not activate Phase 4 without explicit owner approval.
 
 ## References
 
 - `docs/roadmap/PHASE_GOVERNANCE.md`
-- `specs/phases/phase-2-scraper-cache-integration.md`
+- `specs/phases/phase-3-parser-normalization.md`
 - `tasks/feature-list.json`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`

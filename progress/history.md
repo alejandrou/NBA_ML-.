@@ -463,3 +463,176 @@ Tarea:
   apply migrations, delete data, delete legacy/Peewee code, remove
   dependencies, edit `uv.lock`, create a branch/PR, or implement
   API/frontend/OVR work.
+
+## Main Backup And Foundations PR Merge
+
+- Created `legacy` from current `origin/main` at commit `f907e28`.
+- Prepared `feature/fase-1-foundations` for the main PR by preserving the
+  recent main cleanup and avoiding reintroduction of `etl/extract.py`,
+  `ml_main.py`, and `etl_process.ipynb`.
+- Pushed `feature/fase-1-foundations` at commit `8ef3572`.
+- Fast-forwarded and pushed `feature/fase-3-parser-normalization` to the same
+  commit `8ef3572`, without activating Phase 3.
+- Opened PR #3, `Platform foundations and Phase 2 scraper-cache closure`, from
+  `feature/fase-1-foundations` to `main`.
+- PR #3 passed GitHub checks and was merged into `main` with merge commit
+  `7ff8e2a`.
+- After merge, remote `feature/fase-1-foundations` was deleted; local branch
+  still exists and tracks a gone upstream.
+- Current working branch is `feature/fase-3-parser-normalization`.
+- `origin/main` now points to `7ff8e2a`; `origin/legacy` remains at `f907e28`.
+- Phase 2 remains `done`; Phase 3 remains inactive and F3 tasks remain
+  `pending`.
+- Did not run live scraping, contact Basketball Reference, write DB data,
+  apply migrations, delete legacy/Peewee code, remove dependencies, or
+  implement API/frontend/OVR work during the branch/PR preparation.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Current branch expected: feature/fase-3-parser-normalization
+
+Trabaja en modo seguro.
+
+Primero sigue el startup protocol:
+1. Lee AGENTS.md.
+2. Ejecuta C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh
+3. Lee docs/ai/WORKFLOW_PROTOCOL.md.
+4. Lee docs/roadmap/PHASE_GOVERNANCE.md.
+5. Lee docs/roadmap/CURRENT_PHASE.md.
+6. Lee specs/phases/phase-2-scraper-cache-integration.md.
+7. Lee tasks/feature-list.json.
+8. Lee progress/current.md, progress/history.md, progress/review.md y progress/blockers.md.
+9. Revisa git status, ramas locales/remotas y el estado de PR #3.
+
+Contexto confirmado al 2026-05-20:
+- Phase 2 esta cerrada y mergeada a main.
+- PR #3, "Platform foundations and Phase 2 scraper-cache closure", esta merged:
+  https://github.com/alejandrou/NBA_ML-./pull/3
+- Merge commit en origin/main: 7ff8e2a.
+- Backup legacy apunta al main pre-PR: f907e28.
+- feature/fase-3-parser-normalization apunta a 8ef3572 y fue creada como base limpia para Phase 3.
+- La rama remota feature/fase-1-foundations fue borrada despues del merge.
+- current_phase_id debe seguir siendo phase-2-scraper-cache-integration.
+- current_phase_status debe seguir siendo done.
+- F2-001, F2-002, F2-003, F2-004, F2-LIVE-001, F2-005 y F2-006 deben estar done.
+- F3-001, F3-002 y F3-003 deben seguir pending.
+- No debe haber tareas approved, in_progress ni needs_review.
+
+Restricciones:
+- No live scraping.
+- No contactar Basketball Reference.
+- No ejecutar python scrape_main.py.
+- No escribir DB.
+- No aplicar migraciones.
+- No borrar Peewee ni legacy.
+- No borrar dependencias ni carpetas.
+- No editar uv.lock manualmente.
+- No activar Phase 3 sin aprobacion explicita.
+- No crear rama, commit, push ni PR sin aprobacion explicita.
+- No reset, checkout, clean, stash ni descartar cambios locales.
+
+Tarea:
+- Confirma desde archivos y Git que Phase 2 sigue cerrada, PR #3 esta merged y Phase 3 sigue blindada como pending/no activa.
+- Resume el estado de ramas: origin/main, origin/legacy y feature/fase-3-parser-normalization.
+- Si todo esta consistente, propon el siguiente paso seguro para activar Phase 3, pero espera aprobacion explicita antes de cambiar CURRENT_PHASE.md, tasks/feature-list.json o implementar F3.
+```
+
+## Phase 3 Parser Normalization
+
+- Owner explicitly approved the transition to
+  `phase-3-parser-normalization` and implementation of `F3-001`, `F3-002`,
+  and `F3-003` in one offline pass.
+- Activated Phase 3 and completed all three Phase 3 tasks while leaving Phase
+  4 inactive.
+- Expanded `parse_team_season_page` with an explicit supported table mapping:
+  roster, totals, per-game, per-minute, per-possession, advanced, shooting,
+  adjusted shooting, and play-by-play.
+- Preserved parser purity: parser inputs are HTML strings and parser code does
+  not touch network or database state.
+- Added extraction of `basketball_reference_player_id` from Basketball
+  Reference player links.
+- Added separated team-season normalization with league, season, team, source
+  table, stat scope, player identifier, identifier status, and conservative
+  scraped values.
+- Added offline data-quality checks for missing context, `TOT` aggregate
+  classification, missing stable player IDs, duplicate natural keys, and
+  required empty tables.
+- Added compact fixture-based tests under `tests/fixtures/html/`; tests do not
+  depend on `data/raw/html`.
+- Documented parser, normalizer, and validator assumptions in
+  `docs/validation/TEAM_SEASON_PIPELINE.md`.
+- Did not run live scraping, contact Basketball Reference, write DB data,
+  apply migrations, delete legacy/Peewee code, edit smoke-test exports, create
+  a branch/PR, commit, push, or implement API/frontend/OVR work.
+
+## Phase 3 Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 3 Continuation Handoff
+
+Use this prompt to continue in a fresh Codex window:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Current branch expected: feature/fase-3-parser-normalization
+
+Actua como implementer + reviewer del repo.
+
+Primero sigue el startup protocol:
+1. Lee AGENTS.md.
+2. Ejecuta C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh
+3. Lee docs/ai/WORKFLOW_PROTOCOL.md.
+4. Lee docs/roadmap/PHASE_GOVERNANCE.md.
+5. Lee docs/roadmap/CURRENT_PHASE.md.
+6. Lee tasks/feature-list.json.
+7. Lee specs/phases/phase-3-parser-normalization.md.
+8. Lee progress/current.md, progress/history.md, progress/review.md y progress/blockers.md.
+9. Revisa git status.
+
+Contexto confirmado al 2026-05-20:
+- Phase 3 esta implementada, validada y marcada done.
+- current_phase_id debe ser phase-3-parser-normalization.
+- current_phase_status debe ser done.
+- F3-001, F3-002 y F3-003 deben estar done.
+- No debe haber tareas approved, in_progress ni needs_review.
+- Phase 4 no esta activa; F4-001, F4-002 y F4-003 deben seguir pending.
+- Validacion Phase 3:
+  - python -m json.tool tasks/feature-list.json: passed.
+  - uv run ruff check .: passed.
+  - uv run pytest: passed, 43 passed and 3 Peewee deprecation warnings.
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed.
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh: passed.
+- Parser soporta roster, totals, per_game, per_minute, per_poss, advanced, shooting, adj_shooting y pbp.
+- Normalizer y validator estan separados del parser.
+- TOT se maneja como aggregate, no como equipo real.
+- player_name no se usa como stable primary key.
+- No se hizo live scraping, no se contacto Basketball Reference, no hubo DB writes, no hubo migraciones, no se borro legacy/Peewee, no hubo API/frontend/OVR, y no se hizo commit/push/PR.
+
+Restricciones:
+- No live scraping.
+- No contactar Basketball Reference.
+- No ejecutar python scrape_main.py.
+- No escribir DB.
+- No aplicar migraciones.
+- No borrar Peewee ni legacy.
+- No borrar data/raw/html ni exports smoke.
+- No implementar API/frontend/OVR/rankings/similarity/ML.
+- No crear branch, commit, push ni PR sin aprobacion explicita del owner.
+- No activar Phase 4 ni aprobar F4 tasks sin aprobacion explicita del owner.
+- No reset, checkout, clean, stash ni descartar cambios locales.
+
+Tarea:
+- Confirma desde archivos y Git que Phase 3 sigue cerrada y validada.
+- Resume el working tree y los archivos modificados.
+- Propone el siguiente paso seguro: pedir aprobacion explicita para activar phase-4-sqlalchemy-migration o, si el owner lo pide expresamente, preparar publicacion/commit/PR de Phase 3.
+- No implementes Phase 4 todavia.
+```

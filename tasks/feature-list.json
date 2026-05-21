@@ -547,10 +547,52 @@
       ]
     },
     {
+      "id": "F4A-000",
+      "title": "Add legacy parity and acquisition smoke-test strategy",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "pending",
+      "description": "Define offline parity tests and a gated one-page live acquisition smoke-test strategy so legacy scraper consolidation can be validated safely before controlled raw HTML backfill.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json remains valid JSON.",
+        "A spec is created for validating legacy-vs-new parser parity from cached HTML only.",
+        "The spec defines golden master tests using frozen HTML fixtures or existing cached HTML copied into test fixtures.",
+        "The parity strategy compares legacy roster, totals, and advanced outputs against the new consolidated parser/adapter.",
+        "Unit tests and CI remain fully offline.",
+        "A separate manual live smoke test is documented for at most one approved Basketball Reference team-season URL.",
+        "The live smoke test validates only acquisition/cache/parser shape, not exact long-term statistical equality.",
+        "The live smoke test uses BasketballReferenceClient and HtmlCache.",
+        "The live smoke test uses a conservative default of 10 requests/minute.",
+        "The live smoke test never exceeds 20 requests/minute.",
+        "HTTP 429 stops the smoke test safely.",
+        "No DB writes are performed by smoke tests.",
+        "No full historical scraping is introduced.",
+        "No async/concurrent live scraping is introduced.",
+        "The strategy explicitly allows bounded concurrent processing only for already-cached local HTML in future tasks."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Implementing controlled backfill",
+        "Running live scraping",
+        "Full historical scraping",
+        "DB loading",
+        "SQLAlchemy migrations",
+        "API/frontend/OVR",
+        "Proxy rotation, user-agent randomization, CAPTCHA bypass, or rate-limit evasion"
+      ]
+    },
+    {
       "id": "F4A-001",
       "title": "Consolidate legacy scrapers behind cache-first providers",
       "phase_id": "phase-4a-legacy-scraper-consolidation",
       "status": "pending",
+      "depends_on": [
+        "F4A-000"
+      ],
       "description": "Refactor or wrap legacy Basketball Reference scrapers so team-season HTML is acquired once through the central cache-first provider and reused for all table parsing, removing direct network access from legacy player/team-season paths before any controlled backfill is implemented.",
       "acceptance_criteria": [
         "tasks/feature-list.json remains valid JSON.",

@@ -870,3 +870,41 @@ advanced tables.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 27 - Phase 4A Legacy Parity Gate
+
+### What Changed
+
+Added `F4A-000` as a pending Phase 4A task before `F4A-001`, created its
+feature spec, and added ADR 0016 for live-vs-offline validation. `F4A-001` now
+depends on `F4A-000`.
+
+### Why
+
+Legacy scraper consolidation needs a clear validation gate before refactoring
+or controlled raw HTML backfill. Parser/refactor correctness should be proven
+offline from frozen or cached HTML fixtures, while the manual live smoke test
+should validate only acquisition, cache, and parser shape for one approved
+team-season page.
+
+### Concepts Learned
+
+- Legacy output can be used as a temporary behavioral reference for DB
+  compatibility.
+- Live scraping is not needed for parser/refactor correctness.
+- A live smoke test should be cache-first, at most one approved page, and
+  shape-only.
+- Concurrent work belongs only after HTML already exists locally.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `docs/decisions/0016-live-vs-offline-validation.md`
+- `docs/decisions/0004-rate-limited-scraping.md`
+- `docs/roadmap/NEXT_DECISIONS.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

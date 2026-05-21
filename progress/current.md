@@ -41,9 +41,17 @@ work.
 - Validation checks cover missing context, `TOT` aggregate handling, missing
   player IDs, duplicate natural keys, and required empty tables.
 - Phase 3 tasks `F3-001`, `F3-002`, and `F3-003` are reviewed and done.
+- Future Phase 4A now begins with `F4A-000`, a pending documentation gate for
+  offline legacy parity and one-page live acquisition smoke-test strategy.
 
 ## Latest Validation
 
+- Phase 4A `F4A-000` backlog/spec update:
+  - `python -m json.tool tasks/feature-list.json`: passed.
+  - `uv run ruff check .`: passed.
+  - `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+  - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+    43 passed and 3 Peewee deprecation warnings.
 - Phase 4A backlog update:
   - `python -m json.tool tasks/feature-list.json`: passed.
   - `uv run ruff check .`: passed.
@@ -65,9 +73,12 @@ No live scraping was run during Phase 3. No Basketball Reference contact
 occurred, no DB writes or migrations were performed, no legacy/Peewee code was
 deleted, and no API/frontend/OVR/ranking/similarity/ML work was implemented.
 
-The future Phase 4A backlog now records legacy scraper consolidation as the
-next proposed transition before SQLAlchemy migration or any controlled raw HTML
-backfill.
+The future Phase 4A backlog now records `F4A-000` as the next pending gate
+before legacy scraper consolidation, SQLAlchemy migration, or any controlled
+raw HTML backfill.
+
+`F4A-000`, `F4A-001`, and `F4A-002` remain `pending`. The current active phase
+is unchanged.
 
 The pre-existing branch note remains relevant: Phase 2 was merged through PR
 #3, `origin/main` contains merge commit `7ff8e2a`. The current working branch

@@ -24,10 +24,13 @@
 ## Next
 
 - Recommended next transition: `phase-4a-legacy-scraper-consolidation`.
+- First future Phase 4A task: `F4A-000` - Add legacy parity and acquisition
+  smoke-test strategy.
 - Do not activate Phase 4A or approve F4A tasks without explicit owner
   approval.
 - Phase 4 SQLAlchemy migration remains pending after Phase 4A.
 
 ## Later
 
-- Phase 4A-7 tasks remain `pending` until their phase becomes current.
+- `F4A-000`, `F4A-001`, `F4A-002`, and Phase 4-7 tasks remain `pending` until
+  their phase becomes current.

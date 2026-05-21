@@ -23,6 +23,10 @@ The new platform already has `BasketballReferenceClient`, `HtmlCache`,
 `parse_team_season_page`. Phase 3 also established pure parser, normalizer, and
 validator boundaries over cached team-season HTML fixtures.
 
+`F4A-000` is the first Phase 4A gate. It defines offline parity validation and
+a manual one-page live acquisition smoke-test strategy before legacy scraper
+consolidation or controlled raw HTML backfill work proceeds.
+
 Legacy scrapers under `scrap/` and the legacy entrypoint in `scrape_main.py`
 still contain direct HTTP seams, manual sleeps, async gathering, BeautifulSoup
 table parsing, and Peewee loading behavior. Phase 4A is a consolidation gate
@@ -51,6 +55,10 @@ Legacy anti-pattern to avoid:
 
 ## Allowed Work
 
+- Define the legacy-vs-new offline parity strategy from frozen or cached HTML
+  fixtures.
+- Document a gated one-page live acquisition smoke-test strategy that uses
+  `BasketballReferenceClient` and `HtmlCache`.
 - Add or wrap a single legacy-compatible adapter for team-season pages.
 - Route normal legacy player/team-season HTML access through
   `CachedTeamSeasonHtmlProvider` or an equivalent cache-first provider.
@@ -77,8 +85,10 @@ Legacy anti-pattern to avoid:
 
 ## Acceptance Criteria
 
-- `F4A-001` and optional design follow-up `F4A-002` remain future `pending`
-  tasks until Phase 4A is explicitly activated.
+- `F4A-000`, `F4A-001`, and optional design follow-up `F4A-002` remain future
+  `pending` tasks until Phase 4A is explicitly activated.
+- `F4A-000` defines how to validate legacy-vs-new parser parity offline before
+  legacy consolidation starts.
 - One team-season URL can feed one cached HTML file and multiple supported
   table parsers.
 - Legacy player/team-season paths no longer require direct

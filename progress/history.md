@@ -601,6 +601,29 @@ Tarea:
   contact Basketball Reference, write DB data, apply migrations, delete
   legacy/Peewee code, create a branch/PR, or implement API/frontend/OVR work.
 
+## Phase 4A F4A-000 Parity Strategy Gate
+
+- Added `F4A-000` as a pending Phase 4A gate before `F4A-001`.
+- Created the feature spec for offline legacy-vs-new parser parity and a
+  manual one-page live acquisition smoke-test strategy.
+- Added `depends_on: ["F4A-000"]` to `F4A-001` while keeping `F4A-001` and
+  `F4A-002` pending.
+- Added ADR 0016 for live-vs-offline validation and updated ADR 0004 with
+  manual smoke-test rate-limit rules.
+- Updated roadmap/default-decision docs so parser/refactor correctness is
+  validated offline, while live smoke tests remain owner-approved and
+  shape-only.
+- Kept `current_phase_id` as `phase-3-parser-normalization` and
+  `current_phase_status` as `done`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, write DB data,
+  apply migrations, run controlled backfill, activate Phase 4A, approve tasks,
+  create a branch/PR, or implement API/frontend/OVR work.
+
 ## Phase 3 Continuation Handoff
 
 Use this prompt to continue in a fresh Codex window:

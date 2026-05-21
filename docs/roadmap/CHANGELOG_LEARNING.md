@@ -835,3 +835,38 @@ phase transition.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 26 - Phase 4A Backlog Gate
+
+### What Changed
+
+Added proposed Phase 4A backlog and specs for legacy scraper consolidation
+before any controlled raw HTML backfill or Phase 4 SQLAlchemy migration work.
+Added ADR 0015 for live-vs-offline concurrency.
+
+### Why
+
+The future backfill should reuse one clean path:
+`manifest -> BasketballReferenceClient -> HtmlCache -> cached HTML -> parsers`.
+It should not inherit legacy direct network calls, per-scraper sleeps, or
+duplicate downloads of the same team-season page for roster, totals, and
+advanced tables.
+
+### Concepts Learned
+
+- Legacy consolidation is a separate gate from live backfill and DB loading.
+- Live Basketball Reference acquisition remains sequential and cache-first.
+- Offline cached HTML processing may use bounded parallelism later without
+  increasing live request pressure.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/phases/phase-4a-legacy-scraper-consolidation.md`
+- `specs/features/F4A-001-legacy-scraper-cache-provider-consolidation.md`
+- `docs/decisions/0015-live-vs-offline-concurrency.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

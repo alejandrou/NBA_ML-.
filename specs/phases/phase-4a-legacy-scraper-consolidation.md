@@ -1,0 +1,107 @@
+# Phase 4A - Legacy Scraper Consolidation
+
+Status: proposed
+Phase ID: `phase-4a-legacy-scraper-consolidation`
+
+## Goal
+
+Prepare legacy Basketball Reference scraper paths for future controlled raw
+HTML backfill by consolidating team-season page acquisition behind the central
+cache-first provider.
+
+The target pipeline is:
+
+`one team-season URL -> HtmlCache/BasketballReferenceClient -> one raw HTML file -> multiple table parsers`
+
+This phase must prevent the future backfill from inheriting duplicated live
+downloads or direct network access from legacy player/team-season scrapers.
+
+## Context
+
+The new platform already has `BasketballReferenceClient`, `HtmlCache`,
+`CachedTeamSeasonHtmlProvider`, `build_team_season_url`, and
+`parse_team_season_page`. Phase 3 also established pure parser, normalizer, and
+validator boundaries over cached team-season HTML fixtures.
+
+Legacy scrapers under `scrap/` and the legacy entrypoint in `scrape_main.py`
+still contain direct HTTP seams, manual sleeps, async gathering, BeautifulSoup
+table parsing, and Peewee loading behavior. Phase 4A is a consolidation gate
+before controlled backfill, not a backfill implementation.
+
+## Current Legacy Problems
+
+- `PlayerScraperRoster`, `PlayerScraperTotals`, and
+  `PlayerScraperAdvanced` can still fetch the same
+  `/teams/{TEAM}/{YEAR}.html` page separately.
+- Legacy player/team-season scrapers still retain direct `httpx.AsyncClient`
+  request paths and manual per-scraper sleeps.
+- Legacy team scrapers still include direct `requests.get` or direct async
+  HTTP usage for Basketball Reference pages.
+- Parsing and loading responsibilities remain mixed in legacy operations.
+- `asyncio.gather` can schedule many team-season scraper tasks even though live
+  acquisition must be cache-first and rate-limited.
+
+Legacy anti-pattern to avoid:
+
+`roster scraper -> live request`
+
+`totals scraper -> live request`
+
+`advanced scraper -> live request`
+
+## Allowed Work
+
+- Add or wrap a single legacy-compatible adapter for team-season pages.
+- Route normal legacy player/team-season HTML access through
+  `CachedTeamSeasonHtmlProvider` or an equivalent cache-first provider.
+- Parse roster, totals, advanced, and other supported team-season tables from
+  one cached HTML page.
+- Use `parse_team_season_page` where compatible with required outputs.
+- Preserve temporary legacy loader-compatible row keys where tests depend on
+  them.
+- Add fixture/mock-based tests that make no network requests.
+- Document any legacy paths that cannot be consolidated safely yet.
+
+## Disallowed Work
+
+- Live scraping or Basketball Reference contact.
+- Controlled raw HTML backfill execution.
+- Full historical scraping.
+- DB loading or new DB writes.
+- SQLAlchemy schema or Alembic migration changes.
+- API, frontend, generated metrics, OVR, ranking, similarity, or ML work.
+- Deleting legacy scraper modules, Peewee models, local raw HTML, exports, or
+  database files.
+- Proxy rotation, user-agent randomization, CAPTCHA bypass, or rate-limit
+  evasion.
+
+## Acceptance Criteria
+
+- `F4A-001` and optional design follow-up `F4A-002` remain future `pending`
+  tasks until Phase 4A is explicitly activated.
+- One team-season URL can feed one cached HTML file and multiple supported
+  table parsers.
+- Legacy player/team-season paths no longer require direct
+  `httpx.AsyncClient` access for normal operation.
+- Remaining live request paths go through `BasketballReferenceClient`.
+- Unit tests use local fixtures or mocks only.
+- No DB writes, migrations, API/frontend/OVR work, or legacy/Peewee deletion is
+  introduced.
+
+## Validation
+
+- `python -m json.tool tasks/feature-list.json`
+- `uv run ruff check .`
+- `uv run pytest`
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`
+
+## Handoff To Controlled Raw HTML Backfill
+
+Phase 4A hands off a clean acquisition boundary to any later controlled raw
+HTML backfill:
+
+`manifest -> BasketballReferenceClient -> HtmlCache -> cached HTML -> parsers`
+
+The future backfill should consume a manifest of approved URLs, acquire each
+page once through the central client/cache path, and parse cached HTML without
+reintroducing direct per-table scraper downloads.

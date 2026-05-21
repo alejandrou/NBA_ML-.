@@ -42,9 +42,9 @@ separate.
 
 ## Next Phase Recommendation
 
-Recommended next phase: `phase-4-sqlalchemy-migration`.
+Recommended next phase: `phase-4a-legacy-scraper-consolidation`.
 
-Do not activate Phase 4 without explicit owner approval.
+Do not activate Phase 4A or Phase 4 without explicit owner approval.
 
 ## References
 

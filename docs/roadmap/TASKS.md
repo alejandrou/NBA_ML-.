@@ -23,9 +23,11 @@
 
 ## Next
 
-- Recommended next transition: `phase-4-sqlalchemy-migration`.
-- Do not activate Phase 4 or approve F4 tasks without explicit owner approval.
+- Recommended next transition: `phase-4a-legacy-scraper-consolidation`.
+- Do not activate Phase 4A or approve F4A tasks without explicit owner
+  approval.
+- Phase 4 SQLAlchemy migration remains pending after Phase 4A.
 
 ## Later
 
-- Phase 4-7 tasks remain `pending` until their phase becomes current.
+- Phase 4A-7 tasks remain `pending` until their phase becomes current.

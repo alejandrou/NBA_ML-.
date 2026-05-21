@@ -577,6 +577,30 @@ Tarea:
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
   43 passed and 3 Peewee deprecation warnings.
 
+## Phase 4A Legacy Scraper Consolidation Backlog
+
+- Added `phase-4a-legacy-scraper-consolidation` as a proposed future phase
+  before Phase 4 SQLAlchemy migration and before any controlled raw HTML
+  backfill.
+- Added `F4A-001` as a pending task to consolidate legacy player/team-season
+  scrapers behind cache-first providers.
+- Added `F4A-002` as a pending task to design bounded offline cached HTML
+  processing.
+- Added the Phase 4A phase spec and `F4A-001` feature spec.
+- Added ADR 0015 documenting sequential/cache-first live acquisition and
+  bounded offline-only concurrency.
+- Updated roadmap and progress docs so the next recommended transition is
+  Phase 4A while keeping `current_phase_id` as `phase-3-parser-normalization`
+  and `current_phase_status` as `done`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- Did not activate Phase 4A or Phase 4, approve any tasks, run live scraping,
+  contact Basketball Reference, write DB data, apply migrations, delete
+  legacy/Peewee code, create a branch/PR, or implement API/frontend/OVR work.
+
 ## Phase 3 Continuation Handoff
 
 Use this prompt to continue in a fresh Codex window:

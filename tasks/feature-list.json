@@ -547,6 +547,73 @@
       ]
     },
     {
+      "id": "F4A-001",
+      "title": "Consolidate legacy scrapers behind cache-first providers",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "pending",
+      "description": "Refactor or wrap legacy Basketball Reference scrapers so team-season HTML is acquired once through the central cache-first provider and reused for all table parsing, removing direct network access from legacy player/team-season paths before any controlled backfill is implemented.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json remains valid JSON.",
+        "Legacy team-season player scrapers no longer require direct httpx.AsyncClient network access for normal operation.",
+        "Team-season roster, totals, advanced, and other supported tables can be parsed from one cached HTML page per team-season.",
+        "The code avoids downloading the same /teams/{TEAM}/{YEAR}.html page separately for roster, totals, and advanced.",
+        "Any remaining live request path goes through BasketballReferenceClient.",
+        "No requests.get or direct httpx.AsyncClient.get is used for Basketball Reference pages in the consolidated path.",
+        "Manual per-scraper sleeps are removed or bypassed in favor of the central rate-limited client.",
+        "Existing legacy loader-compatible keys are preserved where tests depend on them.",
+        "The implementation supports offline execution from HtmlCache.",
+        "Unit tests use fixtures/mocks and make no network requests.",
+        "No DB writes are introduced.",
+        "No Alembic migrations are introduced.",
+        "No API/frontend/OVR work is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Controlled raw HTML backfill execution",
+        "Full historical scraping",
+        "DB loading",
+        "SQLAlchemy migration changes",
+        "API implementation",
+        "Frontend implementation",
+        "OVR/generated metrics",
+        "Deleting legacy/Peewee code"
+      ]
+    },
+    {
+      "id": "F4A-002",
+      "title": "Design bounded offline cached HTML processing",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "pending",
+      "description": "Design a bounded offline processing path for parsing, normalizing, validating, and loading cached HTML files without making network requests.",
+      "acceptance_criteria": [
+        "The design reads only .html.gz files from HtmlCache.",
+        "No network client is accepted by the offline processor.",
+        "Concurrency is bounded and configurable.",
+        "Parser/normalizer/validator remain pure or side-effect-light.",
+        "DB writes, if discussed, are delegated to Phase 4 idempotent loaders.",
+        "Tests use local fixtures only.",
+        "The design states when to use sequential, thread, process, or async execution."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Increasing live request rate",
+        "DB schema changes",
+        "API/frontend/OVR"
+      ]
+    },
+    {
       "id": "F4-001",
       "title": "Implement core team/player/season SQLAlchemy migrations",
       "phase_id": "phase-4-sqlalchemy-migration",

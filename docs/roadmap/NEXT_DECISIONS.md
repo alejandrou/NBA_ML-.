@@ -13,8 +13,8 @@ Defaults are recorded here until the owner chooses otherwise.
 - Legacy parser/refactor correctness is validated offline from frozen or cached
   HTML fixtures.
 - Live Basketball Reference acquisition stays sequential/cache-first by
-  default; offline cached HTML processing may use bounded parallelism only in a
-  later approved task.
+  default; offline cached HTML processing may use bounded local parallelism
+  only under the `F4A-002` design.
 - Manual live acquisition smoke tests require owner approval for the exact
   Basketball Reference URL, team, and year.
 - Manual live acquisition smoke tests default to `max_live_requests=1`.
@@ -30,5 +30,4 @@ Defaults are recorded here until the owner chooses otherwise.
 - Public or private API posture.
 - Long-term raw HTML storage.
 - Controlled raw HTML backfill manifest scope and approval process.
-- Offline cached HTML processing concurrency model.
 - Final branch and PR strategy.

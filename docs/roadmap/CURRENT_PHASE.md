@@ -23,10 +23,13 @@ The target pipeline remains:
   copied into test fixtures for unit tests and CI.
 - The manual smoke-test strategy is cache-first, owner-approved per exact URL,
   limited to at most one live request on cache miss, and shape-only.
+- `F4A-002` is complete. It creates the bounded offline cached HTML processing
+  design before any runtime offline processor, controlled backfill, or Phase 4
+  loader work.
 
 ## Current Guardrails
 
-- `F4A-001` and `F4A-002` remain `pending`.
+- `F4A-001` remains `pending`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Do not run live scraping or contact Basketball Reference without explicit
@@ -44,5 +47,6 @@ Ask the owner for explicit approval before promoting or implementing `F4A-001`.
 - `docs/roadmap/PHASE_GOVERNANCE.md`
 - `specs/phases/phase-4a-legacy-scraper-consolidation.md`
 - `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `specs/features/F4A-002-bounded-offline-cached-html-processing.md`
 - `docs/decisions/0016-live-vs-offline-validation.md`
 - `tasks/feature-list.json`

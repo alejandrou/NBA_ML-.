@@ -27,6 +27,11 @@ validator boundaries over cached team-season HTML fixtures.
 a manual one-page live acquisition smoke-test strategy before legacy scraper
 consolidation or controlled raw HTML backfill work proceeds.
 
+`F4A-002` is the bounded offline cached HTML processing design gate. It defines
+how already-cached `.html.gz` files can later be parsed, normalized, and
+validated with bounded local execution before any Phase 4 idempotent loader
+writes.
+
 Legacy scrapers under `scrap/` and the legacy entrypoint in `scrape_main.py`
 still contain direct HTTP seams, manual sleeps, async gathering, BeautifulSoup
 table parsing, and Peewee loading behavior. Phase 4A is a consolidation gate
@@ -85,10 +90,14 @@ Legacy anti-pattern to avoid:
 
 ## Acceptance Criteria
 
-- `F4A-000`, `F4A-001`, and optional design follow-up `F4A-002` remain future
-  `pending` tasks until Phase 4A is explicitly activated.
+- `F4A-000` and `F4A-002` are complete Phase 4A design gates.
+- `F4A-001` remains pending until explicitly approved.
 - `F4A-000` defines how to validate legacy-vs-new parser parity offline before
   legacy consolidation starts.
+- `F4A-002` defines how future offline cached HTML processing reads only
+  already-cached `.html.gz`, accepts no network client, uses bounded
+  configurable execution, and delegates DB writes to later Phase 4 idempotent
+  loaders.
 - One team-season URL can feed one cached HTML file and multiple supported
   table parsers.
 - Legacy player/team-season paths no longer require direct

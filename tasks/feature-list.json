@@ -631,9 +631,10 @@
       "id": "F4A-002",
       "title": "Design bounded offline cached HTML processing",
       "phase_id": "phase-4a-legacy-scraper-consolidation",
-      "status": "pending",
+      "status": "done",
       "description": "Design a bounded offline processing path for parsing, normalizing, validating, and loading cached HTML files without making network requests.",
       "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4A-002-bounded-offline-cached-html-processing.md and documents the offline processor design.",
         "The design reads only .html.gz files from HtmlCache.",
         "No network client is accepted by the offline processor.",
         "Concurrency is bounded and configurable.",
@@ -650,7 +651,9 @@
       ],
       "out_of_scope": [
         "Live scraping",
+        "Controlled raw HTML backfill execution",
         "Increasing live request rate",
+        "DB writes or loader implementation",
         "DB schema changes",
         "API/frontend/OVR"
       ]

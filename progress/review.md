@@ -252,3 +252,35 @@ smoke test.
 - No live scraping, Basketball Reference contact, controlled backfill, DB
   writes, DB migrations, legacy/Peewee deletion, Phase 4 activation,
   API/frontend/OVR work, commit, push, or PR occurred.
+
+## Phase 4A F4A-002 Review
+
+Status: approved
+
+`F4A-002` is approved for closure. The missing feature spec now exists and
+documents a bounded offline-only path from cached `.html.gz` files through
+parser, normalizer, validator, and a future Phase 4 idempotent loader boundary.
+The design explicitly rejects network clients, cache refreshes, live scraping,
+runtime processor implementation, DB writes, migrations, and API/frontend/OVR
+work.
+
+## Phase 4A F4A-002 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 4A F4A-002 Notes
+
+- Default offline processing is sequential with `max_workers=1`.
+- Thread, process, and async execution are allowed only as bounded local work
+  over already-cached HTML.
+- Future cache misses must fail instead of making live requests.
+- `F4A-001` remains pending and Phase 4 SQLAlchemy migration remains inactive.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, runtime processor,
+  API/frontend/OVR work, commit, push, or PR occurred.

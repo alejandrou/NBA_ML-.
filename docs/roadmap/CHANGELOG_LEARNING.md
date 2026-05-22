@@ -945,3 +945,38 @@ team-season page.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 28 - Phase 4A Offline Processing Spec
+
+### What Changed
+
+Created `specs/features/F4A-002-bounded-offline-cached-html-processing.md` and
+closed `F4A-002` as a design-only documentation task.
+
+### Why
+
+`tasks/feature-list.json` already contained `F4A-002`, but the matching feature
+spec was missing. The new spec makes the future offline processor boundary
+explicit before any controlled raw HTML backfill, runtime processor, or Phase 4
+loader work begins.
+
+### Concepts Learned
+
+- Offline cached HTML processing should start from already-cached `.html.gz`
+  files and fail on cache miss.
+- Future offline processors must not accept network clients or refresh cache.
+- Bounded parallelism belongs only to local cached HTML work, not live
+  acquisition.
+- Validation remains the gate before any future idempotent loader writes.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/features/F4A-002-bounded-offline-cached-html-processing.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.

@@ -788,3 +788,37 @@ Tarea inicial:
   Phase 4A y cierre de F4A-000.
 - No implementes F4A-001 todavia.
 ```
+
+## Phase 4A F4A-002 Spec Repair And Review Closure
+
+- Promoted `F4A-002` for the owner-approved documentation/design repair.
+- Created
+  `specs/features/F4A-002-bounded-offline-cached-html-processing.md`.
+- Updated `tasks/feature-list.json` so `F4A-002` includes the feature-spec
+  acceptance criterion and is marked `done` after validation.
+- Documented the offline-only target flow:
+  `cached .html.gz -> parse_team_season_page -> normalize_team_season_page -> validate_normalized_team_season_rows -> future Phase 4 idempotent loader boundary`.
+- Specified that a future offline processor accepts no
+  `BasketballReferenceClient`, `httpx`, `requests`, or generic network client,
+  and fails on cache miss instead of refreshing cache.
+- Documented bounded execution defaults: sequential with `max_workers=1`,
+  threads only for bounded local gzip/read/parse batches, processes only for
+  profiled CPU-heavy local work, and async only as local orchestration over
+  already-cached inputs.
+- Delegated all DB writes to later Phase 4 idempotent loaders after
+  validation.
+- Kept `F4A-001`, `F4-001`, `F4-002`, and `F4-003` as `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 43 passed and 3 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- Did not implement a runtime offline processor, run live scraping, contact
+  Basketball Reference, run controlled backfill, write DB data, apply
+  migrations, delete legacy/Peewee code, start `F4A-001`, activate Phase 4
+  SQLAlchemy migration, commit, push, open a PR, or implement API/frontend/OVR
+  work.
+- Left the pre-existing local change in
+  `specs/phases/phase-2-scraper-cache-integration.md` untouched.

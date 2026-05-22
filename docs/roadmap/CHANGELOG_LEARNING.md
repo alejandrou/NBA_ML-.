@@ -449,6 +449,43 @@ handle `ready` tasks, proposed phases, blocked phases, or phase transitions.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
 
+## Checkpoint 28 - Phase 4A F4A-000 Activation
+
+### What Changed
+
+Activated `phase-4a-legacy-scraper-consolidation` and closed `F4A-000` as the
+reviewed strategy gate. Phase 4 SQLAlchemy migration remains inactive, and
+`F4A-001`, `F4A-002`, `F4-001`, `F4-002`, and `F4-003` remain pending.
+
+### Why
+
+Legacy scraper consolidation needs an explicit validation strategy before any
+refactor, controlled raw HTML backfill, loader work, or migration work starts.
+
+### Concepts Learned
+
+- Parser/refactor correctness should be proven offline from frozen or
+  fixture-copied cached HTML.
+- Legacy roster, totals, and advanced outputs remain the temporary parity
+  reference until reviewed normalized contracts replace them.
+- Manual live smoke tests are owner-gated, cache-first, one-page, shape-only,
+  and separate from CI.
+- Live concurrency stays disallowed; bounded concurrency belongs only to future
+  already-cached local HTML processing.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-4a-legacy-scraper-consolidation.md`
+- `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `docs/decisions/0016-live-vs-offline-validation.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
 ### Review Questions
 
 - Should the owner approve `F2-001` as the first Phase 2 task?

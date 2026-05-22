@@ -1,6 +1,6 @@
 # Phase 4A - Legacy Scraper Consolidation
 
-Status: proposed
+Status: in_progress
 Phase ID: `phase-4a-legacy-scraper-consolidation`
 
 ## Goal

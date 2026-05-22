@@ -1,54 +1,48 @@
 # Current Phase
 
-Phase ID: `phase-3-parser-normalization`
-Status: `done`
+Phase ID: `phase-4a-legacy-scraper-consolidation`
+Status: `in_progress`
 
-## Phase 3 - Parser Normalization
+## Phase 4A - Legacy Scraper Consolidation
 
 ## Goal
 
-Expand pure parsing and normalization for cached NBA source HTML while keeping
-network, parsing, normalization, validation, and loading responsibilities
-separate.
+Prepare legacy Basketball Reference scraper paths for future controlled raw
+HTML backfill by consolidating team-season page acquisition behind the central
+cache-first provider.
+
+The target pipeline remains:
+
+`one team-season URL -> HtmlCache/BasketballReferenceClient -> one raw HTML file -> multiple table parsers`
 
 ## Completed Work
 
-- `F3-001` expanded pure team-season table parsing.
-- `F3-002` added separated normalization for parsed team-season rows.
-- `F3-003` added offline data-quality checks for normalized rows.
+- `F4A-000` is complete. It defines the offline legacy-vs-new parser parity
+  strategy and the gated one-page manual live acquisition smoke-test strategy.
+- The validation strategy uses frozen HTML fixtures or approved cached HTML
+  copied into test fixtures for unit tests and CI.
+- The manual smoke-test strategy is cache-first, owner-approved per exact URL,
+  limited to at most one live request on cache miss, and shape-only.
 
-## Supported Parser Tables
+## Current Guardrails
 
-- `roster` from table id `roster`
-- `totals` from table id `totals_stats`
-- `per_game` from table id `per_game_stats`
-- `per_minute` from table id `per_minute_stats`
-- `per_poss` from table id `per_poss`
-- `advanced` from table id `advanced`
-- `shooting` from table id `shooting`
-- `adj_shooting` from table id `adj_shooting`
-- `pbp` from table id `pbp_stats`
+- `F4A-001` and `F4A-002` remain `pending`.
+- Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
+  `F4-003` remain `pending`.
+- Do not run live scraping or contact Basketball Reference without explicit
+  owner approval for the exact URL.
+- Do not run controlled raw HTML backfill.
+- Do not write database data, apply migrations, delete legacy/Peewee code, or
+  implement API/frontend/OVR work.
 
-## Closure Notes
+## Next Safe Action
 
-- Parsers remain pure HTML-string functions with no network or DB access.
-- Normalized rows carry league, season, team, source table, stat scope,
-  player identifier, identifier status, and conservative scraped values.
-- `TOT` is classified as a player-season aggregate, not as a real team.
-- `player_name` remains descriptive only and is not used as a stable key.
-- Validation passed offline; no live scraping, Basketball Reference contact,
-  DB writes, DB migrations, legacy/Peewee deletion, API/frontend/OVR work,
-  branch, PR, commit, or push occurred.
-
-## Next Phase Recommendation
-
-Recommended next phase: `phase-4a-legacy-scraper-consolidation`.
-
-Do not activate Phase 4A or Phase 4 without explicit owner approval.
+Ask the owner for explicit approval before promoting or implementing `F4A-001`.
 
 ## References
 
 - `docs/roadmap/PHASE_GOVERNANCE.md`
-- `specs/phases/phase-3-parser-normalization.md`
+- `specs/phases/phase-4a-legacy-scraper-consolidation.md`
+- `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `docs/decisions/0016-live-vs-offline-validation.md`
 - `tasks/feature-list.json`
-- `docs/validation/TEAM_SEASON_PIPELINE.md`

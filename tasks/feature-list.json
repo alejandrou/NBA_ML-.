@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-3-parser-normalization",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4a-legacy-scraper-consolidation",
+  "current_phase_status": "in_progress",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -550,7 +550,7 @@
       "id": "F4A-000",
       "title": "Add legacy parity and acquisition smoke-test strategy",
       "phase_id": "phase-4a-legacy-scraper-consolidation",
-      "status": "pending",
+      "status": "done",
       "description": "Define offline parity tests and a gated one-page live acquisition smoke-test strategy so legacy scraper consolidation can be validated safely before controlled raw HTML backfill.",
       "acceptance_criteria": [
         "tasks/feature-list.json remains valid JSON.",

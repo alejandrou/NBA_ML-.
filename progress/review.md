@@ -219,3 +219,36 @@ offline-only.
 - No live scraping, Basketball Reference contact, DB writes, DB migrations,
   legacy/Peewee deletion, branch/PR/commit/push, or API/frontend/OVR work
   occurred.
+
+## Phase 4A F4A-000 Review
+
+Status: approved
+
+`F4A-000` is approved for closure. The feature spec and ADRs define the needed
+validation strategy before legacy scraper consolidation starts: offline parity
+from frozen or fixture-copied cached HTML, legacy roster/totals/advanced
+comparison, golden fixture allowance, and a separate manual one-page acquisition
+smoke test.
+
+## Phase 4A F4A-000 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 4A F4A-000 Notes
+
+- Manual live smoke tests must use `BasketballReferenceClient` and `HtmlCache`.
+- Smoke-test defaults remain one approved URL, at most one live request on
+  cache miss, 10 requests/minute default, and 20 requests/minute maximum.
+- HTTP 429 stops safely through the central client behavior.
+- Unit tests and CI remain fully offline.
+- Bounded concurrency is allowed only for already-cached local HTML in future
+  approved tasks.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, Phase 4 activation,
+  API/frontend/OVR work, commit, push, or PR occurred.

@@ -280,7 +280,41 @@ work.
 - Thread, process, and async execution are allowed only as bounded local work
   over already-cached HTML.
 - Future cache misses must fail instead of making live requests.
-- `F4A-001` remains pending and Phase 4 SQLAlchemy migration remains inactive.
+- Phase 4 SQLAlchemy migration remains inactive.
 - No live scraping, Basketball Reference contact, controlled backfill, DB
   writes, DB migrations, legacy/Peewee deletion, runtime processor,
   API/frontend/OVR work, commit, push, or PR occurred.
+
+## Phase 4A F4A-001 Review
+
+Status: approved
+
+`F4A-001` is approved for closure. The implementation adds a generic
+cache-first Basketball Reference page provider, keeps the existing team-season
+provider compatibility, and consolidates legacy player and included team
+scrapers so normal operation no longer depends on direct `httpx.AsyncClient`
+or `requests.get` calls.
+
+## Phase 4A F4A-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+
+## Phase 4A F4A-001 Notes
+
+- Player roster, totals, and advanced scrapers share one
+  `LegacyTeamSeasonTableAdapter` from `PlayerOperations`.
+- One team-season provider read can feed roster, totals, and advanced rows for
+  the same team/year while preserving loader-facing legacy keys.
+- Included team scrapers use the generic page provider for `/teams/` and
+  `_games.html` URLs.
+- Consolidated legacy paths no longer contain per-scraper manual sleeps or
+  live async fan-out.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, API/frontend/OVR work, commit,
+  push, or PR occurred.

@@ -21,6 +21,8 @@ HTML backfill is implemented.
   loader-facing keys where tests depend on them.
 - Avoid allowing `PlayerScraperRoster`, `PlayerScraperTotals`, and
   `PlayerScraperAdvanced` to download the same team-season page separately.
+- Route included legacy team scrapers through the generic cache-first page
+  provider for `/teams/` and `{YEAR}_games.html` pages.
 - Keep existing legacy provider tests passing.
 - Add tests proving one team/year HTML read can parse multiple supported
   tables.
@@ -57,6 +59,8 @@ HTML backfill is implemented.
 - Existing legacy loader-compatible keys are preserved where tests depend on
   them.
 - The implementation supports offline execution from `HtmlCache`.
+- Included team scrapers use cache-first providers instead of direct
+  `requests.get` or direct async HTTP calls.
 - Unit tests use fixtures/mocks and make no network requests.
 - No DB writes, Alembic migrations, API/frontend/OVR work, live scraping, or
   legacy/Peewee deletion is introduced.

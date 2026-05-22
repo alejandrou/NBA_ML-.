@@ -11,6 +11,7 @@
 - `F3-002`: Normalize parsed team-season rows.
 - `F3-003`: Add parser data-quality checks.
 - `F4A-000`: Add legacy parity and acquisition smoke-test strategy.
+- `F4A-001`: Consolidate legacy scrapers behind cache-first providers.
 - `F4A-002`: Design bounded offline cached HTML processing.
 
 ## Current
@@ -25,12 +26,11 @@
 
 ## Next
 
-- Next safe Phase 4A task: `F4A-001` - Consolidate legacy scrapers behind
-  cache-first providers.
-- Do not approve or start `F4A-001` without explicit owner approval.
+- Next safe action: prepare a Phase 4A closure or transition summary before
+  changing phases.
 - Phase 4 SQLAlchemy migration remains inactive and pending after Phase 4A.
 
 ## Later
 
-- `F4A-001` and Phase 4-7 tasks remain `pending` until explicitly approved
-  under phase governance.
+- Phase 4-7 tasks remain `pending` until explicitly approved under phase
+  governance.

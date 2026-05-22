@@ -26,10 +26,11 @@ The target pipeline remains:
 - `F4A-002` is complete. It creates the bounded offline cached HTML processing
   design before any runtime offline processor, controlled backfill, or Phase 4
   loader work.
+- `F4A-001` is complete. Legacy player/team-season and included team scrapers
+  now route normal acquisition through cache-first providers and offline tests.
 
 ## Current Guardrails
 
-- `F4A-001` remains `pending`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Do not run live scraping or contact Basketball Reference without explicit
@@ -40,7 +41,9 @@ The target pipeline remains:
 
 ## Next Safe Action
 
-Ask the owner for explicit approval before promoting or implementing `F4A-001`.
+Prepare a Phase 4A closure or transition summary before changing phases. Ask
+the owner for explicit approval before activating Phase 4 SQLAlchemy migration
+or running any live/backfill work.
 
 ## References
 

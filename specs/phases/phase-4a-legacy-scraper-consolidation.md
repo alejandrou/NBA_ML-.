@@ -91,7 +91,7 @@ Legacy anti-pattern to avoid:
 ## Acceptance Criteria
 
 - `F4A-000` and `F4A-002` are complete Phase 4A design gates.
-- `F4A-001` remains pending until explicitly approved.
+- `F4A-001` is complete as the Phase 4A implementation gate.
 - `F4A-000` defines how to validate legacy-vs-new parser parity offline before
   legacy consolidation starts.
 - `F4A-002` defines how future offline cached HTML processing reads only
@@ -106,6 +106,9 @@ Legacy anti-pattern to avoid:
 - Unit tests use local fixtures or mocks only.
 - No DB writes, migrations, API/frontend/OVR work, or legacy/Peewee deletion is
   introduced.
+- Included legacy team scrapers use the central cache-first provider path for
+  Basketball Reference pages instead of direct `requests.get` or direct async
+  HTTP usage.
 
 ## Validation
 

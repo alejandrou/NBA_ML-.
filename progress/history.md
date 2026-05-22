@@ -822,3 +822,41 @@ Tarea inicial:
   work.
 - Left the pre-existing local change in
   `specs/phases/phase-2-scraper-cache-integration.md` untouched.
+
+## Phase 4A F4A-001 Legacy Scraper Consolidation
+
+- Promoted and implemented `F4A-001` with owner approval from the current
+  request.
+- Added a generic cache-first Basketball Reference page provider and URL
+  builders for `/teams/`, `/teams/{TEAM}/{YEAR}.html`, and
+  `/teams/{TEAM}/{YEAR}_games.html`.
+- Kept `CachedTeamSeasonHtmlProvider` and cached team-season parsing
+  compatibility.
+- Added `LegacyTeamSeasonTableAdapter` so roster, totals, and advanced player
+  scrapers can share one HTML read and one parsed team-season page per
+  team/year.
+- Refactored legacy player roster, totals, and advanced scrapers to remove
+  direct `httpx` paths, manual sleeps, and `asyncio.gather` live fan-out.
+- Refactored included team scrapers so `/teams/` and `_games.html` pages use
+  the generic cache-first provider instead of direct `requests.get` or direct
+  async HTTP usage.
+- Updated `scrape_main.py` wiring to build `HtmlCache`,
+  `BasketballReferenceClient`, `CachedBasketballReferencePageProvider`, and
+  `CachedTeamSeasonHtmlProvider` centrally. The entrypoint was not executed.
+- Added offline fixtures and unit tests for provider caching, shared player
+  adapter reuse, legacy-compatible row keys, and team scraper provider wiring.
+- Marked `F4A-001` as `done` after validation.
+- Kept `F4-001`, `F4-002`, and `F4-003` as `pending`; Phase 4 SQLAlchemy
+  migration remains inactive.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 55 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, run controlled
+  backfill, write DB data, apply migrations, delete legacy/Peewee code,
+  activate Phase 4 SQLAlchemy migration, commit, push, open a PR, or implement
+  API/frontend/OVR work.
+- Left untracked `project.zip` untouched.

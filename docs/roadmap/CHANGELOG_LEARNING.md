@@ -980,3 +980,42 @@ loader work begins.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 29 - Phase 4A Legacy Scraper Consolidation
+
+### What Changed
+
+Implemented `F4A-001` by consolidating legacy player/team-season scrapers and
+included team scrapers behind cache-first Basketball Reference providers.
+
+### Why
+
+Future controlled raw HTML backfill needs one responsible acquisition boundary:
+cache before network, central rate-limited client on cache miss, and one
+team-season page feeding multiple parsers. The legacy prototype still had
+direct HTTP calls, manual sleeps, and async fan-out that could duplicate page
+downloads.
+
+### Concepts Learned
+
+- A generic page provider can serve both team-season pages and other
+  Basketball Reference pages while still using `HtmlCache`.
+- A shared adapter lets legacy roster, totals, and advanced scrapers preserve
+  loader-facing keys without fetching the same HTML three times.
+- Included team scrapers can use the same cache-first boundary even when their
+  URLs are not team-season stats pages.
+- Phase 4A can close the acquisition boundary without DB writes, migrations, or
+  controlled backfill execution.
+
+### Files to Read
+
+- `src/nba_data/scraping/team_season_pages.py`
+- `scrap/scrap_player/team_season_adapter.py`
+- `tests/unit/test_legacy_team_season_scrapers.py`
+- `tests/unit/test_legacy_team_scrapers.py`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.

@@ -589,7 +589,7 @@
       "id": "F4A-001",
       "title": "Consolidate legacy scrapers behind cache-first providers",
       "phase_id": "phase-4a-legacy-scraper-consolidation",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4A-000"
       ],

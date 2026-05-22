@@ -10,9 +10,10 @@ from utils.helpers import get_win_loss_win_loss_percentage
 
 class TeamOperations:
 
-    def __init__(self, years):
-        self.scraper_team = TeamScraper()
-        self.scraper_team_regular_season = TeamScraperRegularSeasonResults(years)
+    def __init__(self, years, page_provider=None):
+        self.page_provider = page_provider
+        self.scraper_team = TeamScraper(page_provider)
+        self.scraper_team_regular_season = TeamScraperRegularSeasonResults(years, page_provider)
     
     def insert_teams(self, team_data):
         DBManager.create_tables(Team)
@@ -162,11 +163,11 @@ class TeamOperations:
 
     
 
-    async def get_regular_season_results_data(self, client):
+    async def get_regular_season_results_data(self, client=None):
 
         print("Iniciando scraping de datos para la temporada regular...")
         team_data = self.scraper_team.get_team_table()
-        team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async(client)
+        team_regular_season_results = await self.scraper_team_regular_season.get_team_regular_season_results_async()
 
         print("Insertando datos de la temporada regular...")
         self.insert_teams(team_data)

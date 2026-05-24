@@ -5,7 +5,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 from nba_data.scraping.cache import HtmlCache
@@ -21,6 +21,19 @@ _TEAM_SEASON_PATH_RE = re.compile(r"^/teams/(?P<team>[A-Z]{3})/(?P<year>[0-9]{4}
 
 class ManifestValidationError(ValueError):
     """Raised when a raw HTML backfill manifest is not safe to plan."""
+
+
+class BackfillClient(Protocol):
+    def get(self, url: str, *, force_refresh: bool = False) -> str:
+        """Return raw HTML for one URL."""
+
+
+class BackfillAcquisitionError(RuntimeError):
+    """Raised when a controlled acquisition run stops after a failed entry."""
+
+    def __init__(self, message: str, report: AcquisitionReport) -> None:
+        super().__init__(message)
+        self.report = report
 
 
 @dataclass(frozen=True)
@@ -79,6 +92,50 @@ class DryRunReport:
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "estimated_live_request_count": self.estimated_live_request_count,
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
+
+
+@dataclass(frozen=True)
+class AcquisitionEntryResult:
+    page_type: str
+    url: str
+    cache_path: str
+    status: str
+    live_request_count: int
+    error_message: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "page_type": self.page_type,
+            "url": self.url,
+            "cache_path": self.cache_path,
+            "status": self.status,
+            "live_request_count": self.live_request_count,
+            "error_message": self.error_message,
+        }
+
+
+@dataclass(frozen=True)
+class AcquisitionReport:
+    manifest_id: str
+    total_entries: int
+    processed_entries: int
+    cache_hits: int
+    fetched: int
+    failures: int
+    live_request_count: int
+    entries: tuple[AcquisitionEntryResult, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "manifest_id": self.manifest_id,
+            "total_entries": self.total_entries,
+            "processed_entries": self.processed_entries,
+            "cache_hits": self.cache_hits,
+            "fetched": self.fetched,
+            "failures": self.failures,
+            "live_request_count": self.live_request_count,
             "entries": [entry.to_dict() for entry in self.entries],
         }
 
@@ -205,6 +262,85 @@ def build_dry_run_report(manifest: BackfillManifest, *, cache: HtmlCache) -> Dry
         cache_misses=cache_misses,
         estimated_live_request_count=cache_misses,
         entries=tuple(entries),
+    )
+
+
+def run_backfill_acquisition(
+    path: str | Path,
+    *,
+    cache: HtmlCache,
+    client: BackfillClient,
+) -> AcquisitionReport:
+    manifest = load_backfill_manifest(path)
+    return acquire_backfill_manifest(manifest, cache=cache, client=client)
+
+
+def acquire_backfill_manifest(
+    manifest: BackfillManifest,
+    *,
+    cache: HtmlCache,
+    client: BackfillClient,
+) -> AcquisitionReport:
+    results: list[AcquisitionEntryResult] = []
+
+    for manifest_entry in manifest.entries:
+        cache_path = cache.path_for_url(manifest_entry.url)
+        if cache_path.exists():
+            results.append(
+                AcquisitionEntryResult(
+                    page_type=manifest_entry.page_type,
+                    url=manifest_entry.url,
+                    cache_path=str(cache_path),
+                    status="cache_hit",
+                    live_request_count=0,
+                )
+            )
+            continue
+
+        try:
+            html = client.get(manifest_entry.url, force_refresh=False)
+        except Exception as exc:
+            results.append(
+                AcquisitionEntryResult(
+                    page_type=manifest_entry.page_type,
+                    url=manifest_entry.url,
+                    cache_path=str(cache_path),
+                    status="failed",
+                    live_request_count=1,
+                    error_message=str(exc),
+                )
+            )
+            report = _build_acquisition_report(manifest, results)
+            msg = f"Backfill acquisition failed for {manifest_entry.url}"
+            raise BackfillAcquisitionError(msg, report) from exc
+
+        written_path = cache.set(manifest_entry.url, html)
+        results.append(
+            AcquisitionEntryResult(
+                page_type=manifest_entry.page_type,
+                url=manifest_entry.url,
+                cache_path=str(written_path),
+                status="fetched",
+                live_request_count=1,
+            )
+        )
+
+    return _build_acquisition_report(manifest, results)
+
+
+def _build_acquisition_report(
+    manifest: BackfillManifest,
+    results: list[AcquisitionEntryResult],
+) -> AcquisitionReport:
+    return AcquisitionReport(
+        manifest_id=manifest.manifest_id,
+        total_entries=len(manifest.entries),
+        processed_entries=len(results),
+        cache_hits=sum(result.status == "cache_hit" for result in results),
+        fetched=sum(result.status == "fetched" for result in results),
+        failures=sum(result.status == "failed" for result in results),
+        live_request_count=sum(result.live_request_count for result in results),
+        entries=tuple(results),
     )
 
 

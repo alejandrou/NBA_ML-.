@@ -957,3 +957,73 @@ Tarea inicial:
   write DB data, apply migrations, run parse/load offline, activate Phase 4
   SQLAlchemy migration or Phase 4C, delete legacy/Peewee code, commit, push,
   open a PR, or implement API/frontend/OVR work.
+
+## Phase 4B F4B-002 Review Closure
+
+- Reviewed and approved `F4B-002`.
+- Confirmed the dry-run manifest path validates approved `team_season`
+  manifests and reports planned URLs, expected cache paths, cache hit/miss
+  state, and estimated live request count.
+- Confirmed the dry-run path does not accept a network client and does not
+  contact Basketball Reference.
+- Ran `uv run pytest tests/unit/test_backfill_manifest.py`: passed, 8 passed.
+- Ran `uv run ruff check src/nba_data/scraping/backfill_manifest.py src/nba_data/cli/main.py tests/unit/test_backfill_manifest.py`:
+  passed.
+- Marked `F4B-002` as `done`.
+- Did not run live scraping, contact Basketball Reference, execute the
+  acquisition runner, write raw HTML outside temporary test cache, write DB
+  data, apply migrations, start a live pilot, delete legacy/Peewee code, commit,
+  push, open a PR, or implement API/frontend/OVR work.
+
+## Phase 4B F4B-003 Acquisition Runner
+
+- Owner explicitly approved implementing `F4B-003` only; `F4B-LIVE-001`
+  remains pending.
+- Promoted `F4B-003` from `pending` to `in_progress` and then to
+  `needs_review` after implementation and focused validation.
+- Added a sequential cache-first acquisition runner for approved manifests.
+- The runner checks `HtmlCache` before every client request, records cache hits
+  without network calls, fetches cache misses through an injected
+  `BasketballReferenceClient`-compatible client, and stores fetched HTML through
+  `HtmlCache`.
+- Added acquisition result/report serialization, including processed entries,
+  cache hits, fetched pages, failures, live request count, and per-entry
+  statuses.
+- Added failure handling that stops the run and exposes a partial acquisition
+  report.
+- Added `nba-data backfill acquire <manifest.json> --execute-approved-manifest`
+  with an explicit execution flag. The CLI constructs `HtmlCache` and
+  `BasketballReferenceClient`, but tests patch the client with fakes.
+- Added offline unit tests for approved-manifest enforcement, cache hits, cache
+  misses, sequential order, partial failure reports, CLI refusal without the
+  execution flag, and fake-client CLI acquisition.
+- Kept `F4B-LIVE-001`, Phase 4 SQLAlchemy tasks, and Phase 4C tasks `pending`.
+- Kept `current_phase_id` as `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` as `proposed`.
+- Ran `uv run pytest tests/unit/test_backfill_manifest.py`: passed, 15 passed.
+- Ran `uv run ruff check src/nba_data/scraping/backfill_manifest.py src/nba_data/cli/main.py tests/unit/test_backfill_manifest.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 70 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, run a live backfill,
+  write raw HTML outside temporary test cache, write DB data, apply migrations,
+  run parse/load offline, activate Phase 4 SQLAlchemy migration or Phase 4C,
+  delete legacy/Peewee code, commit, push, open a PR, or implement
+  API/frontend/OVR work.
+
+## Phase 4B F4B-003 Commit/Push Handoff
+
+- Prepared the `F4B-003` implementation, review notes, task status, roadmap
+  notes, progress files, and tests for commit and push on
+  `feature/fase-4a-legacy-scraper-consolidation`.
+- Current task state for the next session: `F4B-003` is `needs_review`;
+  `F4B-LIVE-001` remains `pending`.
+- Next safe action after push: review `F4B-003` and either close it as `done`
+  after approval or request changes.
+- Do not run the acquisition runner against Basketball Reference, approve or
+  run `F4B-LIVE-001`, write DB data, apply migrations, delete legacy/Peewee
+  code, open a PR, or implement API/frontend/OVR work without explicit owner
+  approval.

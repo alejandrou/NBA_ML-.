@@ -349,3 +349,27 @@ execution, API/frontend/OVR work, or historical full scrape.
   manifest explicitly approve them.
 - `F4B-002`, `F4B-003`, `F4B-LIVE-001`, Phase 4 SQLAlchemy tasks, and Phase 4C
   tasks remain pending.
+
+## Phase 4B F4B-002 Review
+
+Status: approved
+
+`F4B-002` is approved for closure. The implementation validates approved
+`team_season` raw HTML backfill manifests, reports expected cache paths,
+cache hit/miss state, and estimated live request count, and exposes an offline
+`nba-data backfill dry-run <manifest.json>` command.
+
+## Phase 4B F4B-002 Checks
+
+- `uv run pytest tests/unit/test_backfill_manifest.py`: passed, 8 passed
+  before closure.
+- `uv run ruff check src/nba_data/scraping/backfill_manifest.py src/nba_data/cli/main.py tests/unit/test_backfill_manifest.py`:
+  passed before closure.
+
+## Phase 4B F4B-002 Notes
+
+- Dry-run validation does not accept a network client.
+- Cache misses are counted as estimated future live requests only.
+- No live scraping, Basketball Reference contact, raw HTML writes outside
+  temporary test cache, DB writes, migrations, runner execution, API/frontend,
+  or OVR work occurred.

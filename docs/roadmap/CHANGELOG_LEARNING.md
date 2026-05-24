@@ -1142,3 +1142,41 @@ acquisition runner or live pilot can exist.
 Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
 `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 33 - Phase 4B Acquisition Runner
+
+### What Changed
+
+Added the controlled acquisition runner for approved raw HTML backfill
+manifests and exposed it through
+`nba-data backfill acquire <manifest.json> --execute-approved-manifest`.
+
+### Why
+
+Phase 4B needs a reviewed runtime path that can later execute an exact
+owner-approved manifest without bypassing cache checks, rate limits, or the
+central Basketball Reference client.
+
+### Concepts Learned
+
+- The runner should check `HtmlCache` before every client call.
+- Cache hits are recorded and make no live request.
+- Cache misses are fetched sequentially through a
+  `BasketballReferenceClient`-compatible client and written through
+  `HtmlCache`.
+- Client failures should stop the run with a partial report so a future pilot
+  is auditable.
+- The CLI needs an explicit execution flag separate from manifest approval to
+  reduce accidental live acquisition risk.
+
+### Files to Read
+
+- `src/nba_data/scraping/backfill_manifest.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_backfill_manifest.py`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

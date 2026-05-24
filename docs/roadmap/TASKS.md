@@ -15,29 +15,28 @@
 - `F4A-001`: Consolidate legacy scrapers behind cache-first providers.
 - `F4A-002`: Design bounded offline cached HTML processing.
 - `F4B-001`: Design controlled raw HTML backfill manifest.
+- `F4B-002`: Add raw HTML backfill manifest dry-run validation.
 
 ## Current
 
 - Current phase: `phase-4b-controlled-raw-html-backfill`.
 - Current phase status: `proposed`.
-- `F4B-001` is `done`.
-- No task is `approved`, `in_progress`, or `needs_review`.
+- `F4B-001` and `F4B-002` are `done`.
+- `F4B-003` is `needs_review`.
 
 ## Needs Review
 
-- None.
+- `F4B-003`: Add sequential cache-first raw HTML acquisition runner.
 
 ## Next
 
-- Next safe action: ask the owner whether to approve `F4B-002`.
-- `F4B-002` is an offline dry-run validation task for the raw HTML backfill
-  manifest. It must not contact Basketball Reference.
-- Do not run live scraping, contact Basketball Reference, or execute a backfill
-  pilot without exact owner approval.
+- Next safe action: review `F4B-003`.
+- Do not run live scraping, contact Basketball Reference, or execute the live
+  pilot without exact owner approval for the manifest.
 
 ## Later
 
-- `F4B-002`, `F4B-003`, and `F4B-LIVE-001` remain `pending`.
+- `F4B-LIVE-001` remains `pending`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and load remains future work.

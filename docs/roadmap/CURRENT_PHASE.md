@@ -24,9 +24,11 @@ cache-first, sequential, and auditable.
   current phase to Phase 4B.
 - `F4B-001` is `done` after explicit owner approval for the design-only
   manifest task.
-- `F4B-002` is `needs_review` after explicit owner approval for the offline
-  dry-run validation task.
-- `F4B-003` and `F4B-LIVE-001` remain `pending`.
+- `F4B-002` is `done` after review approval for the offline dry-run validation
+  task.
+- `F4B-003` is `needs_review` after explicit owner approval for the sequential
+  cache-first acquisition runner implementation.
+- `F4B-LIVE-001` remains `pending`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and loading remains future work.
@@ -47,9 +49,9 @@ cache-first, sequential, and auditable.
 
 ## Next Safe Action
 
-Review `F4B-002`, the offline dry-run manifest validation task. Do not
-implement the runtime acquisition runner or run a live pilot without separate
-explicit approval.
+Review `F4B-003`, the sequential cache-first acquisition runner task. Do not
+run the acquisition runner against Basketball Reference or run a live pilot
+without separate explicit approval for the exact manifest.
 
 ## References
 

@@ -860,3 +860,66 @@ Tarea inicial:
   activate Phase 4 SQLAlchemy migration, commit, push, open a PR, or implement
   API/frontend/OVR work.
 - Left untracked `project.zip` untouched.
+
+## Phase 4B/4C Roadmap Transition
+
+- Confirmed `F4A-001` is `done` in `tasks/feature-list.json` before changing
+  the current phase.
+- Confirmed no task was `approved` or `in_progress`.
+- Moved `current_phase_id` to `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` to `proposed`.
+- Kept `F4B-001` as `ready` with no approved or in-progress task.
+- Added Phase 4B tasks for manifest design, dry-run validation, sequential
+  cache-first acquisition, and an owner-approved pilot.
+- Added Phase 4C tasks for offline cached HTML processing, idempotent DB load
+  integration, and reporting/quarantine workflow.
+- Added phase specs for Phase 4B and Phase 4C.
+- Updated roadmap, current progress, next decisions, Phase 4A closure, and
+  Phase 4 SQLAlchemy handoff documentation.
+- Clarified that `IDEMPOTENT_LOADER_STRATEGY.md` does not download or parse raw
+  HTML.
+- Clarified that `TEAM_SEASON_PIPELINE.md` documents parsing, normalization,
+  and validation from already available HTML, and that player-specific pages
+  are future scope.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, run controlled
+  backfill, write DB data, apply migrations, delete legacy/Peewee code,
+  approve or start any task, commit, push, open a PR, or implement
+  API/frontend/OVR work.
+
+## Phase 4B F4B-001 Manifest Design
+
+- Owner explicitly approved implementing `F4B-001` only.
+- Promoted `F4B-001` through the workflow and closed it as `done` after
+  validation and review.
+- Created
+  `specs/features/F4B-001-controlled-raw-html-backfill-manifest.md`.
+- Documented the controlled acquisition contract:
+  `approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`.
+- Defined the JSON manifest as a reviewed acquisition plan with explicit
+  Basketball Reference URLs, page types, approval metadata, cache-first
+  behavior, sequential execution, 10 requests/minute default, 20
+  requests/minute absolute maximum, and `.html.gz` writes through `HtmlCache`.
+- Set the initial pilot default to at most five `team_season` URLs matching
+  `/teams/{TEAM}/{YEAR}.html`.
+- Documented that player-specific pages are outside the initial pilot unless a
+  later explicit task and manifest approve them.
+- Documented that any live request requires owner approval for the exact
+  manifest and that any manifest change requires fresh approval.
+- Kept `F4B-002`, `F4B-003`, `F4B-LIVE-001`, `F4-001`, `F4-002`, `F4-003`,
+  and `F4C-*` tasks `pending`.
+- Kept `current_phase_id` as `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` as `proposed`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 55 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, implement a runtime
+  backfill runner, write DB data, apply migrations, run parse/load offline,
+  activate Phase 4 SQLAlchemy migration or Phase 4C, delete legacy/Peewee code,
+  commit, push, open a PR, or implement API/frontend/OVR work.

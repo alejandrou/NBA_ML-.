@@ -318,3 +318,34 @@ or `requests.get` calls.
 - No live scraping, Basketball Reference contact, controlled backfill, DB
   writes, DB migrations, legacy/Peewee deletion, API/frontend/OVR work, commit,
   push, or PR occurred.
+
+## Phase 4B F4B-001 Review
+
+Status: approved
+
+`F4B-001` is approved for closure. The feature spec documents the controlled raw
+HTML backfill manifest as a design-only contract and does not introduce a
+runtime runner, live request path, database write, migration, parser/load
+execution, API/frontend/OVR work, or historical full scrape.
+
+## Phase 4B F4B-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+
+## Phase 4B F4B-001 Notes
+
+- Manifest flow is documented as
+  `approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`.
+- Initial pilot default is at most five `team_season` URLs matching
+  `/teams/{TEAM}/{YEAR}.html`.
+- Live acquisition remains sequential, cache-first, 10 requests/minute by
+  default, and never above 20 requests/minute.
+- Any live request requires exact owner approval for the manifest.
+- Player-specific pages remain future scope unless a later task and exact
+  manifest explicitly approve them.
+- `F4B-002`, `F4B-003`, `F4B-LIVE-001`, Phase 4 SQLAlchemy tasks, and Phase 4C
+  tasks remain pending.

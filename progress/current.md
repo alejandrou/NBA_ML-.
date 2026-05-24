@@ -1,6 +1,6 @@
 # Current Work
 
-Status: phase_4a_in_progress
+Status: phase_4b_f4b_001_done
 
 ## Active Task
 
@@ -8,47 +8,53 @@ No task is approved, in progress, or needs review.
 
 ## Current Phase
 
-- Phase ID: `phase-4a-legacy-scraper-consolidation`
-- Phase status: `in_progress`
-- Completed Phase 4A tasks:
-  - `F4A-000` - Add legacy parity and acquisition smoke-test strategy.
-  - `F4A-001` - Consolidate legacy scrapers behind cache-first providers.
-  - `F4A-002` - Design bounded offline cached HTML processing.
+- Phase ID: `phase-4b-controlled-raw-html-backfill`
+- Phase status: `proposed`
+- `F4B-001` is `done`.
+- `F4B-002`, `F4B-003`, and `F4B-LIVE-001` remain `pending`.
 - Phase 4 SQLAlchemy migration is not active; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
+- Phase 4C offline cached HTML processing and load remains future work.
+
+## Transition Result
+
+- Confirmed `F4A-001` was `done` in `tasks/feature-list.json` before moving
+  the current phase to Phase 4B.
+- Confirmed there were no tasks with `approved` or `in_progress` status before
+  transition.
+- Closed Phase 4A as the legacy scraper consolidation gate.
+- Introduced Phase 4B and Phase 4C roadmap/spec documentation.
+- Owner explicitly approved implementing `F4B-001` only.
+- Promoted `F4B-001` through the workflow and closed it as `done` after
+  validation and review.
+- Kept Phase 4B as `proposed`; no later Phase 4B task is approved.
 
 ## Goal
 
-Phase 4A remains active as the legacy scraper consolidation gate. Its task set
-is complete, but the phase has not been formally transitioned. The next safe
-step is a Phase 4A closure or transition summary before activating any later
-phase.
+Phase 4B will define and later implement controlled raw HTML acquisition:
+
+`approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`
+
+The first real pilot defaults to at most five team-season URLs and must be
+owner-approved before any live request.
+
+`F4B-001` documented the manifest design, pilot scope, and approval protocol at
+`specs/features/F4B-001-controlled-raw-html-backfill-manifest.md`.
 
 ## Next Safe Action
 
-Prepare a Phase 4A closure or transition summary. Ask for explicit owner
-approval before activating Phase 4 SQLAlchemy migration, running live scraping,
-contacting Basketball Reference, running controlled backfill, writing DB data,
-applying migrations, deleting legacy/Peewee code, creating a PR, or
-implementing API/frontend/OVR work.
+Ask the owner whether to approve `F4B-002`, the offline dry-run manifest
+validation task. Do not start `F4B-003` or `F4B-LIVE-001` without separate
+explicit approval.
 
-## Latest Review Result
+## Guardrails
 
-- `F4A-001` consolidated normal legacy Basketball Reference acquisition behind
-  central cache-first providers.
-- Generic Basketball Reference page acquisition now checks `HtmlCache` before
-  `BasketballReferenceClient` and stores `.html.gz` on cache miss.
-- Legacy player roster, totals, and advanced scrapers now share one
-  team-season table adapter that reads and parses one team-season page per
-  team/year, preserving loader-facing keys.
-- Included legacy team scrapers now use the cache-first page provider for
-  `/teams/` and `/teams/{TEAM}/{YEAR}_games.html`.
-- Direct `requests.get`, direct `httpx.AsyncClient.get`, per-scraper sleeps,
-  and live `asyncio.gather` fan-out were removed from consolidated legacy
-  scraper paths.
-- No live scraping, Basketball Reference contact, DB writes, migrations,
-  controlled backfill, API/frontend/OVR, or legacy/Peewee deletion was
-  introduced.
+No live scraping was run. No Basketball Reference contact occurred. No DB
+writes, DB migrations, controlled backfill execution, offline DB loading,
+legacy/Peewee deletion, API/frontend/OVR, commit, push, or PR occurred.
+
+Do not approve or start `F4B-002`, `F4B-003`, or `F4B-LIVE-001` while the phase
+is `proposed` without explicit owner approval.
 
 ## Latest Validation
 
@@ -57,16 +63,3 @@ implementing API/frontend/OVR work.
 - `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   55 passed and 6 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
-  55 passed and 6 Peewee deprecation warnings.
-
-## Notes
-
-No live scraping was run. No Basketball Reference contact occurred. No DB
-writes, DB migrations, controlled backfill, legacy/Peewee deletion,
-API/frontend/OVR, commit, push, or PR occurred.
-
-The local branch is `feature/fase-4a-legacy-scraper-consolidation`; current
-HEAD at task start was `fa5b5a7e8eb1bf1a8d7aaac005c0bc9fcdd2c8b6`.
-
-Untracked `project.zip` existed before this task and remains outside scope.

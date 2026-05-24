@@ -1,6 +1,6 @@
 # Phase 4A - Legacy Scraper Consolidation
 
-Status: in_progress
+Status: done
 Phase ID: `phase-4a-legacy-scraper-consolidation`
 
 ## Goal
@@ -32,23 +32,25 @@ how already-cached `.html.gz` files can later be parsed, normalized, and
 validated with bounded local execution before any Phase 4 idempotent loader
 writes.
 
-Legacy scrapers under `scrap/` and the legacy entrypoint in `scrape_main.py`
-still contain direct HTTP seams, manual sleeps, async gathering, BeautifulSoup
-table parsing, and Peewee loading behavior. Phase 4A is a consolidation gate
-before controlled backfill, not a backfill implementation.
+At phase start, legacy scrapers under `scrap/` and the legacy entrypoint in
+`scrape_main.py` contained direct HTTP seams, manual sleeps, async gathering,
+BeautifulSoup table parsing, and Peewee loading behavior. Phase 4A closed the
+normal Basketball Reference acquisition boundary for the supported legacy
+player/team-season and included team scraper paths before controlled backfill.
 
-## Current Legacy Problems
+## Legacy Problems Addressed
 
 - `PlayerScraperRoster`, `PlayerScraperTotals`, and
-  `PlayerScraperAdvanced` can still fetch the same
+  `PlayerScraperAdvanced` previously could fetch the same
   `/teams/{TEAM}/{YEAR}.html` page separately.
-- Legacy player/team-season scrapers still retain direct `httpx.AsyncClient`
-  request paths and manual per-scraper sleeps.
-- Legacy team scrapers still include direct `requests.get` or direct async
-  HTTP usage for Basketball Reference pages.
-- Parsing and loading responsibilities remain mixed in legacy operations.
-- `asyncio.gather` can schedule many team-season scraper tasks even though live
-  acquisition must be cache-first and rate-limited.
+- Legacy player/team-season scrapers previously retained direct
+  `httpx.AsyncClient` request paths and manual per-scraper sleeps.
+- Legacy team scrapers previously included direct `requests.get` or direct
+  async HTTP usage for Basketball Reference pages.
+- `asyncio.gather` previously could schedule many team-season scraper tasks
+  even though live acquisition must be cache-first and rate-limited.
+- Broader parsing/loading separation remains future migration work, but Phase
+  4A introduced no DB writes and did not remove legacy/Peewee code.
 
 Legacy anti-pattern to avoid:
 
@@ -58,7 +60,7 @@ Legacy anti-pattern to avoid:
 
 `advanced scraper -> live request`
 
-## Allowed Work
+## Allowed Work During Phase
 
 - Define the legacy-vs-new offline parity strategy from frozen or cached HTML
   fixtures.
@@ -75,7 +77,7 @@ Legacy anti-pattern to avoid:
 - Add fixture/mock-based tests that make no network requests.
 - Document any legacy paths that cannot be consolidated safely yet.
 
-## Disallowed Work
+## Disallowed Work During Phase
 
 - Live scraping or Basketball Reference contact.
 - Controlled raw HTML backfill execution.
@@ -116,6 +118,13 @@ Legacy anti-pattern to avoid:
 - `uv run ruff check .`
 - `uv run pytest`
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`
+
+## Closure State
+
+Phase 4A is closed as a documentation and implementation gate. `F4A-000`,
+`F4A-001`, and `F4A-002` are `done`; no live scraping, controlled backfill,
+database writes, migrations, API/frontend/OVR work, or legacy/Peewee deletion
+occurred.
 
 ## Handoff To Controlled Raw HTML Backfill
 

@@ -1,5 +1,9 @@
 # Team Season Parser, Normalizer, and Validator
 
+This document describes parsing, normalization, and validation for team-season
+HTML that is already available to the pipeline. It does not acquire raw HTML,
+refresh cache entries, run live scraping, or load the database.
+
 ## Supported Tables
 
 Phase 3 supports these team-season page tables:
@@ -64,3 +68,9 @@ mixed into normalized scraped stats.
 
 Postseason tables, team summary tables, salary tables, database loading,
 migrations, API, frontend, and generated metrics are out of Phase 3 scope.
+
+There is no separate player-page pipeline yet. Current player rows are derived
+from team-season pages such as roster, totals, and advanced tables, with
+`basketball_reference_player_id` extracted from player links when present.
+Dedicated Basketball Reference player pages remain future scope unless a later
+manifest and parser task explicitly adds them.

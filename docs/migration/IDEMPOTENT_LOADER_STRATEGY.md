@@ -6,6 +6,10 @@ This document defines the target loading strategy for parsed team-season data in
 later phases. It is a design record only: Phase 2 does not write production
 data, create loader repositories, or apply database migrations.
 
+This document does not download raw HTML, parse HTML, or implement an offline
+processor. It starts at the loader boundary: already parsed, normalized, and
+validated rows are ready to be written idempotently.
+
 ## Pipeline Boundary
 
 The target flow remains:
@@ -82,5 +86,5 @@ Phase 2 only documents the strategy. Later phases may add:
 - integration tests against local PostgreSQL.
 
 Out of scope for this document are live scraping, production data writes, full
-SQLAlchemy loader implementation, deleting Peewee code, and applying database
-migrations.
+SQLAlchemy loader implementation, raw HTML download, offline HTML processing,
+deleting Peewee code, and applying database migrations.

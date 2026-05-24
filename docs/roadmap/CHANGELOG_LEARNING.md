@@ -1019,3 +1019,90 @@ downloads.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 30 - Phase 4B/4C Roadmap Transition
+
+### What Changed
+
+Closed the Phase 4A planning handoff and introduced Phase 4B and Phase 4C as
+separate roadmap phases. Phase 4B covers controlled raw HTML acquisition into
+`HtmlCache`; Phase 4C covers offline cached HTML processing and later DB load
+from validated normalized rows.
+
+`tasks/feature-list.json` now has
+`current_phase_id = phase-4b-controlled-raw-html-backfill` and
+`current_phase_status = proposed`. `F4B-001` is `ready`; no task is approved or
+in progress.
+
+### Why
+
+The project needed an explicit gap between legacy scraper consolidation and
+SQLAlchemy/API work: first acquire approved raw HTML safely, then migrate/load
+DB structures, then process cached HTML offline into validated loader inputs.
+
+### Concepts Learned
+
+- Controlled backfill is acquisition only:
+  `approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`.
+- Offline DB loading must not load directly from raw HTML. It first parses,
+  normalizes, and validates cached HTML.
+- Live acquisition remains sequential and cache-first; local concurrency belongs
+  only to already-cached offline work.
+- Current player rows come from team-season pages. Dedicated player-page
+  acquisition and parsing remains future scope.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/phases/phase-4b-controlled-raw-html-backfill.md`
+- `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`
+- `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 31 - Phase 4B Manifest Design
+
+### What Changed
+
+Closed `F4B-001` as a design-only task and added the controlled raw HTML
+backfill manifest spec.
+
+The documented acquisition path is:
+
+```text
+approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz
+```
+
+### Why
+
+Phase 4B needs exact owner approval and auditable scope before any future live
+request. The manifest design separates approval, dry-run validation, live
+acquisition, and later offline processing/loading.
+
+### Concepts Learned
+
+- A manifest is an approved acquisition plan, not a general crawler.
+- The first pilot defaults to at most five explicit `team_season` URLs.
+- Live acquisition stays sequential, cache-first, 10 requests/minute by
+  default, and never above 20 requests/minute.
+- Player-specific pages remain future scope until a later task and exact
+  manifest approve them.
+- Raw HTML acquisition stays separate from DB writes, migrations, parsing/load
+  execution, API/frontend work, and generated metrics.
+
+### Files to Read
+
+- `specs/features/F4B-001-controlled-raw-html-backfill-manifest.md`
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

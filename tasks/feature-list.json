@@ -703,7 +703,7 @@
       "id": "F4B-002",
       "title": "Add raw HTML backfill manifest dry-run validation",
       "phase_id": "phase-4b-controlled-raw-html-backfill",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4B-001"
       ],

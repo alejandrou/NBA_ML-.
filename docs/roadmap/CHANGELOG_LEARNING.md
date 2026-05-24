@@ -1106,3 +1106,39 @@ acquisition, and later offline processing/loading.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 32 - Phase 4B Manifest Dry-Run Validation
+
+### What Changed
+
+Added `F4B-002` offline manifest validation and dry-run reporting. The dry-run
+checks approved `team_season` manifests, reports expected `HtmlCache` paths,
+cache hit/miss state, and estimated live request count, and exposes the flow
+through `nba-data backfill dry-run <manifest.json>`.
+
+### Why
+
+Phase 4B needs an auditable no-network planning gate before any runtime
+acquisition runner or live pilot can exist.
+
+### Concepts Learned
+
+- A manifest dry-run can prove scope, approval, cache paths, and request
+  estimates without accepting a client or contacting Basketball Reference.
+- The first pilot remains limited to explicit `team_season` URLs and at most
+  five entries.
+- Cache misses are only counted as estimated future live requests; they are
+  not fetched during dry-run validation.
+
+### Files to Read
+
+- `src/nba_data/scraping/backfill_manifest.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_backfill_manifest.py`
+- `tests/fixtures/manifests/approved_team_season_manifest.json`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

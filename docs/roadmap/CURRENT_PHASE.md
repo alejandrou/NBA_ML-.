@@ -22,18 +22,19 @@ cache-first, sequential, and auditable.
 
 - `F4A-001` was confirmed `done` in `tasks/feature-list.json` before moving the
   current phase to Phase 4B.
-- No task is currently `approved`, `in_progress`, or `needs_review`.
 - `F4B-001` is `done` after explicit owner approval for the design-only
   manifest task.
-- `F4B-002`, `F4B-003`, and `F4B-LIVE-001` remain `pending`.
+- `F4B-002` is `needs_review` after explicit owner approval for the offline
+  dry-run validation task.
+- `F4B-003` and `F4B-LIVE-001` remain `pending`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and loading remains future work.
 
 ## Current Guardrails
 
-- Do not approve or start `F4B-002`, `F4B-003`, or `F4B-LIVE-001` while this
-  phase is `proposed` unless the owner explicitly approves the task.
+- Do not approve or start `F4B-003` or `F4B-LIVE-001` while this phase is
+  `proposed` unless the owner explicitly approves the task.
 - Do not run live scraping, contact Basketball Reference, or execute a backfill
   pilot without owner approval for the exact manifest.
 - Do not write database data, apply migrations, delete legacy/Peewee code,
@@ -46,9 +47,9 @@ cache-first, sequential, and auditable.
 
 ## Next Safe Action
 
-Ask the owner for explicit approval before promoting `F4B-002`, the offline
-dry-run manifest validation task. Do not implement the runtime acquisition
-runner or run a live pilot without separate explicit approval.
+Review `F4B-002`, the offline dry-run manifest validation task. Do not
+implement the runtime acquisition runner or run a live pilot without separate
+explicit approval.
 
 ## References
 

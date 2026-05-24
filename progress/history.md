@@ -923,3 +923,37 @@ Tarea inicial:
   backfill runner, write DB data, apply migrations, run parse/load offline,
   activate Phase 4 SQLAlchemy migration or Phase 4C, delete legacy/Peewee code,
   commit, push, open a PR, or implement API/frontend/OVR work.
+
+## Phase 4B F4B-002 Manifest Dry-Run Validation
+
+- Owner explicitly approved implementing `F4B-002` only.
+- Promoted `F4B-002` from `pending` to `in_progress` and then to
+  `needs_review` after implementation and focused validation.
+- Added offline raw HTML backfill manifest validation for approved
+  `team_season` manifests.
+- The validation requires owner approval metadata, explicit Basketball
+  Reference team-season URLs, no duplicate URLs, cache-first sequential policy,
+  safe request limits, and `HtmlCache .html.gz` as the write target.
+- Added dry-run reporting for planned URLs, page types, expected cache paths,
+  cache hit/miss state, and estimated live request count.
+- Added `nba-data backfill dry-run <manifest.json>` as an offline CLI utility.
+- Added local manifest fixtures and unit tests for valid dry-runs, unapproved
+  manifests, duplicate URLs, unsupported URLs, unsafe policies, pilot size, and
+  the no-client dry-run boundary.
+- Kept `F4B-003`, `F4B-LIVE-001`, Phase 4 SQLAlchemy tasks, and Phase 4C
+  tasks `pending`.
+- Kept `current_phase_id` as `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` as `proposed`.
+- Ran `uv run pytest tests/unit/test_backfill_manifest.py`: passed, 8 passed.
+- Ran `uv run ruff check src/nba_data/scraping/backfill_manifest.py src/nba_data/cli/main.py tests/unit/test_backfill_manifest.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 63 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 63 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, implement the
+  runtime acquisition runner, write raw HTML outside temporary test cache,
+  write DB data, apply migrations, run parse/load offline, activate Phase 4
+  SQLAlchemy migration or Phase 4C, delete legacy/Peewee code, commit, push,
+  open a PR, or implement API/frontend/OVR work.

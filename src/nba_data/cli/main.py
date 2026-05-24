@@ -5,11 +5,17 @@ from rich.console import Console
 
 from nba_data import __version__
 from nba_data.config.settings import get_settings
+from nba_data.scraping.backfill_manifest import (
+    ManifestValidationError,
+    dry_run_backfill_manifest,
+)
 from nba_data.scraping.cache import HtmlCache
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
 cache_app = typer.Typer(help="HTML cache utilities.")
+backfill_app = typer.Typer(help="Controlled raw HTML backfill utilities.")
 app.add_typer(cache_app, name="cache")
+app.add_typer(backfill_app, name="backfill")
 console = Console()
 
 
@@ -47,3 +53,16 @@ def cache_path(url: str) -> None:
     cache = HtmlCache(settings.scraper_cache_dir)
     path: Path = cache.path_for_url(url)
     console.print(str(path))
+
+
+@backfill_app.command("dry-run")
+def backfill_dry_run(manifest_path: Path) -> None:
+    """Validate and plan an approved manifest without downloading anything."""
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        report = dry_run_backfill_manifest(manifest_path, cache=cache)
+    except ManifestValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print_json(data=report.to_dict())

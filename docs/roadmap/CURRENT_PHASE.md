@@ -28,31 +28,31 @@ cache-first, sequential, and auditable.
   task.
 - `F4B-003` is `done` after owner approval, review, and offline validation for
   the sequential cache-first acquisition runner implementation.
-- `F4B-LIVE-001` is `needs_review` after the owner-approved two-URL live
-  acquisition pilot.
+- `F4B-LIVE-001` is `done` after the owner-approved two-URL live acquisition
+  pilot, review approval, and offline validation.
+- No task is currently `approved`, `in_progress`, or `needs_review`.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and loading remains future work.
 
 ## Current Guardrails
 
-- Do not approve or start `F4B-LIVE-001` while this phase is `proposed` unless
-  the owner explicitly approves the exact manifest and task.
-- Do not run live scraping, contact Basketball Reference, or execute a backfill
-  pilot without owner approval for the exact manifest.
+- Do not run live scraping, contact Basketball Reference, or execute another
+  backfill pilot without owner approval for the exact manifest.
 - Do not write database data, apply migrations, delete legacy/Peewee code,
   delete raw HTML, or implement API/frontend/OVR work.
-- Live acquisition, when later approved, must remain sequential, cache-first,
-  default to 10 requests/minute, and never exceed 20 requests/minute.
-- The first real backfill pilot defaults to at most five team-season URLs.
+- Any later live acquisition must remain sequential, cache-first, default to 10
+  requests/minute, and never exceed 20 requests/minute.
+- Any later real backfill pilot defaults to at most five team-season URLs unless
+  a new exact manifest is explicitly approved.
 - Player-specific pages are outside the initial pilot unless a later task and
   exact manifest explicitly approve them.
 
 ## Next Safe Action
 
-Review the `F4B-LIVE-001` pilot result and either close the task as `done` or
-request changes. Do not rerun the live acquisition or expand the manifest
-without separate explicit owner approval.
+Decide whether to close Phase 4B with a phase transition summary or explicitly
+approve a future task. Do not start Phase 4C or Phase 4 SQLAlchemy migration
+work without separate explicit owner approval.
 
 ## References
 

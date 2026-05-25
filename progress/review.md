@@ -403,3 +403,47 @@ without network calls, fetches misses sequentially through a
 - No live scraping, Basketball Reference contact, live pilot, DB writes,
   migrations, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
   branch creation, push, or PR occurred.
+
+## Phase 4B F4B-LIVE-001 Review
+
+Status: approved
+
+`F4B-LIVE-001` is approved for closure. The owner-approved two-URL manifest
+stayed within Phase 4B acquisition-only scope: BOS 2024 was served from cache,
+DEN 2023 was fetched once through the controlled runner, and the fetched HTML
+was stored as `.html.gz` through `HtmlCache`.
+
+## Phase 4B F4B-LIVE-001 Result
+
+- Manifest:
+  `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+- Approved URLs:
+  `https://www.basketball-reference.com/teams/BOS/2024.html` and
+  `https://www.basketball-reference.com/teams/DEN/2023.html`.
+- Pre-run dry-run: 2 entries, 1 cache hit, 1 cache miss, 1 estimated live
+  request.
+- Acquisition: 2 processed entries, 1 cache hit, 1 fetched page, 0 failures,
+  and `live_request_count=1`.
+- DEN 2023 cache path:
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- DEN 2023 gzip inspection: 139188 bytes compressed, 911464 HTML characters,
+  expected Denver/roster/totals/advanced markers present, wrong-team Boston
+  marker absent.
+- Post-run dry-run: 2 cache hits, 0 cache misses, 0 estimated live requests.
+
+## Phase 4B F4B-LIVE-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed.
+- `uv run nba-data backfill dry-run tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed with 2 cache hits and 0 estimated live requests.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+No rerun live acquisition, extra Basketball Reference contact, DB writes,
+migrations, parser/load offline processing, full historical scraping,
+concurrency, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
+branch creation, commit, push, or PR occurred during review closure.

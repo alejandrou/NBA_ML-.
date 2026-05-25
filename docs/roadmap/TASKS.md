@@ -17,23 +17,26 @@
 - `F4B-001`: Design controlled raw HTML backfill manifest.
 - `F4B-002`: Add raw HTML backfill manifest dry-run validation.
 - `F4B-003`: Add sequential cache-first raw HTML acquisition runner.
+- `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot.
 
 ## Current
 
 - Current phase: `phase-4b-controlled-raw-html-backfill`.
 - Current phase status: `proposed`.
-- `F4B-001`, `F4B-002`, and `F4B-003` are `done`.
-- `F4B-LIVE-001` is `needs_review`.
+- `F4B-001`, `F4B-002`, `F4B-003`, and `F4B-LIVE-001` are `done`.
+- No task is currently `approved`, `in_progress`, or `needs_review`.
 
 ## Needs Review
 
-- `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot.
+- None.
 
 ## Next
 
-- Next safe action: review the `F4B-LIVE-001` pilot result.
-- Do not rerun live acquisition, expand the manifest, or contact Basketball
-  Reference again without exact owner approval.
+- Next safe action: decide whether to close Phase 4B with a transition summary
+  or explicitly approve a future task.
+- Do not rerun live acquisition, expand the manifest, contact Basketball
+  Reference, start Phase 4C, or start Phase 4 SQLAlchemy migration without
+  exact owner approval.
 
 ## Later
 

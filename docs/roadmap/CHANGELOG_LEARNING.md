@@ -1263,3 +1263,38 @@ any parser/load or database work.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 36 - Phase 4B Live Pilot Review Closure
+
+### What Changed
+
+Reviewed and closed `F4B-LIVE-001` as `done` after confirming the owner-approved
+two-URL raw HTML pilot met its acceptance criteria and passed offline
+validation.
+
+### Why
+
+The pilot needed a formal review gate before any roadmap decision about closing
+Phase 4B, starting Phase 4C, or approving Phase 4 SQLAlchemy migration work.
+
+### Concepts Learned
+
+- The controlled pilot produced the intended cache state: BOS 2024 stayed a
+  cache hit and DEN 2023 became a readable `.html.gz` cache artifact.
+- A post-run dry-run is the safest repeatable proof that the manifest now needs
+  zero live requests.
+- Closing the live pilot does not approve Phase 4C, SQLAlchemy migrations,
+  offline loading, API/frontend work, or another live manifest.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`
+- `progress/review.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`,
+`python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`,
+`uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.

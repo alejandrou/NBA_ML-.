@@ -1,20 +1,19 @@
 # Current Work
 
-Status: phase_4b_f4b_live_001_needs_review
+Status: phase_4b_ready_for_roadmap_decision
 
 ## Active Task
 
 - `F4B-002` is `done` after review approval and validation.
 - `F4B-003` is `done` after owner approval, review approval, and validation.
-- `F4B-LIVE-001` is `needs_review` after the owner-approved pilot.
-- No task is currently `approved` or `in_progress`.
+- `F4B-LIVE-001` is `done` after review approval and offline validation.
+- No task is currently `approved`, `in_progress`, or `needs_review`.
 
 ## Current Phase
 
 - Phase ID: `phase-4b-controlled-raw-html-backfill`
 - Phase status: `proposed`
-- `F4B-001`, `F4B-002`, and `F4B-003` are `done`.
-- `F4B-LIVE-001` is `needs_review` after the approved two-URL pilot manifest.
+- `F4B-001`, `F4B-002`, `F4B-003`, and `F4B-LIVE-001` are `done`.
 - Phase 4 SQLAlchemy migration is not active; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and load remains future work.
@@ -61,16 +60,17 @@ Acquisition result:
 
 ## Next Safe Action
 
-Review the `F4B-LIVE-001` pilot result and either close the task as `done` or
-request changes. Do not rerun live acquisition or expand the manifest without
-separate exact owner approval.
+Decide whether to close Phase 4B with a phase transition summary or explicitly
+approve a future task. Do not rerun live acquisition, expand the manifest,
+start Phase 4C, or start Phase 4 SQLAlchemy migration without separate exact
+owner approval.
 
 ## Continuation Handoff
 
 - Current branch: `feature/fase-4a-legacy-scraper-consolidation`.
 - `F4B-003` is closed as `done`.
-- `F4B-LIVE-001` is `needs_review`.
-- The owner approved the exact two-URL manifest in the current request.
+- `F4B-LIVE-001` is closed as `done`.
+- The owner-approved two-URL manifest pilot is complete and reviewed.
 - Do not expand the manifest, create a branch, commit, push, or open a PR
   without separate approval.
 
@@ -97,3 +97,6 @@ API/frontend/OVR, commit, push, or PR occurred.
 - `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   70 passed and 6 Peewee deprecation warnings.
+- Offline review verified the DEN 2023 gzip cache is readable with 911464
+  characters, contains the Denver, `roster`, `totals_stats`, and `advanced`
+  markers, and does not contain the wrong-team Boston marker.

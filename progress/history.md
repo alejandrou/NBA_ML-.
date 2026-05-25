@@ -1091,3 +1091,41 @@ Tarea inicial:
   run full historical scraping, use concurrency, delete raw HTML, delete
   legacy/Peewee code, activate Phase 4 SQLAlchemy migration or Phase 4C,
   create a branch, commit, push, open a PR, or implement API/frontend/OVR work.
+
+## Phase 4B F4B-LIVE-001 Review Closure
+
+- Reviewed `F4B-LIVE-001` against its acceptance criteria and approved closure.
+- Confirmed the exact approved manifest was
+  `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+- Confirmed the pilot used only two approved team-season URLs:
+  `https://www.basketball-reference.com/teams/BOS/2024.html` and
+  `https://www.basketball-reference.com/teams/DEN/2023.html`.
+- Confirmed BOS 2024 was a cache hit and DEN 2023 was fetched once through the
+  controlled acquisition runner.
+- Confirmed acquisition totals: 2 processed entries, 1 cache hit, 1 fetched
+  page, 0 failures, and 1 live request.
+- Verified the DEN 2023 cached gzip offline at
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- Verified the DEN 2023 gzip is readable with 911464 HTML characters, contains
+  the expected Denver, `roster`, `totals_stats`, and `advanced` markers, and
+  does not contain the wrong-team Boston marker.
+- Verified the post-run dry-run reports 2 cache hits, 0 cache misses, and 0
+  estimated live requests.
+- Marked `F4B-LIVE-001` as `done`.
+- Kept `current_phase_id` as `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` as `proposed`.
+- Confirmed no task is currently `approved`, `in_progress`, or `needs_review`.
+- Kept Phase 4 SQLAlchemy migration and Phase 4C tasks `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran
+  `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 70 passed and 6 Peewee deprecation warnings.
+- Did not rerun live acquisition, contact Basketball Reference, write DB data,
+  apply migrations, run parser/load offline processing, start Phase 4C,
+  activate Phase 4 SQLAlchemy migration, delete raw HTML, delete legacy/Peewee
+  code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR work.

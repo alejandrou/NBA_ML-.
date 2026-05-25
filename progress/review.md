@@ -373,3 +373,33 @@ cache hit/miss state, and estimated live request count, and exposes an offline
 - No live scraping, Basketball Reference contact, raw HTML writes outside
   temporary test cache, DB writes, migrations, runner execution, API/frontend,
   or OVR work occurred.
+
+## Phase 4B F4B-003 Review
+
+Status: approved
+
+`F4B-003` is approved for closure. The acquisition runner consumes approved
+manifests, checks `HtmlCache` before each client call, records cache hits
+without network calls, fetches misses sequentially through a
+`BasketballReferenceClient`-compatible client, writes fetched HTML through
+`HtmlCache`, and stops with a partial report on client failure.
+
+## Phase 4B F4B-003 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+## Phase 4B F4B-003 Notes
+
+- The CLI acquisition command still requires
+  `--execute-approved-manifest`.
+- Unit tests use fakes and temporary caches only.
+- `F4B-LIVE-001` is moved to `ready`, not `approved`.
+- No live scraping, Basketball Reference contact, live pilot, DB writes,
+  migrations, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
+  branch creation, push, or PR occurred.

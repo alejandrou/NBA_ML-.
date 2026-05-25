@@ -1180,3 +1180,86 @@ central Basketball Reference client.
 Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
 `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 34 - Phase 4B F4B-003 Review Closure
+
+### What Changed
+
+Closed `F4B-003` as `done` after owner approval and review. Moved
+`F4B-LIVE-001` to `ready` for exact-manifest preparation while keeping Phase 4B
+in `proposed` status.
+
+### Why
+
+The acquisition runner is implemented and validated, but the live pilot remains
+a separate sensitive gate that requires owner approval for the exact manifest
+before any Basketball Reference request.
+
+### Concepts Learned
+
+- `ready` is not approval to run live acquisition.
+- The execution flag protects the CLI, but the exact manifest still needs
+  owner approval before a live pilot.
+- Phase 4B remains acquisition-only; parsing, loading, DB writes, migrations,
+  API/frontend, and OVR work stay out of scope.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+- `progress/review.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 35 - Phase 4B Live Raw HTML Pilot
+
+### What Changed
+
+Ran the owner-approved `F4B-LIVE-001` two-URL raw HTML acquisition pilot using
+the controlled manifest at
+`tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+
+### Why
+
+Phase 4B needed one small live proof that the approved manifest flow remains
+cache-first, sequential, and limited to `.html.gz` raw HTML acquisition before
+any parser/load or database work.
+
+### Concepts Learned
+
+- The dry-run gate correctly reported BOS 2024 as a cache hit and DEN 2023 as
+  the only cache miss.
+- The acquisition runner made one live request for the DEN 2023 cache miss,
+  skipped the cached BOS 2024 page, and stored the fetched page through
+  `HtmlCache`.
+- A post-run dry-run can verify the cache now covers every manifest entry
+  without contacting Basketball Reference.
+
+### Result
+
+- Pre-run dry-run: 2 total entries, 1 cache hit, 1 cache miss, 1 estimated live
+  request.
+- Acquisition: 2 processed entries, 1 cache hit, 1 fetched page, 0 failures, 1
+  live request.
+- New cache artifact:
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- Post-run dry-run: 2 cache hits, 0 cache misses, 0 estimated live requests.
+- Validation passed: manifest JSON, task JSON, Ruff, Pytest, and Git Bash
+  harness validation.
+- `F4B-LIVE-001` is now `needs_review`.
+
+### Files to Read
+
+- `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`
+- `tasks/feature-list.json`
+- `progress/current.md`
+- `progress/history.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.

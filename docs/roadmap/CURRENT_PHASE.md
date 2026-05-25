@@ -26,17 +26,18 @@ cache-first, sequential, and auditable.
   manifest task.
 - `F4B-002` is `done` after review approval for the offline dry-run validation
   task.
-- `F4B-003` is `needs_review` after explicit owner approval for the sequential
-  cache-first acquisition runner implementation.
-- `F4B-LIVE-001` remains `pending`.
+- `F4B-003` is `done` after owner approval, review, and offline validation for
+  the sequential cache-first acquisition runner implementation.
+- `F4B-LIVE-001` is `needs_review` after the owner-approved two-URL live
+  acquisition pilot.
 - Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
   `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and loading remains future work.
 
 ## Current Guardrails
 
-- Do not approve or start `F4B-003` or `F4B-LIVE-001` while this phase is
-  `proposed` unless the owner explicitly approves the task.
+- Do not approve or start `F4B-LIVE-001` while this phase is `proposed` unless
+  the owner explicitly approves the exact manifest and task.
 - Do not run live scraping, contact Basketball Reference, or execute a backfill
   pilot without owner approval for the exact manifest.
 - Do not write database data, apply migrations, delete legacy/Peewee code,
@@ -49,9 +50,9 @@ cache-first, sequential, and auditable.
 
 ## Next Safe Action
 
-Review `F4B-003`, the sequential cache-first acquisition runner task. Do not
-run the acquisition runner against Basketball Reference or run a live pilot
-without separate explicit approval for the exact manifest.
+Review the `F4B-LIVE-001` pilot result and either close the task as `done` or
+request changes. Do not rerun the live acquisition or expand the manifest
+without separate explicit owner approval.
 
 ## References
 

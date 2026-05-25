@@ -1,0 +1,31 @@
+{
+  "manifest_id": "pilot-team-season-20260525",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-05-25T00:00:00Z",
+  "scope": {
+    "page_type": "team_season",
+    "max_urls": 2
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "entries": [
+    {
+      "page_type": "team_season",
+      "url": "https://www.basketball-reference.com/teams/BOS/2024.html",
+      "team": "BOS",
+      "season_end_year": 2024
+    },
+    {
+      "page_type": "team_season",
+      "url": "https://www.basketball-reference.com/teams/DEN/2023.html",
+      "team": "DEN",
+      "season_end_year": 2023
+    }
+  ]
+}

@@ -1027,3 +1027,67 @@ Tarea inicial:
   run `F4B-LIVE-001`, write DB data, apply migrations, delete legacy/Peewee
   code, open a PR, or implement API/frontend/OVR work without explicit owner
   approval.
+
+## Phase 4B F4B-003 Review Closure
+
+- Owner approved closing `F4B-003` as `done`.
+- Reviewed the sequential cache-first acquisition runner against the Phase 4B
+  acceptance criteria.
+- Confirmed the runner validates approved manifests, checks `HtmlCache` before
+  every client request, records cache hits without network calls, fetches cache
+  misses through a `BasketballReferenceClient`-compatible client, writes only
+  through `HtmlCache`, and returns partial reports on client failure.
+- Marked `F4B-003` as `done`.
+- Marked `F4B-LIVE-001` as `ready` so the exact pilot manifest can be prepared
+  and reviewed.
+- Kept `current_phase_id` as `phase-4b-controlled-raw-html-backfill` and
+  `current_phase_status` as `proposed`.
+- Kept Phase 4 SQLAlchemy migration and Phase 4C tasks `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, execute
+  `nba-data backfill acquire`, run a live pilot, write DB data, apply
+  migrations, parse/load offline data, activate Phase 4 SQLAlchemy migration
+  or Phase 4C, delete legacy/Peewee code, create a branch, push, open a PR, or
+  implement API/frontend/OVR work.
+
+## Phase 4B F4B-LIVE-001 Raw HTML Backfill Pilot
+
+- Owner explicitly approved implementing the exact two-URL manifest:
+  `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+- Promoted `F4B-LIVE-001` from `ready` to `in_progress` while keeping
+  `current_phase_status` as `proposed`.
+- Ran the offline dry-run before live acquisition.
+- Pre-run dry-run result: 2 total entries, 1 cache hit, 1 cache miss, and 1
+  estimated live request.
+- BOS 2024 was a cache hit at
+  `data\raw\html\basketball-reference\teams-bos-2024.html-8ef926a311c6bcbf.html.gz`.
+- DEN 2023 was a cache miss before acquisition at
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- Ran
+  `uv run nba-data backfill acquire tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json --execute-approved-manifest`.
+- Acquisition result: 2 processed entries, 1 cache hit, 1 fetched page, 0
+  failures, and 1 live request.
+- DEN 2023 was fetched through the controlled acquisition path and stored as
+  `.html.gz` in `HtmlCache`.
+- DEN 2023 cache file size after acquisition: 139188 bytes.
+- Post-run dry-run result: 2 cache hits, 0 cache misses, and 0 estimated live
+  requests.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran
+  `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 70 passed and 6 Peewee deprecation warnings.
+- Moved `F4B-LIVE-001` to `needs_review`.
+- Did not run parser/load offline processing, write DB data, apply migrations,
+  run full historical scraping, use concurrency, delete raw HTML, delete
+  legacy/Peewee code, activate Phase 4 SQLAlchemy migration or Phase 4C,
+  create a branch, commit, push, open a PR, or implement API/frontend/OVR work.

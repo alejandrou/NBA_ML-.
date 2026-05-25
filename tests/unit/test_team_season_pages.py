@@ -5,8 +5,12 @@ import pytest
 
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.team_season_pages import (
+    CachedBasketballReferencePageProvider,
     CachedTeamSeasonHtmlProvider,
+    build_team_season_games_url,
     build_team_season_url,
+    build_teams_index_url,
+    fetch_basketball_reference_html,
     fetch_team_season_html,
     parse_cached_team_season_page,
 )
@@ -37,6 +41,55 @@ def test_build_team_season_url_is_deterministic() -> None:
 def test_build_team_season_url_rejects_empty_team() -> None:
     with pytest.raises(ValueError, match="team_abbreviation"):
         build_team_season_url(" ", 2024)
+
+
+@pytest.mark.unit
+def test_build_teams_index_url_is_deterministic() -> None:
+    assert build_teams_index_url() == "https://www.basketball-reference.com/teams/"
+
+
+@pytest.mark.unit
+def test_build_team_season_games_url_is_deterministic() -> None:
+    assert (
+        build_team_season_games_url(" bos ", 2024)
+        == "https://www.basketball-reference.com/teams/BOS/2024_games.html"
+    )
+
+
+@pytest.mark.unit
+def test_fetch_basketball_reference_html_uses_cache_before_client(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_teams_index_url()
+    html = "<html>teams index</html>"
+    cache.set(url, html)
+    client = FakeClient()
+
+    assert fetch_basketball_reference_html(url, cache=cache, client=client) == html
+    assert client.calls == []
+
+
+@pytest.mark.unit
+def test_fetch_basketball_reference_html_fetches_and_caches_on_miss(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_games_url("BOS", 2024)
+    html = "<html>games</html>"
+    client = FakeClient(html)
+
+    assert fetch_basketball_reference_html(url, cache=cache, client=client) == html
+    assert client.calls == [(url, False)]
+    assert cache.get(url) == html
+    assert cache.path_for_url(url).name.endswith(".html.gz")
+
+
+@pytest.mark.unit
+def test_fetch_basketball_reference_html_rejects_non_bref_url(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    client = FakeClient()
+
+    with pytest.raises(ValueError, match="Basketball Reference URL"):
+        fetch_basketball_reference_html("https://example.com/teams/", cache=cache, client=client)
+
+    assert client.calls == []
 
 
 @pytest.mark.unit
@@ -103,6 +156,20 @@ def test_cached_team_season_html_provider_fetches_once_and_stores_gzip(tmp_path)
     assert client.calls == [(url, False)]
     assert cache.get(url) == html
     assert cache.path_for_url(url).name.endswith(".html.gz")
+
+
+@pytest.mark.unit
+def test_cached_team_season_html_provider_can_use_generic_page_provider(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    html = REALISTIC_FIXTURE.read_text(encoding="utf-8")
+    client = FakeClient(html)
+    page_provider = CachedBasketballReferencePageProvider(cache=cache, client=client)
+    provider = CachedTeamSeasonHtmlProvider(page_provider=page_provider)
+    url = build_team_season_url("BOS", 2024)
+
+    assert provider.get_html("BOS", 2024) == html
+    assert provider.get_html("BOS", 2024) == html
+    assert client.calls == [(url, False)]
 
 
 @pytest.mark.unit

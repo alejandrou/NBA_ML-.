@@ -219,3 +219,231 @@ offline-only.
 - No live scraping, Basketball Reference contact, DB writes, DB migrations,
   legacy/Peewee deletion, branch/PR/commit/push, or API/frontend/OVR work
   occurred.
+
+## Phase 4A F4A-000 Review
+
+Status: approved
+
+`F4A-000` is approved for closure. The feature spec and ADRs define the needed
+validation strategy before legacy scraper consolidation starts: offline parity
+from frozen or fixture-copied cached HTML, legacy roster/totals/advanced
+comparison, golden fixture allowance, and a separate manual one-page acquisition
+smoke test.
+
+## Phase 4A F4A-000 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 4A F4A-000 Notes
+
+- Manual live smoke tests must use `BasketballReferenceClient` and `HtmlCache`.
+- Smoke-test defaults remain one approved URL, at most one live request on
+  cache miss, 10 requests/minute default, and 20 requests/minute maximum.
+- HTTP 429 stops safely through the central client behavior.
+- Unit tests and CI remain fully offline.
+- Bounded concurrency is allowed only for already-cached local HTML in future
+  approved tasks.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, Phase 4 activation,
+  API/frontend/OVR work, commit, push, or PR occurred.
+
+## Phase 4A F4A-002 Review
+
+Status: approved
+
+`F4A-002` is approved for closure. The missing feature spec now exists and
+documents a bounded offline-only path from cached `.html.gz` files through
+parser, normalizer, validator, and a future Phase 4 idempotent loader boundary.
+The design explicitly rejects network clients, cache refreshes, live scraping,
+runtime processor implementation, DB writes, migrations, and API/frontend/OVR
+work.
+
+## Phase 4A F4A-002 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  43 passed and 3 Peewee deprecation warnings.
+
+## Phase 4A F4A-002 Notes
+
+- Default offline processing is sequential with `max_workers=1`.
+- Thread, process, and async execution are allowed only as bounded local work
+  over already-cached HTML.
+- Future cache misses must fail instead of making live requests.
+- Phase 4 SQLAlchemy migration remains inactive.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, runtime processor,
+  API/frontend/OVR work, commit, push, or PR occurred.
+
+## Phase 4A F4A-001 Review
+
+Status: approved
+
+`F4A-001` is approved for closure. The implementation adds a generic
+cache-first Basketball Reference page provider, keeps the existing team-season
+provider compatibility, and consolidates legacy player and included team
+scrapers so normal operation no longer depends on direct `httpx.AsyncClient`
+or `requests.get` calls.
+
+## Phase 4A F4A-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+
+## Phase 4A F4A-001 Notes
+
+- Player roster, totals, and advanced scrapers share one
+  `LegacyTeamSeasonTableAdapter` from `PlayerOperations`.
+- One team-season provider read can feed roster, totals, and advanced rows for
+  the same team/year while preserving loader-facing legacy keys.
+- Included team scrapers use the generic page provider for `/teams/` and
+  `_games.html` URLs.
+- Consolidated legacy paths no longer contain per-scraper manual sleeps or
+  live async fan-out.
+- No live scraping, Basketball Reference contact, controlled backfill, DB
+  writes, DB migrations, legacy/Peewee deletion, API/frontend/OVR work, commit,
+  push, or PR occurred.
+
+## Phase 4B F4B-001 Review
+
+Status: approved
+
+`F4B-001` is approved for closure. The feature spec documents the controlled raw
+HTML backfill manifest as a design-only contract and does not introduce a
+runtime runner, live request path, database write, migration, parser/load
+execution, API/frontend/OVR work, or historical full scrape.
+
+## Phase 4B F4B-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 55 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  55 passed and 6 Peewee deprecation warnings.
+
+## Phase 4B F4B-001 Notes
+
+- Manifest flow is documented as
+  `approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`.
+- Initial pilot default is at most five `team_season` URLs matching
+  `/teams/{TEAM}/{YEAR}.html`.
+- Live acquisition remains sequential, cache-first, 10 requests/minute by
+  default, and never above 20 requests/minute.
+- Any live request requires exact owner approval for the manifest.
+- Player-specific pages remain future scope unless a later task and exact
+  manifest explicitly approve them.
+- `F4B-002`, `F4B-003`, `F4B-LIVE-001`, Phase 4 SQLAlchemy tasks, and Phase 4C
+  tasks remain pending.
+
+## Phase 4B F4B-002 Review
+
+Status: approved
+
+`F4B-002` is approved for closure. The implementation validates approved
+`team_season` raw HTML backfill manifests, reports expected cache paths,
+cache hit/miss state, and estimated live request count, and exposes an offline
+`nba-data backfill dry-run <manifest.json>` command.
+
+## Phase 4B F4B-002 Checks
+
+- `uv run pytest tests/unit/test_backfill_manifest.py`: passed, 8 passed
+  before closure.
+- `uv run ruff check src/nba_data/scraping/backfill_manifest.py src/nba_data/cli/main.py tests/unit/test_backfill_manifest.py`:
+  passed before closure.
+
+## Phase 4B F4B-002 Notes
+
+- Dry-run validation does not accept a network client.
+- Cache misses are counted as estimated future live requests only.
+- No live scraping, Basketball Reference contact, raw HTML writes outside
+  temporary test cache, DB writes, migrations, runner execution, API/frontend,
+  or OVR work occurred.
+
+## Phase 4B F4B-003 Review
+
+Status: approved
+
+`F4B-003` is approved for closure. The acquisition runner consumes approved
+manifests, checks `HtmlCache` before each client call, records cache hits
+without network calls, fetches misses sequentially through a
+`BasketballReferenceClient`-compatible client, writes fetched HTML through
+`HtmlCache`, and stops with a partial report on client failure.
+
+## Phase 4B F4B-003 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+## Phase 4B F4B-003 Notes
+
+- The CLI acquisition command still requires
+  `--execute-approved-manifest`.
+- Unit tests use fakes and temporary caches only.
+- `F4B-LIVE-001` is moved to `ready`, not `approved`.
+- No live scraping, Basketball Reference contact, live pilot, DB writes,
+  migrations, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
+  branch creation, push, or PR occurred.
+
+## Phase 4B F4B-LIVE-001 Review
+
+Status: approved
+
+`F4B-LIVE-001` is approved for closure. The owner-approved two-URL manifest
+stayed within Phase 4B acquisition-only scope: BOS 2024 was served from cache,
+DEN 2023 was fetched once through the controlled runner, and the fetched HTML
+was stored as `.html.gz` through `HtmlCache`.
+
+## Phase 4B F4B-LIVE-001 Result
+
+- Manifest:
+  `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+- Approved URLs:
+  `https://www.basketball-reference.com/teams/BOS/2024.html` and
+  `https://www.basketball-reference.com/teams/DEN/2023.html`.
+- Pre-run dry-run: 2 entries, 1 cache hit, 1 cache miss, 1 estimated live
+  request.
+- Acquisition: 2 processed entries, 1 cache hit, 1 fetched page, 0 failures,
+  and `live_request_count=1`.
+- DEN 2023 cache path:
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- DEN 2023 gzip inspection: 139188 bytes compressed, 911464 HTML characters,
+  expected Denver/roster/totals/advanced markers present, wrong-team Boston
+  marker absent.
+- Post-run dry-run: 2 cache hits, 0 cache misses, 0 estimated live requests.
+
+## Phase 4B F4B-LIVE-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed.
+- `uv run nba-data backfill dry-run tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`:
+  passed with 2 cache hits and 0 estimated live requests.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+No rerun live acquisition, extra Basketball Reference contact, DB writes,
+migrations, parser/load offline processing, full historical scraping,
+concurrency, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
+branch creation, commit, push, or PR occurred during review closure.

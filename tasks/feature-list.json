@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-3-parser-normalization",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4b-controlled-raw-html-backfill",
+  "current_phase_status": "proposed",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -547,6 +547,264 @@
       ]
     },
     {
+      "id": "F4A-000",
+      "title": "Add legacy parity and acquisition smoke-test strategy",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "done",
+      "description": "Define offline parity tests and a gated one-page live acquisition smoke-test strategy so legacy scraper consolidation can be validated safely before controlled raw HTML backfill.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json remains valid JSON.",
+        "A spec is created for validating legacy-vs-new parser parity from cached HTML only.",
+        "The spec defines golden master tests using frozen HTML fixtures or existing cached HTML copied into test fixtures.",
+        "The parity strategy compares legacy roster, totals, and advanced outputs against the new consolidated parser/adapter.",
+        "Unit tests and CI remain fully offline.",
+        "A separate manual live smoke test is documented for at most one approved Basketball Reference team-season URL.",
+        "The live smoke test validates only acquisition/cache/parser shape, not exact long-term statistical equality.",
+        "The live smoke test uses BasketballReferenceClient and HtmlCache.",
+        "The live smoke test uses a conservative default of 10 requests/minute.",
+        "The live smoke test never exceeds 20 requests/minute.",
+        "HTTP 429 stops the smoke test safely.",
+        "No DB writes are performed by smoke tests.",
+        "No full historical scraping is introduced.",
+        "No async/concurrent live scraping is introduced.",
+        "The strategy explicitly allows bounded concurrent processing only for already-cached local HTML in future tasks."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Implementing controlled backfill",
+        "Running live scraping",
+        "Full historical scraping",
+        "DB loading",
+        "SQLAlchemy migrations",
+        "API/frontend/OVR",
+        "Proxy rotation, user-agent randomization, CAPTCHA bypass, or rate-limit evasion"
+      ]
+    },
+    {
+      "id": "F4A-001",
+      "title": "Consolidate legacy scrapers behind cache-first providers",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "done",
+      "depends_on": [
+        "F4A-000"
+      ],
+      "description": "Refactor or wrap legacy Basketball Reference scrapers so team-season HTML is acquired once through the central cache-first provider and reused for all table parsing, removing direct network access from legacy player/team-season paths before any controlled backfill is implemented.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json remains valid JSON.",
+        "Legacy team-season player scrapers no longer require direct httpx.AsyncClient network access for normal operation.",
+        "Team-season roster, totals, advanced, and other supported tables can be parsed from one cached HTML page per team-season.",
+        "The code avoids downloading the same /teams/{TEAM}/{YEAR}.html page separately for roster, totals, and advanced.",
+        "Any remaining live request path goes through BasketballReferenceClient.",
+        "No requests.get or direct httpx.AsyncClient.get is used for Basketball Reference pages in the consolidated path.",
+        "Manual per-scraper sleeps are removed or bypassed in favor of the central rate-limited client.",
+        "Existing legacy loader-compatible keys are preserved where tests depend on them.",
+        "The implementation supports offline execution from HtmlCache.",
+        "Unit tests use fixtures/mocks and make no network requests.",
+        "No DB writes are introduced.",
+        "No Alembic migrations are introduced.",
+        "No API/frontend/OVR work is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Controlled raw HTML backfill execution",
+        "Full historical scraping",
+        "DB loading",
+        "SQLAlchemy migration changes",
+        "API implementation",
+        "Frontend implementation",
+        "OVR/generated metrics",
+        "Deleting legacy/Peewee code"
+      ]
+    },
+    {
+      "id": "F4A-002",
+      "title": "Design bounded offline cached HTML processing",
+      "phase_id": "phase-4a-legacy-scraper-consolidation",
+      "status": "done",
+      "description": "Design a bounded offline processing path for parsing, normalizing, validating, and loading cached HTML files without making network requests.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4A-002-bounded-offline-cached-html-processing.md and documents the offline processor design.",
+        "The design reads only .html.gz files from HtmlCache.",
+        "No network client is accepted by the offline processor.",
+        "Concurrency is bounded and configurable.",
+        "Parser/normalizer/validator remain pure or side-effect-light.",
+        "DB writes, if discussed, are delegated to Phase 4 idempotent loaders.",
+        "Tests use local fixtures only.",
+        "The design states when to use sequential, thread, process, or async execution."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Controlled raw HTML backfill execution",
+        "Increasing live request rate",
+        "DB writes or loader implementation",
+        "DB schema changes",
+        "API/frontend/OVR"
+      ]
+    },
+    {
+      "id": "F4B-001",
+      "title": "Design controlled raw HTML backfill manifest",
+      "phase_id": "phase-4b-controlled-raw-html-backfill",
+      "status": "done",
+      "depends_on": [
+        "F4A-001",
+        "F4A-002"
+      ],
+      "description": "Define the approved manifest format, pilot scope, approval workflow, and no-DB-write guardrails for controlled Basketball Reference raw HTML backfill.",
+      "acceptance_criteria": [
+        "tasks/feature-list.json remains valid JSON.",
+        "Feature spec exists at specs/features/F4B-001-controlled-raw-html-backfill-manifest.md.",
+        "F4A-001 is confirmed done before Phase 4B becomes current.",
+        "The manifest supports explicit Basketball Reference URLs and page types.",
+        "The initial pilot scope is small and defaults to at most five team-season URLs.",
+        "The manifest approval workflow requires owner approval before any live request.",
+        "The design keeps live acquisition sequential, cache-first, and rate-limited.",
+        "The design writes only .html.gz raw HTML through HtmlCache.",
+        "The design performs no DB writes, migrations, API/frontend/OVR work, or historical full load.",
+        "Player-specific pages are documented as future scope unless explicitly added to a later manifest."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "expected_files": [
+        "specs/features/F4B-001-controlled-raw-html-backfill-manifest.md"
+      ],
+      "out_of_scope": [
+        "Running live scraping",
+        "Contacting Basketball Reference",
+        "Implementing the runtime backfill runner",
+        "Full historical scraping",
+        "DB loading",
+        "SQLAlchemy migrations",
+        "API/frontend/OVR"
+      ]
+    },
+    {
+      "id": "F4B-002",
+      "title": "Add raw HTML backfill manifest dry-run validation",
+      "phase_id": "phase-4b-controlled-raw-html-backfill",
+      "status": "done",
+      "depends_on": [
+        "F4B-001"
+      ],
+      "description": "Implement manifest validation and dry-run reporting that plans approved Basketball Reference URLs without making network requests.",
+      "acceptance_criteria": [
+        "Dry-run reads the manifest and reports planned URLs, page types, expected cache paths, and estimated live request count.",
+        "Dry-run never accepts a generic network client and never contacts Basketball Reference.",
+        "Invalid duplicate, unsupported, or unapproved URLs fail with actionable errors.",
+        "Tests use local manifest fixtures only.",
+        "No DB writes, migrations, API/frontend/OVR work, or live scraping are introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Writing raw HTML",
+        "DB loading",
+        "Full historical load"
+      ]
+    },
+    {
+      "id": "F4B-003",
+      "title": "Add sequential cache-first raw HTML acquisition runner",
+      "phase_id": "phase-4b-controlled-raw-html-backfill",
+      "status": "done",
+      "depends_on": [
+        "F4B-002"
+      ],
+      "description": "Implement the controlled acquisition runner that consumes an approved manifest, checks HtmlCache first, and fetches cache misses through BasketballReferenceClient only.",
+      "sensitive_gates": [
+        "live_scraping",
+        "contact_basketball_reference"
+      ],
+      "acceptance_criteria": [
+        "Runner refuses to run without explicit approved manifest metadata.",
+        "Each URL checks HtmlCache before any client request.",
+        "Cache hits make no live requests.",
+        "Cache misses use BasketballReferenceClient and store .html.gz through HtmlCache.",
+        "Live acquisition is sequential and uses the default 10 requests/minute policy.",
+        "The runner never exceeds 20 requests/minute.",
+        "HTTP 429 stops the run safely through central client behavior.",
+        "The runner records acquisition results without writing database rows.",
+        "Unit tests use fakes/mocks and make no network requests."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Running a live backfill",
+        "Concurrent live scraping",
+        "DB loading",
+        "Full historical scraping",
+        "API/frontend/OVR"
+      ]
+    },
+    {
+      "id": "F4B-LIVE-001",
+      "title": "Run owner-approved raw HTML backfill pilot",
+      "phase_id": "phase-4b-controlled-raw-html-backfill",
+      "status": "done",
+      "depends_on": [
+        "F4B-003"
+      ],
+      "sensitive_gates": [
+        "live_scraping",
+        "contact_basketball_reference"
+      ],
+      "description": "Run a small owner-approved manifest pilot to acquire raw HTML into HtmlCache and record results without parsing, loading, or writing DB data.",
+      "acceptance_criteria": [
+        "Owner approves the exact manifest before execution.",
+        "Pilot defaults to at most five team-season URLs unless explicitly approved otherwise.",
+        "At most one live request is made per cache miss.",
+        "Cache hits make no live requests.",
+        "No concurrency is used for live acquisition.",
+        "Rate-limit settings are respected.",
+        "HTTP 429 stops execution safely.",
+        "HTML is stored as .html.gz.",
+        "No DB writes, parsing pipeline execution, migrations, API/frontend/OVR, or full historical scraping are performed.",
+        "Results are reported in progress/history.md and CHANGELOG_LEARNING.md."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Historical full backfill",
+        "DB loading",
+        "Offline processing",
+        "API/frontend/OVR"
+      ]
+    },
+    {
       "id": "F4-001",
       "title": "Implement core team/player/season SQLAlchemy migrations",
       "phase_id": "phase-4-sqlalchemy-migration",
@@ -605,6 +863,99 @@
       "out_of_scope": [
         "Production deployment",
         "Data deletion"
+      ]
+    },
+    {
+      "id": "F4C-001",
+      "title": "Implement offline cached HTML processor",
+      "phase_id": "phase-4c-offline-cached-html-processing-and-load",
+      "status": "pending",
+      "depends_on": [
+        "F4B-LIVE-001"
+      ],
+      "description": "Implement an offline processor that reads already-cached .html.gz files, then parses, normalizes, and validates team-season rows without accepting any network client.",
+      "acceptance_criteria": [
+        "Processor reads only existing .html.gz cache entries or explicit paths under the cache root.",
+        "Cache misses fail and never refresh the cache.",
+        "No BasketballReferenceClient, requests, httpx, or generic network client is accepted.",
+        "Processing order is .html.gz -> parse -> normalize -> validate.",
+        "Default execution is sequential with max_workers=1.",
+        "Any concurrency is bounded and limited to local cached HTML work.",
+        "Processor output is validated normalized rows and actionable errors, not database writes.",
+        "Tests use local fixtures or temporary cache files only."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Refreshing cache misses",
+        "DB loading",
+        "SQLAlchemy migrations",
+        "API/frontend/OVR"
+      ]
+    },
+    {
+      "id": "F4C-002",
+      "title": "Connect offline processor to idempotent loaders",
+      "phase_id": "phase-4c-offline-cached-html-processing-and-load",
+      "status": "pending",
+      "depends_on": [
+        "F4-002",
+        "F4-003",
+        "F4C-001"
+      ],
+      "description": "Load only validated normalized rows from the offline processor through Phase 4 SQLAlchemy idempotent repositories.",
+      "acceptance_criteria": [
+        "Loading starts from validated normalized rows, not raw HTML.",
+        "Loaders reject or quarantine invalid rows before DB writes.",
+        "Idempotent upserts can be rerun without duplicate rows.",
+        "Source lineage links loaded rows to cached raw HTML metadata where available.",
+        "Integration tests use local database setup and no live scraping.",
+        "No API/frontend/OVR work or full historical load is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Direct loading from HTML without validation",
+        "Full historical load",
+        "API/frontend/OVR"
+      ]
+    },
+    {
+      "id": "F4C-003",
+      "title": "Add offline load reporting and quarantine workflow",
+      "phase_id": "phase-4c-offline-cached-html-processing-and-load",
+      "status": "pending",
+      "depends_on": [
+        "F4C-002"
+      ],
+      "description": "Add auditable reporting for offline processing and loading results, including validation failures, quarantined rows, and retry-safe summaries.",
+      "acceptance_criteria": [
+        "Reports distinguish parsed, validated, loaded, skipped, and quarantined rows.",
+        "Failures include enough source context to rerun or fix parser/normalizer issues.",
+        "Partial failures do not silently create duplicates on retry.",
+        "Reporting works without live scraping or cache refresh.",
+        "Docs explain the operator flow for retrying after fixes."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Historical full load",
+        "API/frontend/OVR"
       ]
     },
     {

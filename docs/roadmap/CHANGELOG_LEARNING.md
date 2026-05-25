@@ -449,6 +449,43 @@ handle `ready` tasks, proposed phases, blocked phases, or phase transitions.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and Git Bash harness validation.
 
+## Checkpoint 28 - Phase 4A F4A-000 Activation
+
+### What Changed
+
+Activated `phase-4a-legacy-scraper-consolidation` and closed `F4A-000` as the
+reviewed strategy gate. Phase 4 SQLAlchemy migration remains inactive, and
+`F4A-001`, `F4A-002`, `F4-001`, `F4-002`, and `F4-003` remain pending.
+
+### Why
+
+Legacy scraper consolidation needs an explicit validation strategy before any
+refactor, controlled raw HTML backfill, loader work, or migration work starts.
+
+### Concepts Learned
+
+- Parser/refactor correctness should be proven offline from frozen or
+  fixture-copied cached HTML.
+- Legacy roster, totals, and advanced outputs remain the temporary parity
+  reference until reviewed normalized contracts replace them.
+- Manual live smoke tests are owner-gated, cache-first, one-page, shape-only,
+  and separate from CI.
+- Live concurrency stays disallowed; bounded concurrency belongs only to future
+  already-cached local HTML processing.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-4a-legacy-scraper-consolidation.md`
+- `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `docs/decisions/0016-live-vs-offline-validation.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
 ### Review Questions
 
 - Should the owner approve `F2-001` as the first Phase 2 task?
@@ -835,3 +872,429 @@ phase transition.
 
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 26 - Phase 4A Backlog Gate
+
+### What Changed
+
+Added proposed Phase 4A backlog and specs for legacy scraper consolidation
+before any controlled raw HTML backfill or Phase 4 SQLAlchemy migration work.
+Added ADR 0015 for live-vs-offline concurrency.
+
+### Why
+
+The future backfill should reuse one clean path:
+`manifest -> BasketballReferenceClient -> HtmlCache -> cached HTML -> parsers`.
+It should not inherit legacy direct network calls, per-scraper sleeps, or
+duplicate downloads of the same team-season page for roster, totals, and
+advanced tables.
+
+### Concepts Learned
+
+- Legacy consolidation is a separate gate from live backfill and DB loading.
+- Live Basketball Reference acquisition remains sequential and cache-first.
+- Offline cached HTML processing may use bounded parallelism later without
+  increasing live request pressure.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/phases/phase-4a-legacy-scraper-consolidation.md`
+- `specs/features/F4A-001-legacy-scraper-cache-provider-consolidation.md`
+- `docs/decisions/0015-live-vs-offline-concurrency.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 27 - Phase 4A Legacy Parity Gate
+
+### What Changed
+
+Added `F4A-000` as a pending Phase 4A task before `F4A-001`, created its
+feature spec, and added ADR 0016 for live-vs-offline validation. `F4A-001` now
+depends on `F4A-000`.
+
+### Why
+
+Legacy scraper consolidation needs a clear validation gate before refactoring
+or controlled raw HTML backfill. Parser/refactor correctness should be proven
+offline from frozen or cached HTML fixtures, while the manual live smoke test
+should validate only acquisition, cache, and parser shape for one approved
+team-season page.
+
+### Concepts Learned
+
+- Legacy output can be used as a temporary behavioral reference for DB
+  compatibility.
+- Live scraping is not needed for parser/refactor correctness.
+- A live smoke test should be cache-first, at most one approved page, and
+  shape-only.
+- Concurrent work belongs only after HTML already exists locally.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/features/F4A-000-legacy-parity-and-acquisition-smoke-test-strategy.md`
+- `docs/decisions/0016-live-vs-offline-validation.md`
+- `docs/decisions/0004-rate-limited-scraping.md`
+- `docs/roadmap/NEXT_DECISIONS.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 28 - Phase 4A Offline Processing Spec
+
+### What Changed
+
+Created `specs/features/F4A-002-bounded-offline-cached-html-processing.md` and
+closed `F4A-002` as a design-only documentation task.
+
+### Why
+
+`tasks/feature-list.json` already contained `F4A-002`, but the matching feature
+spec was missing. The new spec makes the future offline processor boundary
+explicit before any controlled raw HTML backfill, runtime processor, or Phase 4
+loader work begins.
+
+### Concepts Learned
+
+- Offline cached HTML processing should start from already-cached `.html.gz`
+  files and fail on cache miss.
+- Future offline processors must not accept network clients or refresh cache.
+- Bounded parallelism belongs only to local cached HTML work, not live
+  acquisition.
+- Validation remains the gate before any future idempotent loader writes.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/features/F4A-002-bounded-offline-cached-html-processing.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 29 - Phase 4A Legacy Scraper Consolidation
+
+### What Changed
+
+Implemented `F4A-001` by consolidating legacy player/team-season scrapers and
+included team scrapers behind cache-first Basketball Reference providers.
+
+### Why
+
+Future controlled raw HTML backfill needs one responsible acquisition boundary:
+cache before network, central rate-limited client on cache miss, and one
+team-season page feeding multiple parsers. The legacy prototype still had
+direct HTTP calls, manual sleeps, and async fan-out that could duplicate page
+downloads.
+
+### Concepts Learned
+
+- A generic page provider can serve both team-season pages and other
+  Basketball Reference pages while still using `HtmlCache`.
+- A shared adapter lets legacy roster, totals, and advanced scrapers preserve
+  loader-facing keys without fetching the same HTML three times.
+- Included team scrapers can use the same cache-first boundary even when their
+  URLs are not team-season stats pages.
+- Phase 4A can close the acquisition boundary without DB writes, migrations, or
+  controlled backfill execution.
+
+### Files to Read
+
+- `src/nba_data/scraping/team_season_pages.py`
+- `scrap/scrap_player/team_season_adapter.py`
+- `tests/unit/test_legacy_team_season_scrapers.py`
+- `tests/unit/test_legacy_team_scrapers.py`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 30 - Phase 4B/4C Roadmap Transition
+
+### What Changed
+
+Closed the Phase 4A planning handoff and introduced Phase 4B and Phase 4C as
+separate roadmap phases. Phase 4B covers controlled raw HTML acquisition into
+`HtmlCache`; Phase 4C covers offline cached HTML processing and later DB load
+from validated normalized rows.
+
+`tasks/feature-list.json` now has
+`current_phase_id = phase-4b-controlled-raw-html-backfill` and
+`current_phase_status = proposed`. `F4B-001` is `ready`; no task is approved or
+in progress.
+
+### Why
+
+The project needed an explicit gap between legacy scraper consolidation and
+SQLAlchemy/API work: first acquire approved raw HTML safely, then migrate/load
+DB structures, then process cached HTML offline into validated loader inputs.
+
+### Concepts Learned
+
+- Controlled backfill is acquisition only:
+  `approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`.
+- Offline DB loading must not load directly from raw HTML. It first parses,
+  normalizes, and validates cached HTML.
+- Live acquisition remains sequential and cache-first; local concurrency belongs
+  only to already-cached offline work.
+- Current player rows come from team-season pages. Dedicated player-page
+  acquisition and parsing remains future scope.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `specs/phases/phase-4b-controlled-raw-html-backfill.md`
+- `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`
+- `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 31 - Phase 4B Manifest Design
+
+### What Changed
+
+Closed `F4B-001` as a design-only task and added the controlled raw HTML
+backfill manifest spec.
+
+The documented acquisition path is:
+
+```text
+approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz
+```
+
+### Why
+
+Phase 4B needs exact owner approval and auditable scope before any future live
+request. The manifest design separates approval, dry-run validation, live
+acquisition, and later offline processing/loading.
+
+### Concepts Learned
+
+- A manifest is an approved acquisition plan, not a general crawler.
+- The first pilot defaults to at most five explicit `team_season` URLs.
+- Live acquisition stays sequential, cache-first, 10 requests/minute by
+  default, and never above 20 requests/minute.
+- Player-specific pages remain future scope until a later task and exact
+  manifest approve them.
+- Raw HTML acquisition stays separate from DB writes, migrations, parsing/load
+  execution, API/frontend work, and generated metrics.
+
+### Files to Read
+
+- `specs/features/F4B-001-controlled-raw-html-backfill-manifest.md`
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 32 - Phase 4B Manifest Dry-Run Validation
+
+### What Changed
+
+Added `F4B-002` offline manifest validation and dry-run reporting. The dry-run
+checks approved `team_season` manifests, reports expected `HtmlCache` paths,
+cache hit/miss state, and estimated live request count, and exposes the flow
+through `nba-data backfill dry-run <manifest.json>`.
+
+### Why
+
+Phase 4B needs an auditable no-network planning gate before any runtime
+acquisition runner or live pilot can exist.
+
+### Concepts Learned
+
+- A manifest dry-run can prove scope, approval, cache paths, and request
+  estimates without accepting a client or contacting Basketball Reference.
+- The first pilot remains limited to explicit `team_season` URLs and at most
+  five entries.
+- Cache misses are only counted as estimated future live requests; they are
+  not fetched during dry-run validation.
+
+### Files to Read
+
+- `src/nba_data/scraping/backfill_manifest.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_backfill_manifest.py`
+- `tests/fixtures/manifests/approved_team_season_manifest.json`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 33 - Phase 4B Acquisition Runner
+
+### What Changed
+
+Added the controlled acquisition runner for approved raw HTML backfill
+manifests and exposed it through
+`nba-data backfill acquire <manifest.json> --execute-approved-manifest`.
+
+### Why
+
+Phase 4B needs a reviewed runtime path that can later execute an exact
+owner-approved manifest without bypassing cache checks, rate limits, or the
+central Basketball Reference client.
+
+### Concepts Learned
+
+- The runner should check `HtmlCache` before every client call.
+- Cache hits are recorded and make no live request.
+- Cache misses are fetched sequentially through a
+  `BasketballReferenceClient`-compatible client and written through
+  `HtmlCache`.
+- Client failures should stop the run with a partial report so a future pilot
+  is auditable.
+- The CLI needs an explicit execution flag separate from manifest approval to
+  reduce accidental live acquisition risk.
+
+### Files to Read
+
+- `src/nba_data/scraping/backfill_manifest.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_backfill_manifest.py`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_backfill_manifest.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 34 - Phase 4B F4B-003 Review Closure
+
+### What Changed
+
+Closed `F4B-003` as `done` after owner approval and review. Moved
+`F4B-LIVE-001` to `ready` for exact-manifest preparation while keeping Phase 4B
+in `proposed` status.
+
+### Why
+
+The acquisition runner is implemented and validated, but the live pilot remains
+a separate sensitive gate that requires owner approval for the exact manifest
+before any Basketball Reference request.
+
+### Concepts Learned
+
+- `ready` is not approval to run live acquisition.
+- The execution flag protects the CLI, but the exact manifest still needs
+  owner approval before a live pilot.
+- Phase 4B remains acquisition-only; parsing, loading, DB writes, migrations,
+  API/frontend, and OVR work stay out of scope.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `progress/current.md`
+- `progress/review.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and Git Bash harness close.
+
+## Checkpoint 35 - Phase 4B Live Raw HTML Pilot
+
+### What Changed
+
+Ran the owner-approved `F4B-LIVE-001` two-URL raw HTML acquisition pilot using
+the controlled manifest at
+`tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`.
+
+### Why
+
+Phase 4B needed one small live proof that the approved manifest flow remains
+cache-first, sequential, and limited to `.html.gz` raw HTML acquisition before
+any parser/load or database work.
+
+### Concepts Learned
+
+- The dry-run gate correctly reported BOS 2024 as a cache hit and DEN 2023 as
+  the only cache miss.
+- The acquisition runner made one live request for the DEN 2023 cache miss,
+  skipped the cached BOS 2024 page, and stored the fetched page through
+  `HtmlCache`.
+- A post-run dry-run can verify the cache now covers every manifest entry
+  without contacting Basketball Reference.
+
+### Result
+
+- Pre-run dry-run: 2 total entries, 1 cache hit, 1 cache miss, 1 estimated live
+  request.
+- Acquisition: 2 processed entries, 1 cache hit, 1 fetched page, 0 failures, 1
+  live request.
+- New cache artifact:
+  `data\raw\html\basketball-reference\teams-den-2023.html-4bfff60cb079ffe5.html.gz`.
+- Post-run dry-run: 2 cache hits, 0 cache misses, 0 estimated live requests.
+- Validation passed: manifest JSON, task JSON, Ruff, Pytest, and Git Bash
+  harness validation.
+- `F4B-LIVE-001` is now `needs_review`.
+
+### Files to Read
+
+- `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`
+- `tasks/feature-list.json`
+- `progress/current.md`
+- `progress/history.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 36 - Phase 4B Live Pilot Review Closure
+
+### What Changed
+
+Reviewed and closed `F4B-LIVE-001` as `done` after confirming the owner-approved
+two-URL raw HTML pilot met its acceptance criteria and passed offline
+validation.
+
+### Why
+
+The pilot needed a formal review gate before any roadmap decision about closing
+Phase 4B, starting Phase 4C, or approving Phase 4 SQLAlchemy migration work.
+
+### Concepts Learned
+
+- The controlled pilot produced the intended cache state: BOS 2024 stayed a
+  cache hit and DEN 2023 became a readable `.html.gz` cache artifact.
+- A post-run dry-run is the safest repeatable proof that the manifest now needs
+  zero live requests.
+- Closing the live pilot does not approve Phase 4C, SQLAlchemy migrations,
+  offline loading, API/frontend work, or another live manifest.
+
+### Files to Read
+
+- `tasks/feature-list.json`
+- `tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`
+- `progress/review.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`,
+`python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`,
+`uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.

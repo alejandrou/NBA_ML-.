@@ -62,7 +62,7 @@ async def test_legacy_advanced_scraper_preserves_loader_compatible_keys() -> Non
 
 
 @pytest.mark.unit
-def test_player_operations_wires_provider_into_legacy_scrapers() -> None:
+def test_player_operations_wires_shared_adapter_into_legacy_scrapers() -> None:
     provider = FakeTeamSeasonHtmlProvider(FIXTURE.read_text(encoding="utf-8"))
 
     operations = PlayerOperations([2024], team_season_html_provider=provider)
@@ -70,3 +70,38 @@ def test_player_operations_wires_provider_into_legacy_scrapers() -> None:
     assert operations.scraper_roster.team_season_html_provider is provider
     assert operations.scraper_totals.team_season_html_provider is provider
     assert operations.scraper_advanced.team_season_html_provider is provider
+    assert operations.scraper_roster.team_season_table_adapter is operations.team_season_table_adapter
+    assert operations.scraper_totals.team_season_table_adapter is operations.team_season_table_adapter
+    assert operations.scraper_advanced.team_season_table_adapter is operations.team_season_table_adapter
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_player_operations_reuses_one_html_read_for_roster_totals_and_advanced() -> None:
+    provider = FakeTeamSeasonHtmlProvider(FIXTURE.read_text(encoding="utf-8"))
+    operations = PlayerOperations([2024], team_season_html_provider=provider)
+
+    roster = await operations.scraper_roster.scrape_team_year_roster("BOS", 2024)
+    totals = await operations.scraper_totals.scrape_team_year_totals("BOS", 2024)
+    advanced = await operations.scraper_advanced.scrape_team_year_advanced("BOS", 2024)
+
+    assert provider.calls == [("BOS", 2024)]
+    assert roster[0]["Player"] == "Jayson Tatum"
+    assert totals[0]["PTS"] == "1987"
+    assert advanced[0]["PER"] == "22.3"
+
+
+@pytest.mark.unit
+def test_consolidated_player_scrapers_do_not_keep_direct_live_http_paths() -> None:
+    paths = [
+        Path("scrap/scrap_player/scrap_player_roster.py"),
+        Path("scrap/scrap_player/scrap_player_totals.py"),
+        Path("scrap/scrap_player/scrap_player_advanced.py"),
+    ]
+    source = "\n".join(path.read_text(encoding="utf-8") for path in paths)
+
+    assert "httpx" not in source
+    assert "AsyncClient" not in source
+    assert "client.get" not in source
+    assert "asyncio.sleep" not in source
+    assert "asyncio.gather" not in source

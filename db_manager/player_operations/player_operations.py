@@ -1,6 +1,7 @@
 from scrap.scrap_player.scrap_player_roster import PlayerScraperRoster
 from scrap.scrap_player.scrap_player_totals import PlayerScraperTotals
 from scrap.scrap_player.scrap_player_advanced import PlayerScraperAdvanced
+from scrap.scrap_player.team_season_adapter import LegacyTeamSeasonTableAdapter
 from models.player.player import Player
 from models.player.player_stats import PlayerStats
 from models.player.player_advanced import PlayerAdvancedStats
@@ -12,13 +13,23 @@ class PlayerOperations:
 
     def __init__(self, years, team_season_html_provider=None):
         self.years = years
-        self.scraper_roster = PlayerScraperRoster(years, team_season_html_provider)
-        self.scraper_totals = PlayerScraperTotals(years, team_season_html_provider)
-        self.scraper_advanced = PlayerScraperAdvanced(years, team_season_html_provider)
+        self.team_season_table_adapter = LegacyTeamSeasonTableAdapter(team_season_html_provider)
+        self.scraper_roster = PlayerScraperRoster(
+            years,
+            team_season_table_adapter=self.team_season_table_adapter,
+        )
+        self.scraper_totals = PlayerScraperTotals(
+            years,
+            team_season_table_adapter=self.team_season_table_adapter,
+        )
+        self.scraper_advanced = PlayerScraperAdvanced(
+            years,
+            team_season_table_adapter=self.team_season_table_adapter,
+        )
 
-    async def scrape_and_save_players_roster_async(self, client):
+    async def scrape_and_save_players_roster_async(self, client=None):
         DBManager.create_tables(Player)
-        player_roster = await self.scraper_roster.get_players_team_year_roster(client)
+        player_roster = await self.scraper_roster.get_players_team_year_roster()
 
         for team_name, years_data in player_roster.items():
             team_instance = Team.get(Team.team_abbreviation == team_name)
@@ -46,9 +57,9 @@ class PlayerOperations:
             if batch_data:
                 Player.insert_many(batch_data).execute()
 
-    async def scrape_and_save_players_totals_async(self, client):
+    async def scrape_and_save_players_totals_async(self, client=None):
         DBManager.create_tables(PlayerStats)
-        player_totals = await self.scraper_totals.get_players_team_year_totals(client)
+        player_totals = await self.scraper_totals.get_players_team_year_totals()
 
         for nba_team, years_data in player_totals.items():
             for year, players_data in years_data.items():
@@ -99,9 +110,9 @@ class PlayerOperations:
                 if batch_data:
                     PlayerStats.insert_many(batch_data).execute()
 
-    async def scrape_and_save_players_advanced(self, client):
+    async def scrape_and_save_players_advanced(self, client=None):
         DBManager.create_tables(PlayerAdvancedStats)
-        player_advanced = await self.scraper_advanced.get_players_team_year_advanced(client)
+        player_advanced = await self.scraper_advanced.get_players_team_year_advanced()
 
         for nba_team, years_data in player_advanced.items():
             for year, players_data in years_data.items():

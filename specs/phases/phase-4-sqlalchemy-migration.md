@@ -1,6 +1,6 @@
 # Phase 4 - SQLAlchemy Migration
 
-Status: proposed
+Status: done
 Phase ID: `phase-4-sqlalchemy-migration`
 
 ## Goal
@@ -38,10 +38,10 @@ before Phase 4C performs offline cached HTML processing and loading.
 - Broad schema rewrites.
 - Loader behavior that cannot be rerun idempotently.
 
-## Initial Ready Tasks
+## Current Task State
 
-None while this phase is proposed. Candidate tasks remain `pending` until this
-phase becomes current.
+`F4-001`, `F4-002`, and `F4-003` are `done`. Phase 4 is closed. Phase 4C
+remains `pending` until explicit owner approval.
 
 ## Done Criteria
 
@@ -60,6 +60,6 @@ phase becomes current.
 
 ## Next Phase Recommendation
 
-Proceed to `phase-4c-offline-cached-html-processing-and-load` after stable
-schema, idempotent loaders, and local DB validation are available. Proceed to
+Proceed to `phase-4c-offline-cached-html-processing-and-load` only after
+explicit owner approval for the phase transition and first task. Proceed to
 `phase-5-api` only after selected core data can be loaded and queried.

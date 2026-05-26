@@ -447,3 +447,135 @@ No rerun live acquisition, extra Basketball Reference contact, DB writes,
 migrations, parser/load offline processing, full historical scraping,
 concurrency, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
 branch creation, commit, push, or PR occurred during review closure.
+
+## Phase 4B Closure Review
+
+Status: approved
+
+Phase 4B is approved for closure. The phase has a reviewed manifest strategy,
+offline dry-run validation, sequential cache-first acquisition runner, and a
+recorded owner-approved two-URL pilot. Phase 4 is now current as
+`phase-4-sqlalchemy-migration` with status `proposed`, and `F4-001` is `ready`
+but not approved.
+
+## Phase 4B Closure Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `uv run alembic check`: failed with existing nullable drift on
+  `raw.raw_pages.fetched_at`, `raw.scraper_requests.requested_at`, and
+  `raw.scraper_runs.started_at`.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+No live acquisition was rerun, no extra Basketball Reference contact occurred,
+and no DB writes, migrations, parser/load offline processing, raw HTML
+deletion, legacy/Peewee deletion, API/frontend/OVR work, branch creation,
+commit, push, or PR occurred during the transition.
+
+## Phase 4 F4-001 Review
+
+Status: approved
+
+`F4-001` is approved for closure. The additive core migration adds reviewed
+SQLAlchemy models and Alembic revision `0002_core_team_player_season.py` for
+team-season, player-season, and player-team-season relationships while
+preserving Peewee and legacy coexistence.
+
+## Phase 4 F4-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 77 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: initially failed only with the pre-existing raw
+  nullable drift, which was deferred to `F4-003`.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  77 passed and 6 Peewee deprecation warnings.
+
+No live scraping, Basketball Reference contact, loader implementation,
+destructive migration, data deletion, Peewee/legacy deletion, API/frontend/OVR
+work, branch creation, commit, push, or PR occurred.
+
+## Phase 4 F4-003 Review
+
+Status: approved
+
+`F4-003` is approved for closure. The local database validation path is
+repeatable, runs PostgreSQL-backed Alembic upgrade/check validation, and aligns
+the raw timestamp SQLAlchemy metadata with the existing nullable
+`0001_initial_raw_core` migration.
+
+## Phase 4 F4-003 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 78 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  78 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`: passed;
+  `alembic check` reported no new upgrade operations.
+- `uv run alembic current`: reported `0002_core_team_player_season (head)`.
+- `git diff --cached --name-only -- .env data/raw`: passed with no output.
+
+No live scraping, Basketball Reference contact, loader implementation, Phase
+4C work, destructive migration, data deletion, Peewee/legacy deletion,
+API/frontend/OVR/ranking/similarity/ML work, branch creation, commit, push, or
+PR occurred.
+
+## Phase 4 F4-002 Review
+
+Status: approved
+
+`F4-002` is approved for closure. The implementation adds portable SQLAlchemy
+core repositories and a team-season core loader that validates normalized input
+before writing, reruns idempotently, leaves transactions uncommitted, and keeps
+`TOT` as an aggregate rather than a real team.
+
+## Phase 4 F4-002 Review Findings
+
+- `load_team_season_core(...)` validates normalized rows and duplicate natural
+  keys before repository writes.
+- Repositories use SQLAlchemy `select(...)` plus `add/flush`, without
+  dialect-specific upserts.
+- Loader and repository methods do not call `session.commit()`.
+- Caller rollback behavior is covered; the PostgreSQL smoke test runs inside a
+  transaction that is rolled back.
+- Existing meaningful team and player names are not overwritten by fallback or
+  empty values.
+- `player_name` is descriptive only; identity uses
+  `basketball_reference_player_id`.
+- `TOT` is blocked as a real team, alias, and team-season. Aggregate rows
+  create player-season identity records without creating `TOT` team,
+  team-season, or player-team-season records.
+- No new Alembic revision was added for `F4-002`; the only Phase 4 core schema
+  revision is `0002_core_team_player_season.py` from `F4-001`.
+
+## Phase 4 F4-002 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 88 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  88 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`: passed;
+  `alembic check` reported no new upgrade operations and the PostgreSQL smoke
+  test passed.
+- `uv run alembic current`: reported `0002_core_team_player_season (head)`.
+- `git diff --cached --name-only -- .env data/raw`: passed with no output.
+
+No live scraping, Basketball Reference contact, Phase 4C processing, stats
+loading, destructive migration, data deletion, Peewee/legacy deletion,
+API/frontend/OVR/ranking/similarity/ML work, branch creation, commit, push, or
+PR occurred.
+
+## Phase 4 Closure Review
+
+Status: approved
+
+Phase 4 is approved for closure. `F4-001`, `F4-002`, and `F4-003` are done.
+The phase leaves behind additive SQLAlchemy core schema, idempotent loader
+repositories for validated normalized rows, and a repeatable PostgreSQL
+validation path. Phase 4C remains pending until explicit owner approval.

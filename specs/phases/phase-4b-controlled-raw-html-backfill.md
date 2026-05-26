@@ -1,6 +1,6 @@
 # Phase 4B - Controlled Raw HTML Backfill
 
-Status: proposed
+Status: done
 Phase ID: `phase-4b-controlled-raw-html-backfill`
 
 ## Goal
@@ -29,9 +29,9 @@ database rows, apply migrations, or run a historical full backfill.
 ## Phase Tasks
 
 - `F4B-001`: Design controlled raw HTML backfill manifest. Done.
-- `F4B-002`: Add raw HTML backfill manifest dry-run validation.
-- `F4B-003`: Add sequential cache-first raw HTML acquisition runner.
-- `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot.
+- `F4B-002`: Add raw HTML backfill manifest dry-run validation. Done.
+- `F4B-003`: Add sequential cache-first raw HTML acquisition runner. Done.
+- `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot. Done.
 
 ## Allowed Work
 
@@ -92,3 +92,15 @@ database rows, apply migrations, or run a historical full backfill.
 Phase 4B hands cached `.html.gz` files to later phases. Phase 4 creates the
 SQLAlchemy schema and idempotent loaders. Phase 4C then processes already
 cached HTML offline and loads only validated normalized rows.
+
+## Closure Summary
+
+Phase 4B closed after `F4B-001`, `F4B-002`, `F4B-003`, and `F4B-LIVE-001`
+were reviewed and marked `done`. The owner-approved two-URL pilot verified the
+controlled path:
+
+`approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`
+
+No additional live acquisition, DB writes, migrations, offline loading,
+API/frontend/OVR work, raw HTML deletion, or legacy/Peewee deletion was
+approved during closure.

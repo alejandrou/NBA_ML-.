@@ -7,9 +7,31 @@ from sqlalchemy import engine_from_config, pool
 
 from nba_data.config.settings import get_settings
 from nba_data.db.base import Base
-from nba_data.db.models import Player, RawPage, ScraperRequest, ScraperRun, Season, Team, TeamAlias
+from nba_data.db.models import (
+    Player,
+    PlayerSeason,
+    PlayerTeamSeason,
+    RawPage,
+    ScraperRequest,
+    ScraperRun,
+    Season,
+    Team,
+    TeamAlias,
+    TeamSeason,
+)
 
-_ = (Player, RawPage, ScraperRequest, ScraperRun, Season, Team, TeamAlias)
+_ = (
+    Player,
+    PlayerSeason,
+    PlayerTeamSeason,
+    RawPage,
+    ScraperRequest,
+    ScraperRun,
+    Season,
+    Team,
+    TeamAlias,
+    TeamSeason,
+)
 
 config = context.config
 

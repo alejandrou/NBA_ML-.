@@ -1298,3 +1298,183 @@ Phase 4B, starting Phase 4C, or approving Phase 4 SQLAlchemy migration work.
 Run `python -m json.tool tasks/feature-list.json`,
 `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`,
 `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 37 - Phase 4B Closure And Phase 4 SQLAlchemy Transition
+
+### What Changed
+
+Closed `phase-4b-controlled-raw-html-backfill` and moved the current phase to
+`phase-4-sqlalchemy-migration` with status `proposed`. `F4-001` is now
+`ready`, while `F4-002`, `F4-003`, and Phase 4C remain `pending`.
+
+### Why
+
+Phase 4B met its acquisition-only done criteria. The next roadmap step is to
+prepare reviewable SQLAlchemy/Alembic migration work before Phase 4C can load
+validated offline processing results.
+
+### Concepts Learned
+
+- Closing a completed acquisition phase is separate from approving migration
+  implementation.
+- `ready` marks the next candidate task without starting schema work.
+- Phase 4C must wait for enough SQLAlchemy schema and idempotent loader support.
+
+### Files to Read
+
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+- `specs/phases/phase-4-sqlalchemy-migration.md`
+- `docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic check`, and Git Bash harness validation.
+
+## Checkpoint 38 - F4-001 Core SQLAlchemy Migration
+
+### What Changed
+
+Implemented the first additive Phase 4 core schema slice with SQLAlchemy models,
+Alembic revision `0002_core_team_player_season.py`, an F4-001 feature spec, and
+offline metadata tests.
+
+### Why
+
+Phase 4C loading needs stable core relationships before idempotent repositories
+can safely connect validated normalized rows to teams, players, and seasons.
+
+### Concepts Learned
+
+- `TOT` belongs to future player-season aggregate handling and must not be
+  inserted as a real team-season row.
+- Core relationship tables can be introduced before loader implementation as
+  long as the migration is additive and Peewee remains untouched.
+- Alembic SQL generation can validate revision shape without PostgreSQL, but
+  drift checks still require a running local database.
+
+### Files to Read
+
+- `specs/features/F4-001-core-team-player-season-sqlalchemy-migrations.md`
+- `src/nba_data/db/models/core.py`
+- `alembic/versions/0002_core_team_player_season.py`
+- `tests/unit/test_core_models.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and Git
+Bash harness validation. Local PostgreSQL must be running for the online
+Alembic commands.
+
+## Checkpoint 39 - F4-003 Database Integration Validation
+
+### What Changed
+
+Closed `F4-001` as `done` and implemented `F4-003` with a dedicated local DB
+validation harness. The raw timestamp metadata now matches the existing
+nullable Alembic schema, so `alembic check` is clean.
+
+### Why
+
+Phase 4 loader work needs a repeatable migration validation path before any
+idempotent repositories or database load behavior are introduced.
+
+### Concepts Learned
+
+- The previous Alembic drift was metadata-only: the models implied NOT NULL
+  while `0001_initial_raw_core` created nullable timestamp columns.
+- Aligning metadata to the existing migration avoids a risky raw-table
+  constraint change and keeps validation non-destructive.
+- `scripts/harness/db-validate.sh` is now the explicit local PostgreSQL check
+  for migration work.
+
+### Files to Read
+
+- `specs/features/F4-003-database-integration-validation-path.md`
+- `scripts/harness/db-validate.sh`
+- `src/nba_data/db/models/raw.py`
+- `tests/unit/test_raw_models.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`.
+
+## Checkpoint 40 - F4-002 Idempotent Loader Repositories
+
+### What Changed
+
+Implemented the first Phase 4 idempotent loader slice for SQLAlchemy core
+identity and membership tables.
+
+### Why
+
+Phase 4C needs loader repositories that can accept validated normalized rows
+and rerun safely before cached HTML processing is connected to database writes.
+
+### Concepts Learned
+
+- Loader validation and duplicate natural-key checks must happen before any
+  ORM object is created.
+- Portable select-then-insert/update logic is enough for the first core loader
+  slice and keeps behavior testable across SQLite and PostgreSQL.
+- Loader and repository methods should flush when IDs are needed, but must not
+  commit; caller-owned transactions make rollback behavior explicit.
+- `TOT` aggregate rows can create player-season identity records without
+  creating real team, team-season, or player-team-season rows.
+- PostgreSQL smoke tests can run inside an explicit rollback transaction after
+  Alembic migration validation.
+
+### Files to Read
+
+- `src/nba_data/db/repositories/core.py`
+- `src/nba_data/scraping/loaders/team_season.py`
+- `tests/unit/test_team_season_loader.py`
+- `tests/integration/test_team_season_loader_postgres.py`
+- `specs/features/F4-002-idempotent-loader-repositories.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`.
+
+## Checkpoint 41 - Phase 4 Closure
+
+### What Changed
+
+Reviewed and closed `F4-002`, then marked
+`phase-4-sqlalchemy-migration` as `done`. Phase 4C remains pending until
+explicit owner approval.
+
+### Why
+
+Phase 4 now has the reviewed SQLAlchemy core schema, idempotent loader
+repositories for validated normalized rows, and repeatable local PostgreSQL
+validation needed before any future offline cached HTML processing or loading
+phase begins.
+
+### Concepts Learned
+
+- Loader review should prove validation-before-write, idempotency, rollback
+  behavior, and name preservation before closing the task.
+- `TOT` aggregate handling can create player-season identity without creating
+  false team membership rows.
+- Closing a phase does not approve the next phase; Phase 4C still needs an
+  explicit transition and task approval.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/history.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, Git Bash harness validation, Git Bash DB validation, and
+`uv run alembic current`.

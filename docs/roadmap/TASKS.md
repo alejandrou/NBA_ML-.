@@ -18,12 +18,17 @@
 - `F4B-002`: Add raw HTML backfill manifest dry-run validation.
 - `F4B-003`: Add sequential cache-first raw HTML acquisition runner.
 - `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot.
+- Phase 4B controlled raw HTML backfill is complete and reviewed.
+- Phase 4 SQLAlchemy migration is complete and reviewed.
+- `F4-001`, `F4-002`, and `F4-003` are marked `done`.
 
 ## Current
 
-- Current phase: `phase-4b-controlled-raw-html-backfill`.
-- Current phase status: `proposed`.
-- `F4B-001`, `F4B-002`, `F4B-003`, and `F4B-LIVE-001` are `done`.
+- Current phase: `phase-4-sqlalchemy-migration`.
+- Current phase status: `done`.
+- `F4-001`: Implement core team/player/season SQLAlchemy migrations is `done`.
+- `F4-002`: Add idempotent loader repositories is `done`.
+- `F4-003`: Add database integration validation path is `done`.
 - No task is currently `approved`, `in_progress`, or `needs_review`.
 
 ## Needs Review
@@ -32,16 +37,14 @@
 
 ## Next
 
-- Next safe action: decide whether to close Phase 4B with a transition summary
-  or explicitly approve a future task.
-- Do not rerun live acquisition, expand the manifest, contact Basketball
-  Reference, start Phase 4C, or start Phase 4 SQLAlchemy migration without
-  exact owner approval.
+- Next safe action: prepare commit, push, and PR only after explicit owner
+  approval.
+- Do not start Phase 4C, delete data, delete Peewee/legacy code, contact
+  Basketball Reference, run live scraping, or implement API/frontend/OVR work
+  without exact owner approval.
 
 ## Later
 
-- Phase 4 SQLAlchemy migration remains inactive; `F4-001`, `F4-002`, and
-  `F4-003` remain `pending`.
 - Phase 4C offline cached HTML processing and load remains future work.
 - Phase 5-7 tasks remain `pending` until explicitly approved under phase
   governance.

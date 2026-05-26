@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-4b-controlled-raw-html-backfill",
-  "current_phase_status": "proposed",
+  "current_phase_id": "phase-4-sqlalchemy-migration",
+  "current_phase_status": "done",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -808,59 +808,100 @@
       "id": "F4-001",
       "title": "Implement core team/player/season SQLAlchemy migrations",
       "phase_id": "phase-4-sqlalchemy-migration",
-      "status": "pending",
+      "status": "done",
       "description": "Add reviewed SQLAlchemy/Alembic migrations for selected core entities.",
       "acceptance_criteria": [
-        "Migrations are reviewable",
-        "Core identifiers are stable",
-        "Peewee coexistence is preserved"
+        "Feature spec exists at specs/features/F4-001-core-team-player-season-sqlalchemy-migrations.md.",
+        "Migrations are reviewable and reversible where practical.",
+        "Core identifiers are stable and do not use player_name as a primary key.",
+        "Team-season schema rejects TOT as a real team.",
+        "Peewee coexistence is preserved.",
+        "No loaders, API/frontend, OVR, ranking, similarity, or ML work is introduced."
       ],
       "validation": [
+        "python -m json.tool tasks/feature-list.json",
         "uv run ruff check .",
         "uv run pytest",
-        "uv run alembic check"
+        "uv run alembic upgrade head",
+        "uv run alembic check",
+        "bash scripts/harness/init.sh",
+        "bash scripts/harness/validate.sh"
       ],
       "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Data deletion",
+        "Destructive migrations",
         "Deleting Peewee",
-        "Full database migration"
+        "Full database migration",
+        "F4-002 loaders",
+        "F4-003 database integration validation path",
+        "Phase 4C offline processing or loading"
       ]
     },
     {
       "id": "F4-002",
       "title": "Add idempotent loader repositories",
       "phase_id": "phase-4-sqlalchemy-migration",
-      "status": "pending",
+      "status": "done",
       "description": "Add idempotent repository/loading behavior for normalized team-season data.",
       "acceptance_criteria": [
-        "Loaders can be rerun safely",
-        "Unique constraints support idempotency",
-        "Tests cover duplicate input"
+        "Feature spec exists at specs/features/F4-002-idempotent-loader-repositories.md.",
+        "Loaders can be rerun safely.",
+        "Unique constraints support idempotency.",
+        "Validation and duplicate natural-key checks run before any DB write.",
+        "Repositories use portable select-then-insert/update logic.",
+        "Loader and repository methods do not call session.commit().",
+        "Tests cover duplicate input, invalid batches, rollback behavior, name overwrite rules, TOT aggregate handling, and PostgreSQL idempotent reruns."
       ],
       "validation": [
+        "python -m json.tool tasks/feature-list.json",
         "uv run ruff check .",
-        "uv run pytest"
+        "uv run pytest",
+        "bash scripts/harness/validate.sh",
+        "bash scripts/harness/db-validate.sh"
       ],
       "out_of_scope": [
         "Live scraping",
-        "Full historical load"
+        "Contacting Basketball Reference",
+        "Data deletion",
+        "Destructive migrations",
+        "Full historical load",
+        "Phase 4C offline processing or loading",
+        "API/frontend/OVR/ranking/similarity/ML",
+        "Deleting Peewee or legacy code"
       ]
     },
     {
       "id": "F4-003",
       "title": "Add database integration validation path",
       "phase_id": "phase-4-sqlalchemy-migration",
-      "status": "pending",
+      "status": "done",
       "description": "Define and test the local database validation path for migration and loader work.",
       "acceptance_criteria": [
-        "Validation command is documented",
-        "Tests do not require live scraping",
-        "Local database setup is explicit"
+        "Feature spec exists at specs/features/F4-003-database-integration-validation-path.md.",
+        "Validation command is documented.",
+        "Local PostgreSQL setup is explicit.",
+        "Alembic upgrade/check path is repeatable.",
+        "Known raw nullable drift is resolved by aligning SQLAlchemy metadata to existing migrations.",
+        "Tests do not require live scraping."
       ],
       "validation": [
+        "python -m json.tool tasks/feature-list.json",
         "uv run ruff check .",
-        "uv run pytest"
+        "uv run pytest",
+        "bash scripts/harness/init.sh",
+        "bash scripts/harness/validate.sh",
+        "bash scripts/harness/db-validate.sh"
       ],
       "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Deleting data",
+        "Destructive migrations",
+        "F4-002 loaders",
+        "Phase 4C offline processing or loading",
+        "API/frontend/OVR/ranking/similarity/ML",
         "Production deployment",
         "Data deletion"
       ]

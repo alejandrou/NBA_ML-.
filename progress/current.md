@@ -1,69 +1,55 @@
 # Current Work
 
-Status: phase_4_sqlalchemy_ready_for_owner_approval
+Status: phase_4_closed_ready_for_commit_push_pr_approval
 
 ## Active Task
 
+- `F4-001` is `done`.
+- `F4-002` is `done`.
+- `F4-003` is `done`.
 - No task is currently `approved`, `in_progress`, or `needs_review`.
-- `F4-001` is `ready`, not approved.
-- `F4-002` and `F4-003` remain `pending`.
 
 ## Current Phase
 
-- Phase ID: `phase-4-sqlalchemy-migration`
-- Phase status: `proposed`
+- Phase ID: `phase-4-sqlalchemy-migration`.
+- Phase status: `done`.
 - Phase 4B controlled raw HTML backfill is closed.
-- Phase 4C offline cached HTML processing and load remains future work.
+- Phase 4 SQLAlchemy migration is closed.
+- Phase 4C offline cached HTML processing and load remains pending and is not
+  approved.
 
-## Transition Summary
+## Phase 4 Closure Summary
 
-Closed Phase 4B after the reviewed completion of `F4B-001`, `F4B-002`,
-`F4B-003`, and `F4B-LIVE-001`.
-
-Phase 4B produced and verified the controlled acquisition path:
-
-`approved manifest -> BasketballReferenceClient -> HtmlCache -> .html.gz`
-
-The owner-approved pilot used only:
-
-- `https://www.basketball-reference.com/teams/BOS/2024.html`
-- `https://www.basketball-reference.com/teams/DEN/2023.html`
-
-No additional live acquisition, Basketball Reference contact, parser/load
-execution, DB write, migration, raw HTML deletion, legacy/Peewee deletion,
-API/frontend/OVR work, branch creation, commit, push, or PR occurred during the
-phase transition.
-
-## Next Safe Action
-
-Ask the owner before promoting `F4-001` from `ready` to `approved`. The next
-approved implementation should keep the migration scope reviewable and preserve
-Peewee coexistence.
-
-## Continuation Handoff
-
-- Current branch: `feature/fase-4-sqlalchemy-migration`.
-- `phase-4-sqlalchemy-migration` is current with status `proposed`.
-- `F4-001` is the next candidate task and is `ready`, not approved.
-- Do not implement `F4-001`, run migrations, delete data, create a branch,
-  commit, push, or open a PR without separate approval.
-
-## Guardrails
-
-- No live scraping or Basketball Reference contact without exact owner approval.
-- No destructive migrations or data deletion.
-- No Peewee or legacy scraper deletion.
-- No Phase 4C offline load, API/frontend, generated metrics, OVR, ranking,
-  similarity, or ML work.
+- `F4-001` added additive SQLAlchemy core relationship models and Alembic
+  revision `0002_core_team_player_season.py`.
+- `F4-003` added the local PostgreSQL database validation path and aligned raw
+  timestamp metadata with existing nullable migrations.
+- `F4-002` added idempotent SQLAlchemy repositories and
+  `load_team_season_core(...)` for already-normalized rows.
+- Review confirmed validation and duplicate natural-key checks happen before
+  writes, repository logic is portable select-then-insert/update, commits stay
+  caller-owned, rollback behavior is covered, meaningful names are preserved,
+  `player_name` is not an identity key, and `TOT` aggregate rows do not create
+  real team membership records.
+- No new Alembic revision was added for `F4-002`.
 
 ## Latest Validation
 
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
-- `uv run alembic check`: failed with existing nullable drift on
-  `raw.raw_pages.fetched_at`, `raw.scraper_requests.requested_at`, and
-  `raw.scraper_runs.started_at`.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- `uv run pytest`: passed, 88 passed and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  70 passed and 6 Peewee deprecation warnings.
+  88 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`: passed;
+  `alembic check` reported no new upgrade operations and the PostgreSQL smoke
+  test passed.
+- `uv run alembic current`: `0002_core_team_player_season (head)`.
+- `git diff --cached --name-only -- .env data/raw`: passed with no output.
+
+## Next Safe Action
+
+- Prepare commit, push, and PR only after explicit owner approval.
+- Do not start Phase 4C, cached HTML processing/loading, live scraping,
+  Basketball Reference contact, data deletion, destructive migrations,
+  Peewee/legacy deletion, API/frontend, generated metrics, OVR, ranking,
+  similarity, or ML work without explicit owner approval.

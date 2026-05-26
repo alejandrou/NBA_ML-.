@@ -1153,3 +1153,201 @@ Tarea inicial:
   runner, write DB data, apply migrations, delete raw HTML, delete
   legacy/Peewee code, create a branch, commit, push, open a PR, or implement
   API/frontend/OVR work.
+
+## Phase 4 F4-001 Core SQLAlchemy Migration
+
+- Owner explicitly approved implementing `F4-001` only while keeping
+  `phase-4-sqlalchemy-migration` in `proposed`.
+- Promoted `F4-001` from `ready` to `in_progress`, implemented it, and moved it
+  to `needs_review`.
+- Added the feature spec for core team/player/season SQLAlchemy migrations.
+- Added additive SQLAlchemy models and Alembic revision
+  `0002_core_team_player_season.py`.
+- Added `core.team_seasons`, `core.player_seasons`, and
+  `core.player_team_seasons` as relationship tables without stats or loaders.
+- Added core unique/check constraints for stable Basketball Reference team IDs
+  and `TOT`-safe real team identifiers.
+- Added offline SQLAlchemy metadata tests for schemas, constraints, foreign
+  keys, relationships, and model exports.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 77 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic upgrade head --sql`: passed.
+- Initially, Docker/PostgreSQL was unavailable, so only offline Alembic SQL
+  generation could run.
+- Retried after Docker became available:
+  - `docker compose up -d postgres`: passed.
+  - `docker compose exec -T postgres pg_isready -U nba -d nba`: passed.
+  - `uv run alembic upgrade head`: passed and applied
+    `0002_core_team_player_season`.
+  - `uv run alembic check`: failed only with the pre-existing nullable drift on
+    `raw.raw_pages.fetched_at`, `raw.scraper_requests.requested_at`, and
+    `raw.scraper_runs.started_at`; no new `core.*` drift was reported.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  77 passed and 6 Peewee deprecation warnings.
+- Ran `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- Did not run live scraping, contact Basketball Reference, write loader data,
+  delete data, apply destructive migrations, delete legacy/Peewee code, start
+  `F4-002`, `F4-003`, or Phase 4C, create a branch, commit, push, open a PR, or
+  implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 F4-001 Review Closure
+
+- Owner approved closing `F4-001` as `done`.
+- Marked `F4-001` as `done`.
+- Kept `F4-002` and `F4-003` unstarted until explicit approval.
+- No live scraping, Basketball Reference contact, loader implementation,
+  destructive migration, data deletion, Peewee/legacy deletion, branch, commit,
+  push, PR, API/frontend/OVR/ranking/similarity/ML, or Phase 4C work occurred
+  during review closure.
+
+## Phase 4 F4-003 Database Integration Validation Path
+
+- Owner approved implementing `F4-003`.
+- Promoted `F4-003` from `pending` to `in_progress` and then to `needs_review`
+  after validation.
+- Added `specs/features/F4-003-database-integration-validation-path.md`.
+- Added `scripts/harness/db-validate.sh` for local PostgreSQL validation.
+- Aligned raw timestamp SQLAlchemy metadata with the existing nullable
+  `0001_initial_raw_core` migration for `raw.raw_pages.fetched_at`,
+  `raw.scraper_requests.requested_at`, and `raw.scraper_runs.started_at`.
+- Added offline tests for raw timestamp nullable/default metadata.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 78 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  78 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`:
+  passed; `alembic check` reported no new upgrade operations.
+- Ran `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- Kept `F4-002` and Phase 4C pending.
+- Did not run live scraping, contact Basketball Reference, delete or reset DB
+  data, apply destructive migrations, implement loaders, delete legacy/Peewee
+  code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 F4-003 Handoff
+
+- Prepared a continuation prompt in `progress/current.md`.
+- Current task state for the next session: `F4-003` is `needs_review`.
+- Next safe action: review `F4-003` and either mark it `done` after approval
+  or move it to `changes_requested` with the smallest corrective fix.
+- `F4-002` remains `pending` and must not start without explicit owner
+  approval.
+
+## Phase 4 F4-003 Review Closure
+
+- Reviewed `F4-003` against its acceptance criteria and approved closure.
+- Confirmed `scripts/harness/db-validate.sh` starts/checks local PostgreSQL,
+  runs `uv run alembic upgrade head`, and then runs `uv run alembic check`.
+- Confirmed raw timestamp metadata now matches existing nullable migration
+  behavior for `raw.raw_pages.fetched_at`,
+  `raw.scraper_requests.requested_at`, and `raw.scraper_runs.started_at`.
+- Confirmed `alembic check` reports no new upgrade operations after applying
+  migrations to local PostgreSQL.
+- Confirmed offline tests cover the raw nullable/default metadata alignment
+  without requiring a database or network.
+- Marked `F4-003` as `done`.
+- Kept `phase-4-sqlalchemy-migration` in `proposed`.
+- Kept `F4-002` and Phase 4C pending until explicit owner approval.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 78 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 78 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`:
+  passed; `alembic check` reported no new upgrade operations.
+- Ran `uv run alembic current`: reported
+  `0002_core_team_player_season (head)`.
+- Ran `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- Did not run live scraping, contact Basketball Reference, delete or reset DB
+  data, apply destructive migrations, implement loaders, delete legacy/Peewee
+  code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 F4-002 Idempotent Loader Repositories
+
+- Owner approved implementing `F4-002` while keeping
+  `phase-4-sqlalchemy-migration` in `proposed`.
+- Promoted `F4-002` from `pending` to `in_progress` and then to `needs_review`
+  after focused validation.
+- Added `specs/features/F4-002-idempotent-loader-repositories.md`.
+- Added portable SQLAlchemy core repositories using select-then-insert/update
+  logic and no `session.commit()` calls.
+- Added `load_team_season_core(...)` for already-normalized team-season rows.
+- Loader validation and duplicate natural-key checks run before DB writes.
+- Added SQLite unit tests for idempotent reruns, invalid batches, duplicate
+  natural keys, no-commit behavior, rollback behavior, name overwrite rules,
+  player identity, `TOT` aggregate handling, and roster values.
+- Added a PostgreSQL integration smoke test that reruns the same batch twice
+  through the real migrated schema and rolls back the transaction.
+- Extended `scripts/harness/db-validate.sh` to run the PostgreSQL smoke test
+  after `alembic upgrade head` and `alembic check`.
+- Ran `uv run pytest tests/unit/test_team_season_loader.py`: passed, 9 passed.
+- Ran `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 88 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  88 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`:
+  passed; `alembic check` reported no new upgrade operations and the
+  PostgreSQL smoke test passed.
+- Ran `uv run alembic current`: reported
+  `0002_core_team_player_season (head)`.
+- Ran `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- Kept Phase 4C pending.
+- Did not run live scraping, contact Basketball Reference, delete or reset DB
+  data, apply destructive migrations, delete legacy/Peewee code, create a
+  branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 F4-002 Continuation Handoff
+
+- Current branch: `feature/fase-4-sqlalchemy-migration`.
+- Task state at handoff: `F4-002` was `needs_review`.
+- `F4-001` and `F4-003` are `done`.
+- No task is currently `approved` or `in_progress`.
+- Next safe action: review `F4-002` and either mark it `done` after approval
+  or move it to `changes_requested` with the smallest corrective fix.
+- Phase 4C remains pending and must not start without explicit owner approval.
+
+## Phase 4 F4-002 Review Closure And Phase 4 Closure
+
+- Reviewed `F4-002` against its acceptance criteria and approved closure.
+- Confirmed loader validation and duplicate natural-key checks run before any
+  repository writes.
+- Confirmed repositories use portable SQLAlchemy `select(...)` plus
+  `add/flush` logic, without dialect-specific upserts.
+- Confirmed loader and repository methods do not call `session.commit()`.
+- Confirmed caller-owned rollback removes inserted records, including the
+  PostgreSQL smoke test transaction.
+- Confirmed existing meaningful team and player names are not overwritten by
+  fallback or empty values.
+- Confirmed `player_name` is not used as an identity key; player identity uses
+  `basketball_reference_player_id`.
+- Confirmed `TOT` aggregate rows do not create real `Team`, `TeamSeason`, or
+  `PlayerTeamSeason` records.
+- Confirmed no new Alembic revision was added for `F4-002`; the only Phase 4
+  core schema revision remains `0002_core_team_player_season.py`.
+- Marked `F4-002` as `done`.
+- Marked `phase-4-sqlalchemy-migration` as `done`.
+- Kept Phase 4C pending until explicit owner approval.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 88 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 88 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`:
+  passed; `alembic check` reported no new upgrade operations and the
+  PostgreSQL smoke test passed.
+- Ran `uv run alembic current`: reported
+  `0002_core_team_player_season (head)`.
+- Ran `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- Did not run live scraping, contact Basketball Reference, start Phase 4C,
+  process cached HTML, delete or reset DB data, apply destructive migrations,
+  delete legacy/Peewee code, create a branch, commit, push, open a PR, or
+  implement API/frontend/OVR/ranking/similarity/ML work.

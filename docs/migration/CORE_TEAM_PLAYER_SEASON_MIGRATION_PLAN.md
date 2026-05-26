@@ -2,10 +2,9 @@
 
 ## Purpose
 
-This document prepares the reviewed migration path for core team, player, and
-season entities. It is a Phase 2 planning artifact only: no database migration
-is applied, no production data is modified, and legacy Peewee code remains in
-place.
+This document prepared the reviewed migration path for core team, player, and
+season entities. Phase 4 task `F4-001` now implements the first additive
+SQLAlchemy/Alembic slice while preserving legacy Peewee coexistence.
 
 ## Current Foundation
 
@@ -17,6 +16,21 @@ The SQLAlchemy foundation already includes:
 - `core.team_aliases` for abbreviation/name history across season ranges;
 - `core.players` with a unique `basketball_reference_player_id` constraint;
 - Alembic as the migration mechanism for new schema work.
+
+`F4-001` adds:
+
+- a unique Basketball Reference team identifier constraint on `core.teams`;
+- `TOT` check constraints for real team identifiers and aliases;
+- `core.team_seasons` for real team-season membership;
+- `core.player_seasons` for player-season identity;
+- `core.player_team_seasons` for roster stint membership without stats.
+
+`F4-002` adds:
+
+- SQLAlchemy repository methods for idempotent core identity records;
+- a team-season core loader for already-normalized rows;
+- validation-before-write behavior and caller-owned transaction boundaries;
+- SQLite unit coverage plus a PostgreSQL smoke test through the migrated schema.
 
 Legacy Peewee models remain under `models/`, and legacy database operations
 remain under `db_manager/`. They must continue to coexist until equivalent
@@ -39,7 +53,9 @@ SQLAlchemy loaders and migrations are reviewed in a later phase.
    identifiers and validation checks.
 3. Review any needed SQLAlchemy model changes for `core` entities.
 4. Generate small Alembic migrations for reviewed schema changes only.
+   `F4-001` adds `0002_core_team_player_season.py`.
 5. Add SQLAlchemy repositories/loaders that upsert by stable natural keys.
+   `F4-002` implements the first core identity and membership slice.
 6. Run database integration validation against local PostgreSQL only after the
    migration is explicitly approved.
 7. Migrate stats and loader behavior gradually after parser outputs are stable.

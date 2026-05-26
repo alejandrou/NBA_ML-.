@@ -2,9 +2,10 @@
 
 ## Purpose
 
-This document defines the target loading strategy for parsed team-season data in
-later phases. It is a design record only: Phase 2 does not write production
-data, create loader repositories, or apply database migrations.
+This document defines the target loading strategy for parsed team-season data.
+Phase 2 created the strategy as a design record. Phase 4 task `F4-002` now
+implements the first SQLAlchemy repository and loader slice for core identity
+and membership records only.
 
 This document does not download raw HTML, parse HTML, or implement an offline
 processor. It starts at the loader boundary: already parsed, normalized, and
@@ -25,6 +26,9 @@ cached HTML -> pure parser -> normalizer -> validator -> idempotent loader
 - Validators check row shape, required identifiers, duplicates, and domain
   rules before any database write.
 - Loaders write only validated records and must be safe to rerun.
+- F4-002 loaders validate and check duplicate natural keys before any database
+  write, use portable select-then-insert/update logic, and leave transaction
+  commit/rollback ownership to callers.
 
 ## Natural Keys
 
@@ -81,7 +85,7 @@ Phase 2 only documents the strategy. Later phases may add:
 
 - normalization models for stable team-season parser output;
 - data quality checks for normalized rows;
-- SQLAlchemy repositories with upsert behavior;
+- SQLAlchemy repositories with idempotent select-then-insert/update behavior;
 - Alembic migrations for reviewed unique constraints and indexes;
 - integration tests against local PostgreSQL.
 

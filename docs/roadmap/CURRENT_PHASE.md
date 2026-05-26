@@ -1,7 +1,7 @@
 # Current Phase
 
 Phase ID: `phase-4-sqlalchemy-migration`
-Status: `proposed`
+Status: `done`
 
 ## Phase 4 - SQLAlchemy Migration
 
@@ -20,10 +20,14 @@ through idempotent repositories.
   `F4B-LIVE-001` were reviewed and marked `done`.
 - The owner-approved Phase 4B pilot acquired only the approved BOS 2024 and DEN
   2023 team-season pages through the controlled manifest path.
+- `F4-001` was reviewed and marked `done`.
+- `F4-003` was reviewed and marked `done`.
+- `F4-002` was reviewed and marked `done`.
+- `F4-001`, `F4-002`, and `F4-003` are all `done`.
 - No task is currently `approved`, `in_progress`, or `needs_review`.
-- `F4-001` is `ready` as the next candidate task, not approved.
-- `F4-002` and `F4-003` remain `pending`.
-- Phase 4C offline cached HTML processing and loading remains future work.
+- Phase 4 is closed.
+- Phase 4C offline cached HTML processing and loading remains future work and
+  is not approved.
 
 ## Current Guardrails
 
@@ -31,16 +35,14 @@ through idempotent repositories.
 - Do not delete database data, raw HTML, Peewee code, or legacy scraper code.
 - Do not run live scraping, contact Basketball Reference, or execute another
   raw HTML backfill pilot without exact owner approval.
-- Do not write DB loader data until the selected schema and idempotent loader
-  boundaries are approved.
-- Do not implement API/frontend/OVR/ranking/similarity/ML work in this phase.
+- Do not start Phase 4C, cached HTML processing, API/frontend, generated
+  metrics, OVR, ranking, similarity, or ML work without explicit owner
+  approval.
 
 ## Next Safe Action
 
-Ask for explicit owner approval before promoting `F4-001` from `ready` to
-`approved`. The first implementation step should define the exact reviewable
-SQLAlchemy/Alembic scope for core team, player, and season entities while
-preserving Peewee coexistence.
+Prepare commit, push, and PR only after explicit owner approval. Phase 4C
+remains pending until the owner approves the phase transition and first task.
 
 ## References
 

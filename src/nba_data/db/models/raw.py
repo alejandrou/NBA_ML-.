@@ -23,7 +23,9 @@ class RawPage(Base):
     cache_path: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     http_status: Mapped[int | None] = mapped_column(Integer)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    fetched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     parser_version: Mapped[str | None] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="fetched")
     error: Mapped[str | None] = mapped_column(Text)
@@ -35,7 +37,9 @@ class ScraperRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="started")
     config_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
@@ -57,7 +61,9 @@ class ScraperRequest(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     http_status: Mapped[int | None] = mapped_column(Integer)
     cache_hit: Mapped[bool] = mapped_column(default=False, nullable=False)
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     error: Mapped[str | None] = mapped_column(Text)
 
     scraper_run: Mapped[ScraperRun | None] = relationship(back_populates="requests")

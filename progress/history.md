@@ -1129,3 +1129,27 @@ Tarea inicial:
   activate Phase 4 SQLAlchemy migration, delete raw HTML, delete legacy/Peewee
   code, create a branch, commit, push, open a PR, or implement
   API/frontend/OVR work.
+
+## Phase 4B Closure And Phase 4 SQLAlchemy Transition
+
+- Closed `phase-4b-controlled-raw-html-backfill` after `F4B-001`, `F4B-002`,
+  `F4B-003`, and `F4B-LIVE-001` were reviewed and marked `done`.
+- Moved the current phase to `phase-4-sqlalchemy-migration` with status
+  `proposed`.
+- Promoted `F4-001` to `ready` as the next candidate task.
+- Kept `F4-001` unapproved; no task is `approved`, `in_progress`, or
+  `needs_review`.
+- Kept `F4-002`, `F4-003`, and Phase 4C tasks `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic check`: failed with existing nullable drift on
+  `raw.raw_pages.fetched_at`, `raw.scraper_requests.requested_at`, and
+  `raw.scraper_runs.started_at`.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, execute a backfill
+  runner, write DB data, apply migrations, delete raw HTML, delete
+  legacy/Peewee code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR work.

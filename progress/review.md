@@ -447,3 +447,30 @@ No rerun live acquisition, extra Basketball Reference contact, DB writes,
 migrations, parser/load offline processing, full historical scraping,
 concurrency, raw HTML deletion, legacy/Peewee deletion, API/frontend/OVR work,
 branch creation, commit, push, or PR occurred during review closure.
+
+## Phase 4B Closure Review
+
+Status: approved
+
+Phase 4B is approved for closure. The phase has a reviewed manifest strategy,
+offline dry-run validation, sequential cache-first acquisition runner, and a
+recorded owner-approved two-URL pilot. Phase 4 is now current as
+`phase-4-sqlalchemy-migration` with status `proposed`, and `F4-001` is `ready`
+but not approved.
+
+## Phase 4B Closure Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 70 passed and 6 Peewee deprecation warnings.
+- `uv run alembic check`: failed with existing nullable drift on
+  `raw.raw_pages.fetched_at`, `raw.scraper_requests.requested_at`, and
+  `raw.scraper_runs.started_at`.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  70 passed and 6 Peewee deprecation warnings.
+
+No live acquisition was rerun, no extra Basketball Reference contact occurred,
+and no DB writes, migrations, parser/load offline processing, raw HTML
+deletion, legacy/Peewee deletion, API/frontend/OVR work, branch creation,
+commit, push, or PR occurred during the transition.

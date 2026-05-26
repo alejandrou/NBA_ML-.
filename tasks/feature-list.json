@@ -1,5 +1,5 @@
 {
-  "current_phase_id": "phase-4b-controlled-raw-html-backfill",
+  "current_phase_id": "phase-4-sqlalchemy-migration",
   "current_phase_status": "proposed",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
@@ -808,7 +808,7 @@
       "id": "F4-001",
       "title": "Implement core team/player/season SQLAlchemy migrations",
       "phase_id": "phase-4-sqlalchemy-migration",
-      "status": "pending",
+      "status": "ready",
       "description": "Add reviewed SQLAlchemy/Alembic migrations for selected core entities.",
       "acceptance_criteria": [
         "Migrations are reviewable",

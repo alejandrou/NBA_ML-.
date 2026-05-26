@@ -1298,3 +1298,36 @@ Phase 4B, starting Phase 4C, or approving Phase 4 SQLAlchemy migration work.
 Run `python -m json.tool tasks/feature-list.json`,
 `python -m json.tool tasks/manifests/F4B-LIVE-001-pilot-team-season-20260525.json`,
 `uv run ruff check .`, `uv run pytest`, and Git Bash harness validation.
+
+## Checkpoint 37 - Phase 4B Closure And Phase 4 SQLAlchemy Transition
+
+### What Changed
+
+Closed `phase-4b-controlled-raw-html-backfill` and moved the current phase to
+`phase-4-sqlalchemy-migration` with status `proposed`. `F4-001` is now
+`ready`, while `F4-002`, `F4-003`, and Phase 4C remain `pending`.
+
+### Why
+
+Phase 4B met its acquisition-only done criteria. The next roadmap step is to
+prepare reviewable SQLAlchemy/Alembic migration work before Phase 4C can load
+validated offline processing results.
+
+### Concepts Learned
+
+- Closing a completed acquisition phase is separate from approving migration
+  implementation.
+- `ready` marks the next candidate task without starting schema work.
+- Phase 4C must wait for enough SQLAlchemy schema and idempotent loader support.
+
+### Files to Read
+
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+- `specs/phases/phase-4-sqlalchemy-migration.md`
+- `docs/migration/CORE_TEAM_PLAYER_SEASON_MIGRATION_PLAN.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic check`, and Git Bash harness validation.

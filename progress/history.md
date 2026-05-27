@@ -1351,3 +1351,222 @@ Tarea inicial:
   process cached HTML, delete or reset DB data, apply destructive migrations,
   delete legacy/Peewee code, create a branch, commit, push, open a PR, or
   implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 Merge And Phase 4C Handoff
+
+- PR #6, `[codex] Close Phase 4 SQLAlchemy migration`, was merged into
+  `main`: `https://github.com/alejandrou/NBA_ML-./pull/6`.
+- GitHub CI for PR #6 passed.
+- Local `main` was fast-forwarded to `origin/main` after the merge.
+- Current task state: `F4-001`, `F4-002`, and `F4-003` are `done`.
+- Current phase state: `phase-4-sqlalchemy-migration` is `done`.
+- Phase 4C tasks remain `pending`; no Phase 4C task has been approved or
+  started.
+- Next safe development step is explicit owner approval to activate
+  `phase-4c-offline-cached-html-processing-and-load` and select `F4C-001`.
+- Do not run live scraping, contact Basketball Reference, refresh cache misses,
+  write DB loader data from cached HTML, delete data, run destructive
+  migrations, delete Peewee/legacy code, create a branch, commit, push, open a
+  PR, or implement API/frontend/OVR/ranking/similarity/ML work without explicit
+  owner approval.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Expected branch: main
+
+Goal: continue after the merged Phase 4 SQLAlchemy migration and prepare the
+next development step for Phase 4C. Follow the repo startup protocol first.
+
+Startup protocol:
+1. Read AGENTS.md.
+2. Run C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh.
+3. Read docs/ai/WORKFLOW_PROTOCOL.md.
+4. Read docs/roadmap/PHASE_GOVERNANCE.md.
+5. Read docs/roadmap/CURRENT_PHASE.md.
+6. Read tasks/feature-list.json.
+7. Read specs/phases/phase-4-sqlalchemy-migration.md.
+8. Read specs/phases/phase-4c-offline-cached-html-processing-and-load.md.
+9. Read specs/features/F4C-001-offline-cached-html-processor.md if it exists;
+   if it does not exist, inspect tasks/feature-list.json and the Phase 4C spec
+   before proposing the smallest spec/task-state update.
+10. Read progress/current.md, progress/history.md, and progress/review.md.
+11. Run git status --short --branch.
+
+Context:
+- PR #6 is merged: https://github.com/alejandrou/NBA_ML-./pull/6.
+- Phase 4 is closed and merged.
+- current_phase_id is phase-4-sqlalchemy-migration.
+- current_phase_status is done.
+- F4-001, F4-002, and F4-003 are done.
+- Phase 4C remains pending/future and has not been approved yet.
+- F4C-001 is the expected next candidate task:
+  implement an offline cached HTML processor that reads only existing .html.gz
+  cache files, parses, normalizes, and validates team-season rows without any
+  network client and without database writes.
+
+Owner approval for this session:
+- I approve transitioning the roadmap from Phase 4 to
+  phase-4c-offline-cached-html-processing-and-load.
+- I approve preparing F4C-001 as the first Phase 4C task.
+- Before implementing runtime code, inspect whether the F4C-001 feature spec
+  exists and whether task state/current phase docs need a transition update.
+
+Guardrails:
+- No live scraping.
+- Do not contact Basketball Reference.
+- Do not refresh cache misses.
+- Do not write DB loader data from cached HTML in F4C-001.
+- Do not delete raw HTML, database records, volumes, Peewee, or legacy code.
+- No destructive migrations.
+- No API/frontend/OVR/ranking/similarity/ML.
+- Do not create a branch, commit, push, or open a PR without explicit owner
+  approval in that session.
+
+Task:
+1. Inspect the Phase 4C specs/tasks/progress state.
+2. If source-of-truth files still point to Phase 4 as done, propose or make the
+   smallest transition update to set Phase 4C as current and F4C-001 as ready
+   or approved according to phase governance and the approval above.
+3. Then either produce a concise implementation plan for F4C-001 or, if the
+   state is already decision-complete, implement only the smallest F4C-001
+   slice.
+4. Keep all tests offline and fixture/cache based.
+5. Update progress/current.md and progress/history.md after the checkpoint.
+```
+
+## Phase 4C Planning Transition
+
+- Created branch `feature/phase-4c-offline-cached-html-processor` from
+  `main` after confirming `main...origin/main`.
+- Preserved existing local progress handoff edits on the new branch.
+- Activated `phase-4c-offline-cached-html-processing-and-load` as the current
+  phase with status `approved`.
+- Moved `F4C-001` from `pending` to `ready` as the first Phase 4C task.
+- Kept `F4C-001` unapproved; no task is currently `approved`, `in_progress`,
+  or `needs_review`.
+- Kept `F4C-002` and `F4C-003` pending.
+- Added `specs/features/F4C-001-offline-cached-html-processor.md` for the
+  offline cached HTML processor boundary.
+- Updated roadmap state and task docs for the Phase 4C transition.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Did not implement runtime code, run live scraping, contact Basketball
+  Reference, refresh cache misses, write DB data, apply migrations, delete raw
+  HTML, delete database records or volumes, delete Peewee/legacy code, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-001 Offline Cached HTML Processor
+
+- Owner approved implementing `F4C-001`.
+- Moved `phase-4c-offline-cached-html-processing-and-load` to `in_progress`
+  and moved `F4C-001` from `ready` to `in_progress`, then to `needs_review`
+  after validation.
+- Added `src/nba_data/scraping/offline_processor.py`.
+- Added `tests/unit/test_offline_processor.py`.
+- The processor accepts URL sources resolved through `HtmlCache.path_for_url`
+  and explicit `.html.gz` paths under the configured cache root.
+- Explicit URL sources must be Basketball Reference team-season pages matching
+  `/teams/{TEAM}/{YEAR}.html`.
+- Explicit path sources must include team abbreviation and season end year
+  metadata, resolve under the cache root, and end in `.html.gz`.
+- The processor reads cached gzip content once for each source, then calls
+  `parse_team_season_page`, `normalize_team_season_page`, and
+  `validate_normalized_team_season_rows`.
+- Successful entries return validated normalized rows plus source context.
+- Cache misses, invalid paths, read errors, and validation failures return
+  per-input failures without refreshing cache misses or blocking later inputs.
+- Default execution is sequential with `max_workers=1`; bounded local workers
+  preserve input order for already-cached local work.
+- Ran `uv run pytest tests/unit/test_offline_processor.py`: passed, 9 passed.
+- Ran `uv run ruff check src/nba_data/scraping/offline_processor.py tests/unit/test_offline_processor.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 96 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  96 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, write DB data, apply migrations, delete raw HTML, delete database
+  records or volumes, delete Peewee/legacy code, create a branch, commit, push,
+  open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-001 Continuation Handoff
+
+- Current branch: `feature/phase-4c-offline-cached-html-processor`.
+- `F4C-001` is `needs_review`.
+- `phase-4c-offline-cached-html-processing-and-load` remains `in_progress`.
+- `F4C-002` and `F4C-003` remain `pending`.
+- Next safe action: review `F4C-001` and either close it as `done` after
+  approval or move it to `changes_requested` with the smallest corrective fix.
+- Do not start `F4C-002` or connect database loaders until the owner explicitly
+  approves the next task.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Branch: feature/phase-4c-offline-cached-html-processor
+
+Follow the repo startup protocol first:
+1. Read AGENTS.md.
+2. Run C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh.
+3. Read docs/ai/WORKFLOW_PROTOCOL.md.
+4. Read docs/roadmap/PHASE_GOVERNANCE.md.
+5. Read docs/roadmap/CURRENT_PHASE.md.
+6. Read tasks/feature-list.json.
+7. Read specs/phases/phase-4c-offline-cached-html-processing-and-load.md.
+8. Read specs/features/F4C-001-offline-cached-html-processor.md.
+9. Read progress/current.md, progress/history.md, and progress/review.md.
+10. Run git status --short --branch.
+
+Context:
+- Phase 4 SQLAlchemy migration is closed and merged via PR #6.
+- Phase 4C is current:
+  current_phase_id = phase-4c-offline-cached-html-processing-and-load
+  current_phase_status = in_progress
+- F4C-001 has been implemented and is now needs_review.
+- F4C-002 and F4C-003 remain pending.
+- The F4C-001 implementation added:
+  - src/nba_data/scraping/offline_processor.py
+  - tests/unit/test_offline_processor.py
+- The processor reads only existing .html.gz cache files, then parses,
+  normalizes, and validates team-season rows.
+- It accepts URL sources resolved through HtmlCache.path_for_url and explicit
+  .html.gz paths under the cache root.
+- It does not accept BasketballReferenceClient, requests, httpx, or any generic
+  network client.
+- It does not write database rows or call loaders.
+- Cache misses, invalid paths, read errors, and validation failures are
+  per-input failures and do not refresh the cache.
+- Latest validation passed:
+  - python -m json.tool tasks/feature-list.json
+  - uv run pytest tests/unit/test_offline_processor.py: 9 passed
+  - uv run ruff check .
+  - uv run pytest: 96 passed, 1 skipped, 6 Peewee deprecation warnings
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed
+
+Guardrails:
+- No live scraping.
+- Do not contact Basketball Reference.
+- Do not refresh cache misses.
+- Do not write DB loader data from cached HTML in F4C-001.
+- Do not start F4C-002 or connect database loaders.
+- Do not delete raw HTML, database records, volumes, Peewee, or legacy code.
+- No destructive migrations.
+- No API/frontend/OVR/ranking/similarity/ML.
+- Do not create another branch, commit, push, or open a PR without explicit
+  owner approval.
+
+Task:
+1. Review the F4C-001 diff against its feature spec and acceptance criteria.
+2. If it is correct, update progress/review.md, mark F4C-001 done, and update
+   progress/current.md, progress/history.md, docs/roadmap/TASKS.md, and
+   tasks/feature-list.json.
+3. If you find an issue, mark F4C-001 changes_requested and implement only the
+   smallest corrective fix.
+4. Run offline validation after review or fixes.
+5. Do not start F4C-002 unless I explicitly approve it in that session.
+```

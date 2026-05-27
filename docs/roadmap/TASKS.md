@@ -24,27 +24,30 @@
 
 ## Current
 
-- Current phase: `phase-4-sqlalchemy-migration`.
-- Current phase status: `done`.
-- `F4-001`: Implement core team/player/season SQLAlchemy migrations is `done`.
-- `F4-002`: Add idempotent loader repositories is `done`.
-- `F4-003`: Add database integration validation path is `done`.
-- No task is currently `approved`, `in_progress`, or `needs_review`.
+- Current phase: `phase-4c-offline-cached-html-processing-and-load`.
+- Current phase status: `in_progress`.
+- `F4C-001`: Implement offline cached HTML processor is `needs_review`.
+- `F4C-002`: Connect offline processor to idempotent loaders is `pending`.
+- `F4C-003`: Add offline load reporting and quarantine workflow is `pending`.
+- No task is currently `approved` or `in_progress`.
 
 ## Needs Review
 
-- None.
+- `F4C-001`: Implement offline cached HTML processor.
 
 ## Next
 
-- Next safe action: prepare commit, push, and PR only after explicit owner
-  approval.
-- Do not start Phase 4C, delete data, delete Peewee/legacy code, contact
-  Basketball Reference, run live scraping, or implement API/frontend/OVR work
-  without exact owner approval.
+- Next safe action: review the `F4C-001` implementation slice.
+- Do not start `F4C-002` loader connection until `F4C-001` is reviewed and the
+  owner explicitly approves the next task.
+- Do not delete data, delete Peewee/legacy code, contact Basketball Reference,
+  run live scraping, refresh cache misses, write DB loader data, or implement
+  API/frontend/OVR/ranking/similarity/ML work without exact owner approval.
 
 ## Later
 
-- Phase 4C offline cached HTML processing and load remains future work.
+- `F4C-002` will connect validated offline processor output to idempotent
+  loaders after `F4C-001` is done.
+- `F4C-003` will add reporting and quarantine workflow after loader connection.
 - Phase 5-7 tasks remain `pending` until explicitly approved under phase
   governance.

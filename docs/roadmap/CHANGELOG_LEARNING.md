@@ -1478,3 +1478,74 @@ phase begins.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, Git Bash DB validation, and
 `uv run alembic current`.
+
+## Checkpoint 42 - Phase 4C Planning Transition
+
+### What Changed
+
+Created `feature/phase-4c-offline-cached-html-processor`, activated
+`phase-4c-offline-cached-html-processing-and-load` as the current approved
+phase, moved `F4C-001` to `ready`, and added the missing F4C-001 feature spec.
+
+### Why
+
+Phase 4 was closed and merged, and the owner approved the roadmap transition to
+Phase 4C plus preparation of `F4C-001`. The task remains unapproved so runtime
+code does not start until the next explicit implementation checkpoint.
+
+### Concepts Learned
+
+- A phase can be approved while its first task remains only `ready`.
+- `F4C-001` is processor-only: existing `.html.gz` files feed parse,
+  normalize, and validate steps, with no network client and no DB writes.
+- Loader connection belongs to `F4C-002`; reporting and quarantine workflow
+  belongs to `F4C-003`.
+
+### Files to Read
+
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+- `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
+- `specs/features/F4C-001-offline-cached-html-processor.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json` and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`.
+
+## Checkpoint 43 - F4C-001 Offline Cached HTML Processor
+
+### What Changed
+
+Implemented the first Phase 4C runtime boundary in
+`src/nba_data/scraping/offline_processor.py` and added offline unit tests in
+`tests/unit/test_offline_processor.py`.
+
+### Why
+
+The owner approved `F4C-001`, whose scope is existing cached `.html.gz` inputs
+through parse, normalize, and validate only. Loader connection remains reserved
+for `F4C-002`.
+
+### Concepts Learned
+
+- A processor report can expose only validated rows while keeping invalid rows
+  out of loader reach.
+- Cache misses should be entry-level failures in offline processing, not a
+  reason to refresh the cache.
+- Bounded workers are safe only when the work is local cached gzip I/O and the
+  final report preserves input order.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_processor.py`
+- `tests/unit/test_offline_processor.py`
+- `specs/features/F4C-001-offline-cached-html-processor.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_processor.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.

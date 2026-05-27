@@ -1,6 +1,6 @@
 # Phase 4C - Offline Cached HTML Processing and Load
 
-Status: proposed
+Status: in_progress
 Phase ID: `phase-4c-offline-cached-html-processing-and-load`
 
 ## Goal

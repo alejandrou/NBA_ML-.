@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-4-sqlalchemy-migration",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4c-offline-cached-html-processing-and-load",
+  "current_phase_status": "in_progress",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -910,12 +910,13 @@
       "id": "F4C-001",
       "title": "Implement offline cached HTML processor",
       "phase_id": "phase-4c-offline-cached-html-processing-and-load",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4B-LIVE-001"
       ],
       "description": "Implement an offline processor that reads already-cached .html.gz files, then parses, normalizes, and validates team-season rows without accepting any network client.",
       "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4C-001-offline-cached-html-processor.md.",
         "Processor reads only existing .html.gz cache entries or explicit paths under the cache root.",
         "Cache misses fail and never refresh the cache.",
         "No BasketballReferenceClient, requests, httpx, or generic network client is accepted.",
@@ -937,6 +938,11 @@
         "DB loading",
         "SQLAlchemy migrations",
         "API/frontend/OVR"
+      ],
+      "expected_files": [
+        "specs/features/F4C-001-offline-cached-html-processor.md",
+        "src/nba_data/scraping/offline_processor.py",
+        "tests/unit/test_offline_processor.py"
       ]
     },
     {

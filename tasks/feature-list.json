@@ -949,7 +949,7 @@
       "id": "F4C-002",
       "title": "Connect offline processor to idempotent loaders",
       "phase_id": "phase-4c-offline-cached-html-processing-and-load",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4-002",
         "F4-003",
@@ -957,12 +957,15 @@
       ],
       "description": "Load only validated normalized rows from the offline processor through Phase 4 SQLAlchemy idempotent repositories.",
       "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md.",
         "Loading starts from validated normalized rows, not raw HTML.",
-        "Loaders reject or quarantine invalid rows before DB writes.",
+        "Processor failure entries do not call DB loaders.",
+        "Entry-level loader failures roll back partial DB writes for that entry.",
+        "Loader orchestration does not call session.commit().",
         "Idempotent upserts can be rerun without duplicate rows.",
-        "Source lineage links loaded rows to cached raw HTML metadata where available.",
+        "Source lineage stays at report/result level with source_url, cache_path, team_abbreviation, and season_year.",
         "Integration tests use local database setup and no live scraping.",
-        "No API/frontend/OVR work or full historical load is introduced."
+        "No migrations, new DB tables, source lineage columns, API/frontend/OVR work, or full historical load is introduced."
       ],
       "validation": [
         "python -m json.tool tasks/feature-list.json",
@@ -972,9 +975,18 @@
       ],
       "out_of_scope": [
         "Live scraping",
+        "Cache refresh",
         "Direct loading from HTML without validation",
+        "SQLAlchemy migrations",
+        "Persisted source lineage columns",
+        "F4C-003 reporting and quarantine workflow",
         "Full historical load",
         "API/frontend/OVR"
+      ],
+      "expected_files": [
+        "specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md",
+        "src/nba_data/scraping/offline_loader.py",
+        "tests/unit/test_offline_loader.py"
       ]
     },
     {

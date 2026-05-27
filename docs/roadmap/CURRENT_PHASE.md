@@ -30,14 +30,16 @@ write database rows.
   `F4C-001` as the first Phase 4C task.
 - The owner approved implementing `F4C-001`.
 - `F4C-001` is reviewed and marked `done`.
-- No task is currently `approved`, `in_progress`, or `needs_review`.
-- `F4C-002` and `F4C-003` remain `pending`.
+- The owner approved implementing `F4C-002`.
+- `F4C-002` is implemented and `needs_review`.
+- `F4C-003` remains `pending`.
 
 ## Current Guardrails
 
 - Do not run live scraping or contact Basketball Reference.
 - Do not refresh cache misses.
-- Do not write DB loader data from cached HTML in `F4C-001`.
+- Do not write DB loader data from cached HTML except through approved
+  `F4C-002` validated offline processor output.
 - Do not delete raw HTML, database records, volumes, Peewee code, or legacy
   code.
 - Do not implement or run destructive migrations.
@@ -48,9 +50,9 @@ write database rows.
 
 ## Next Safe Action
 
-Wait for explicit owner approval before starting `F4C-002`. Do not connect
-database loaders or write loader data from cached HTML until that approval is
-given.
+Review `F4C-002` and either close it as `done` after approval or request the
+smallest corrective fix. Do not start `F4C-003` until the owner explicitly
+approves the next task.
 
 ## References
 

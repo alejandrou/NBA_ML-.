@@ -1603,3 +1603,51 @@ Task:
   misses, write DB data, delete data, run destructive migrations, delete
   Peewee/legacy code, create a branch, commit, push, open a PR, or implement
   API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Offline Processor Loader Connection
+
+- Owner approved implementing `F4C-002` only and stopping before `F4C-003`.
+- Promoted `F4C-002` through the allowed task state path and moved it to
+  `needs_review` after validation.
+- Added
+  `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`.
+- Added `src/nba_data/scraping/offline_loader.py`.
+- Added `tests/unit/test_offline_loader.py`.
+- The offline loader orchestration starts from
+  `OfflineTeamSeasonProcessingReport` entries, not raw HTML.
+- Processor failure entries are marked skipped and do not call DB loaders.
+- Validated entries are converted into `TeamSeasonLoadBatch` and loaded through
+  `load_team_season_core(...)`.
+- Each validated entry runs inside a nested transaction savepoint so loader
+  exceptions roll back partial writes for that entry.
+- Loader orchestration does not call `session.commit()`.
+- Source lineage is preserved only in returned result objects as `source_url`,
+  `cache_path`, `team_abbreviation`, and `season_year`.
+- Ran `uv run pytest tests/unit/test_offline_loader.py`: passed, 6 passed.
+- Ran `uv run ruff check src/nba_data/scraping/offline_loader.py tests/unit/test_offline_loader.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 102 passed, 1 skipped, and 6 Peewee
+  deprecation warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  102 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `F4C-003` pending.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Handoff
+
+- Current branch:
+  `feature/phase-4c-offline-cached-html-processor`.
+- Current task state: `F4C-002` is `needs_review`.
+- `F4C-001` is `done`.
+- `F4C-003` remains `pending`.
+- Next safe action: review `F4C-002` against
+  `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
+  and either close it as `done` after approval or request changes.
+- Do not start `F4C-003` until the owner explicitly approves it after
+  `F4C-002` review closure.
+- Continuation prompt is recorded in `progress/current.md`.

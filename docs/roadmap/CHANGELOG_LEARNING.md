@@ -1585,3 +1585,39 @@ or loader connection.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and
 `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 45 - F4C-002 Offline Processor Loader Connection
+
+### What Changed
+
+Connected validated offline processor entries to the existing idempotent core
+loader through `src/nba_data/scraping/offline_loader.py` and added focused
+offline tests in `tests/unit/test_offline_loader.py`.
+
+### Why
+
+The owner approved `F4C-002` only: validated cached HTML processor output can
+now flow into Phase 4 core loaders while `F4C-003` reporting and quarantine
+workflow remains pending.
+
+### Concepts Learned
+
+- Entry-level savepoints let one loader failure roll back partial writes without
+  requiring the orchestration layer to own the outer transaction.
+- Processor failures are already pre-loader failures, so the loader bridge
+  should skip them rather than reclassify or quarantine them in `F4C-002`.
+- Source lineage can stay useful at report level without adding schema columns.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_loader.py`
+- `tests/unit/test_offline_loader.py`
+- `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_loader.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.

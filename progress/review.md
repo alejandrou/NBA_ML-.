@@ -579,3 +579,43 @@ Phase 4 is approved for closure. `F4-001`, `F4-002`, and `F4-003` are done.
 The phase leaves behind additive SQLAlchemy core schema, idempotent loader
 repositories for validated normalized rows, and a repeatable PostgreSQL
 validation path. Phase 4C remains pending until explicit owner approval.
+
+## Phase 4C F4C-001 Review
+
+Status: approved
+
+`F4C-001` is approved for closure. The offline processor reads already-cached
+`.html.gz` team-season inputs, runs cached gzip read -> parse -> normalize ->
+validate, and returns validated normalized rows or actionable per-input
+failures without accepting a network client or writing database rows.
+
+## Phase 4C F4C-001 Review Findings
+
+- URL sources are restricted to explicit Basketball Reference team-season pages
+  and resolve through `HtmlCache.path_for_url`.
+- Explicit path sources require team abbreviation and season year metadata,
+  must end in `.html.gz`, and must resolve under the configured cache root.
+- Cache misses, invalid paths, read errors, and validation failures are
+  reported per input without refreshing the cache or blocking later inputs.
+- Default execution is sequential with `max_workers=1`; bounded local workers
+  preserve input order for already-cached local work.
+- The processor does not accept or import `BasketballReferenceClient`,
+  `requests`, `httpx`, or a generic network client.
+- No database sessions, SQLAlchemy loader calls, migrations, raw HTML deletion,
+  API/frontend, generated metrics, OVR, ranking, similarity, ML work, or
+  `F4C-002` loader connection were introduced.
+
+## Phase 4C F4C-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run pytest tests/unit/test_offline_processor.py`: passed, 9 passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 96 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after rerunning with a longer timeout.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  96 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+No live scraping, Basketball Reference contact, cache refresh, DB writes,
+loader integration, destructive migration, data deletion, Peewee/legacy
+deletion, API/frontend/OVR/ranking/similarity/ML work, branch creation, commit,
+push, or PR occurred during review closure.

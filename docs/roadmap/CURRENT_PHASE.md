@@ -29,8 +29,8 @@ write database rows.
 - The owner approved transitioning the roadmap to Phase 4C and preparing
   `F4C-001` as the first Phase 4C task.
 - The owner approved implementing `F4C-001`.
-- `F4C-001` is `needs_review`.
-- No task is currently `approved` or `in_progress`.
+- `F4C-001` is reviewed and marked `done`.
+- No task is currently `approved`, `in_progress`, or `needs_review`.
 - `F4C-002` and `F4C-003` remain `pending`.
 
 ## Current Guardrails
@@ -48,9 +48,9 @@ write database rows.
 
 ## Next Safe Action
 
-Review the `F4C-001` implementation slice. Do not start `F4C-002` loader
-connection until `F4C-001` is reviewed and the owner explicitly approves the
-next task.
+Wait for explicit owner approval before starting `F4C-002`. Do not connect
+database loaders or write loader data from cached HTML until that approval is
+given.
 
 ## References
 

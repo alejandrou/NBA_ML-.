@@ -1570,3 +1570,36 @@ Task:
 4. Run offline validation after review or fixes.
 5. Do not start F4C-002 unless I explicitly approve it in that session.
 ```
+
+## Phase 4C F4C-001 Review Closure
+
+- Reviewed `F4C-001` against its feature spec and acceptance criteria.
+- Marked `F4C-001` as `done`.
+- Confirmed the offline processor reads only existing cached `.html.gz` inputs,
+  then calls parse, normalize, and validate in order.
+- Confirmed URL inputs are explicit Basketball Reference team-season pages
+  resolved through `HtmlCache.path_for_url`.
+- Confirmed explicit path inputs require team and season metadata, must end in
+  `.html.gz`, and must resolve under the cache root.
+- Confirmed cache misses, invalid paths, read errors, and validation failures
+  are per-input failures and do not refresh the cache or block other inputs.
+- Confirmed successful entries return validated normalized rows plus source
+  context.
+- Confirmed the processor does not accept or import
+  `BasketballReferenceClient`, `requests`, `httpx`, or a generic network
+  client.
+- Confirmed no database sessions, SQLAlchemy loader calls, migrations, raw HTML
+  deletion, API/frontend/OVR/ranking/similarity/ML work, or `F4C-002` loader
+  connection was introduced.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 96 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  96 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `phase-4c-offline-cached-html-processing-and-load` in progress.
+- Kept `F4C-002` and `F4C-003` pending until explicit owner approval.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, write DB data, delete data, run destructive migrations, delete
+  Peewee/legacy code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work.

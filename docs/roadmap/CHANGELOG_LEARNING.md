@@ -1549,3 +1549,39 @@ Run `uv run pytest tests/unit/test_offline_processor.py`,
 `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and
 `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 44 - F4C-001 Review Closure
+
+### What Changed
+
+Reviewed and approved `F4C-001`, then marked the task `done` while keeping
+Phase 4C in progress and leaving `F4C-002` and `F4C-003` pending.
+
+### Why
+
+The offline cached HTML processor met the feature spec: it reads existing
+`.html.gz` inputs, parses, normalizes, validates, and reports per-input
+successes or failures without network clients, cache refresh, database writes,
+or loader connection.
+
+### Concepts Learned
+
+- Review closure should update the task board, current phase notes, review
+  notes, history, and learning changelog together.
+- Processor-only closure keeps loader integration behind the next explicit
+  task approval.
+- Offline validation can pass while the PostgreSQL integration smoke test stays
+  skipped when local database prerequisites are not active.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `docs/roadmap/TASKS.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.

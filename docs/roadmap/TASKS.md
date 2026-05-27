@@ -21,25 +21,27 @@
 - Phase 4B controlled raw HTML backfill is complete and reviewed.
 - Phase 4 SQLAlchemy migration is complete and reviewed.
 - `F4-001`, `F4-002`, and `F4-003` are marked `done`.
+- `F4C-001`: Implement offline cached HTML processor is reviewed and marked
+  `done`.
 
 ## Current
 
 - Current phase: `phase-4c-offline-cached-html-processing-and-load`.
 - Current phase status: `in_progress`.
-- `F4C-001`: Implement offline cached HTML processor is `needs_review`.
+- `F4C-001`: Implement offline cached HTML processor is `done`.
 - `F4C-002`: Connect offline processor to idempotent loaders is `pending`.
 - `F4C-003`: Add offline load reporting and quarantine workflow is `pending`.
-- No task is currently `approved` or `in_progress`.
+- No task is currently `approved`, `in_progress`, or `needs_review`.
 
 ## Needs Review
 
-- `F4C-001`: Implement offline cached HTML processor.
+- None.
 
 ## Next
 
-- Next safe action: review the `F4C-001` implementation slice.
-- Do not start `F4C-002` loader connection until `F4C-001` is reviewed and the
-  owner explicitly approves the next task.
+- Next safe action: wait for explicit owner approval before starting `F4C-002`.
+- Do not start `F4C-002` loader connection until the owner explicitly approves
+  the next task.
 - Do not delete data, delete Peewee/legacy code, contact Basketball Reference,
   run live scraping, refresh cache misses, write DB loader data, or implement
   API/frontend/OVR/ranking/similarity/ML work without exact owner approval.

@@ -910,7 +910,7 @@
       "id": "F4C-001",
       "title": "Implement offline cached HTML processor",
       "phase_id": "phase-4c-offline-cached-html-processing-and-load",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4B-LIVE-001"
       ],

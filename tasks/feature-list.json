@@ -949,7 +949,7 @@
       "id": "F4C-002",
       "title": "Connect offline processor to idempotent loaders",
       "phase_id": "phase-4c-offline-cached-html-processing-and-load",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4-002",
         "F4-003",

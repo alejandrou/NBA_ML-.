@@ -1651,3 +1651,43 @@ Task:
 - Do not start `F4C-003` until the owner explicitly approves it after
   `F4C-002` review closure.
 - Continuation prompt is recorded in `progress/current.md`.
+
+## Phase 4C F4C-002 Review Closure
+
+- Reviewed `F4C-002` against its feature spec and acceptance criteria.
+- Marked `F4C-002` as `done`.
+- Confirmed the offline loader starts from
+  `OfflineTeamSeasonProcessingReport` entries, not raw HTML.
+- Confirmed only `status="validated"` entries are converted into
+  `TeamSeasonLoadBatch` and loaded through `load_team_season_core(...)`.
+- Confirmed processor failure entries are skipped and do not call DB loaders.
+- Confirmed each validated entry runs inside a nested transaction savepoint so
+  loader exceptions roll back partial writes for that entry.
+- Confirmed loader orchestration does not call `session.commit()`.
+- Confirmed idempotent reruns do not create duplicate core rows.
+- Confirmed source lineage is preserved only in returned result objects as
+  `source_url`, `cache_path`, `team_abbreviation`, and `season_year`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 102 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  102 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `phase-4c-offline-cached-html-processing-and-load` in progress.
+- Kept `F4C-003` pending until explicit owner approval.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Closure Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt.
+- The continuation prompt explicitly approves starting `F4C-003` in the next
+  session only after startup inspection confirms source-of-truth consistency.
+- The next task remains `F4C-003`: add offline load reporting and quarantine
+  workflow.
+- The prompt preserves the Phase 4C guardrails: no live scraping, no
+  Basketball Reference contact, no cache refresh, no migrations or DB schema
+  changes, no data deletion, no API/frontend/OVR/ranking/similarity/ML work,
+  and no branch/commit/push/PR without explicit owner approval.

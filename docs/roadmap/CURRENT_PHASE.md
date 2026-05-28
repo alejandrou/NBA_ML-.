@@ -18,6 +18,9 @@ The Phase 4C flow is:
 `F4C-001` covers only the processor boundary through validation. It must not
 write database rows.
 
+`F4C-002` connects validated processor output to the reviewed idempotent core
+loaders. It does not add reporting/quarantine workflow.
+
 ## Transition State
 
 - Phase 4B is closed after `F4B-001`, `F4B-002`, `F4B-003`, and
@@ -31,15 +34,15 @@ write database rows.
 - The owner approved implementing `F4C-001`.
 - `F4C-001` is reviewed and marked `done`.
 - The owner approved implementing `F4C-002`.
-- `F4C-002` is implemented and `needs_review`.
+- `F4C-002` is reviewed and marked `done`.
 - `F4C-003` remains `pending`.
 
 ## Current Guardrails
 
 - Do not run live scraping or contact Basketball Reference.
 - Do not refresh cache misses.
-- Do not write DB loader data from cached HTML except through approved
-  `F4C-002` validated offline processor output.
+- Do not run another offline DB load workflow until the owner explicitly
+  approves the next task or operation.
 - Do not delete raw HTML, database records, volumes, Peewee code, or legacy
   code.
 - Do not implement or run destructive migrations.
@@ -50,15 +53,15 @@ write database rows.
 
 ## Next Safe Action
 
-Review `F4C-002` and either close it as `done` after approval or request the
-smallest corrective fix. Do not start `F4C-003` until the owner explicitly
-approves the next task.
+Stop after `F4C-002` review closure. Ask for explicit owner approval before
+starting `F4C-003`.
 
 ## References
 
 - `docs/roadmap/PHASE_GOVERNANCE.md`
 - `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
 - `specs/features/F4C-001-offline-cached-html-processor.md`
+- `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
 - `specs/phases/phase-4-sqlalchemy-migration.md`
 - `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
 - `tasks/feature-list.json`

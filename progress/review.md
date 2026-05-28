@@ -619,3 +619,43 @@ No live scraping, Basketball Reference contact, cache refresh, DB writes,
 loader integration, destructive migration, data deletion, Peewee/legacy
 deletion, API/frontend/OVR/ranking/similarity/ML work, branch creation, commit,
 push, or PR occurred during review closure.
+
+## Phase 4C F4C-002 Review
+
+Status: approved
+
+`F4C-002` is approved for closure. The offline loader bridge starts from
+validated offline processor report entries, converts only validated entries to
+`TeamSeasonLoadBatch`, loads through the existing idempotent
+`load_team_season_core(...)` path, and preserves caller-owned transaction
+boundaries.
+
+## Phase 4C F4C-002 Review Findings
+
+- Loading starts from `OfflineTeamSeasonProcessingReport` entries, not raw
+  HTML.
+- Processor failure entries are skipped and do not call DB loaders.
+- Each validated entry runs inside `session.begin_nested()`, so loader
+  exceptions roll back partial writes for that entry.
+- Loader orchestration does not call `session.commit()`.
+- Idempotent reruns do not create duplicate core rows.
+- Source lineage stays at result/report level only:
+  `source_url`, `cache_path`, `team_abbreviation`, and `season_year`.
+- No network client, `BasketballReferenceClient`, `requests`, or `httpx`
+  boundary was added to the offline loader.
+- No migrations, DB tables, source lineage columns, F4C-003
+  reporting/quarantine workflow, full historical load, API/frontend/OVR,
+  ranking, similarity, or ML work was introduced.
+
+## Phase 4C F4C-002 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 102 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  102 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+No live scraping, Basketball Reference contact, cache refresh, destructive
+migration, data deletion, Peewee/legacy deletion, branch creation, commit,
+push, PR, or `F4C-003` work occurred during review closure.

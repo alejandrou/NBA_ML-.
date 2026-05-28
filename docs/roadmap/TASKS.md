@@ -23,6 +23,8 @@
 - `F4-001`, `F4-002`, and `F4-003` are marked `done`.
 - `F4C-001`: Implement offline cached HTML processor is reviewed and marked
   `done`.
+- `F4C-002`: Connect offline processor to idempotent loaders is reviewed and
+  marked `done`.
 
 ## Current
 
@@ -30,27 +32,25 @@
 - Current phase status: `in_progress`.
 - `F4C-001`: Implement offline cached HTML processor is `done`.
 - `F4C-002`: Connect offline processor to idempotent loaders is
-  `needs_review`.
+  `done`.
 - `F4C-003`: Add offline load reporting and quarantine workflow is `pending`.
 
 ## Needs Review
 
-- `F4C-002`: Connect offline processor to idempotent loaders.
+- None.
 
 ## Next
 
-- Next safe action: review `F4C-002` and either close it as `done` after
-  approval or request changes.
-- Do not start `F4C-003` until the owner explicitly approves the next task
-  after `F4C-002` review closure.
+- Next safe action: ask the owner for explicit approval before starting
+  `F4C-003`.
+- Do not start `F4C-003` automatically after `F4C-002` review closure.
 - Do not delete data, delete Peewee/legacy code, contact Basketball Reference,
   run live scraping, refresh cache misses, write DB loader data, or implement
   API/frontend/OVR/ranking/similarity/ML work without exact owner approval.
 
 ## Later
 
-- `F4C-002` will connect validated offline processor output to idempotent
-  loaders after `F4C-001` is done.
-- `F4C-003` will add reporting and quarantine workflow after loader connection.
+- `F4C-003` will add reporting and quarantine workflow after explicit owner
+  approval.
 - Phase 5-7 tasks remain `pending` until explicitly approved under phase
   governance.

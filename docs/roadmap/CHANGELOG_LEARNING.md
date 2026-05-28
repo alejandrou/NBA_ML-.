@@ -1621,3 +1621,39 @@ Run `uv run pytest tests/unit/test_offline_loader.py`,
 `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and
 `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 46 - F4C-002 Review Closure
+
+### What Changed
+
+Reviewed and approved `F4C-002`, marked it `done`, and kept Phase 4C in
+progress with `F4C-003` still pending until explicit owner approval.
+
+### Why
+
+The loader bridge met the feature spec: it loads only validated offline
+processor entries through the existing idempotent core loader, skips processor
+failures, rolls back failed entries with savepoints, avoids commits, and keeps
+source lineage at the returned result/report level only.
+
+### Concepts Learned
+
+- Review closure for loader work should prove both idempotency and transaction
+  ownership boundaries.
+- Savepoint tests are enough for `F4C-002`; richer reporting and quarantine
+  behavior remains a separate `F4C-003` concern.
+- Source lineage can support operator troubleshooting without adding schema
+  columns.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `src/nba_data/scraping/offline_loader.py`
+- `tests/unit/test_offline_loader.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.

@@ -1805,3 +1805,49 @@ Task:
 - The first harness validation run failed on untracked new Phase 4D spec files;
   only the Phase 4D planning files touched in this checkpoint were staged, then
   harness validation passed.
+
+## Phase 4D-A Controlled Acquisition Planning Update
+
+- Inserted Phase 4D-A as a controlled NBA team-season cache acquisition
+  subphase inside `phase-4d-full-offline-database-preparation`.
+- Added `F4D-ACQ-001`, `F4D-ACQ-LIVE-001`, and `F4D-ACQ-002` ahead of the
+  existing Phase 4D database preparation tasks.
+- Moved only `F4D-ACQ-001` to `ready`.
+- Kept `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` `pending`.
+- Moved existing `F4D-001` back to `pending` and made it depend on
+  `F4D-ACQ-002`.
+- Added feature specs for the Phase 4D-A manifest, controlled live acquisition,
+  and acquisition report review tasks.
+- Documented that seasons 2000-2025 mean Basketball Reference season end years.
+- Documented that the manifest must contain exactly 775 unique NBA team-season
+  URLs and only `/teams/{TEAM}/{YEAR}.html` URLs.
+- Documented the acquisition policy: explicit owner approval and execution flag
+  for live acquisition, default 10 requests/minute, configurable phase max 12
+  requests/minute, hard cap 20 requests/minute, immediate stop on HTTP 429, and
+  async only with bounded concurrency plus a global rate limiter.
+- Did not fetch HTML, contact Basketball Reference, write `.html.gz` files,
+  write database rows, parse, load, backfill, implement API/frontend/OVR/
+  ranking/similarity/recommendations/ML work, create a branch, commit, push, or
+  open a PR.
+- Validation passed:
+  `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+  `uv run pytest`, and
+  `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Phase 4D-A Continuation Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt for a
+  new Codex window.
+- The prompt instructs the next session to verify the staged Phase 4D-A
+  planning/docs diff before making any additional changes.
+- The prompt preserves the current task state: `F4D-ACQ-001` is `ready`, while
+  `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` remain `pending`.
+- The prompt explicitly blocks HTML fetching, Basketball Reference contact,
+  live scraping, `.html.gz` writes, database writes, parser/load/backfill work,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, destructive
+  migrations, data deletion, and branch/commit/push/PR actions without explicit
+  owner approval.
+- The prompt limits any next implementation, if separately approved, to
+  `F4D-ACQ-001` manifest generation and dry-run planning only.

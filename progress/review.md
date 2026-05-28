@@ -727,3 +727,17 @@ stays offline-only: existing cached `.html.gz` files only, no live scraping, no
 cache refresh, no Basketball Reference contact, no data deletion, no
 destructive migrations, and no API/frontend/OVR/ranking/similarity/
 recommendations/ML work.
+
+## Phase 4D-A Planning Transition Review Notes
+
+Status: planning prepared
+
+Phase 4D-A has been introduced as a controlled acquisition subphase inside
+Phase 4D. `F4D-ACQ-001` is ready for future owner approval; all live
+acquisition and database preparation tasks remain pending.
+
+Review focus for the next checkpoint should confirm that manifest generation is
+NBA-only, team-season-only, and covers exactly 775 unique
+`/teams/{TEAM}/{YEAR}.html` URLs for Basketball Reference season end years 2000
+through 2025. Live acquisition remains gated behind explicit owner approval and
+an execution flag.

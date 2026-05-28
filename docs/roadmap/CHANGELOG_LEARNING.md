@@ -1804,3 +1804,53 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 ### Review Questions
 
 - Should the owner approve `F4D-001` as the first implementation task?
+
+## Checkpoint 50 - Phase 4D-A Controlled Acquisition Planning
+
+### What Changed
+
+Inserted Phase 4D-A as a controlled NBA team-season cache acquisition subphase
+inside Phase 4D, before cache inventory and database preparation work.
+
+### Why
+
+Phase 4D needs real cached Basketball Reference NBA team-season HTML before it
+can inventory, process, load, and validate a useful local PostgreSQL database
+for future API development.
+
+### Concepts Learned
+
+- Seasons 2000-2025 are Basketball Reference season end years.
+- The NBA team-season manifest for this range must contain exactly 775 unique
+  `/teams/{TEAM}/{YEAR}.html` URLs.
+- Live acquisition needs a separate task with explicit owner approval, an
+  execution flag, cache-first behavior, a global rate limiter, and immediate
+  stop/report behavior on HTTP 429.
+
+### Files to Read
+
+- `specs/phases/phase-4d-full-offline-database-preparation.md`
+- `specs/features/F4D-ACQ-001-nba-team-season-manifest.md`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+- `specs/features/F4D-ACQ-002-acquisition-report-and-cache-coverage-review.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Review Questions
+
+- Should the owner approve `F4D-ACQ-001` as the first Phase 4D-A implementation
+  task?

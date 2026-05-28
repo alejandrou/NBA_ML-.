@@ -712,3 +712,18 @@ No live scraping, Basketball Reference contact, cache refresh, destructive
 migration, data deletion, Peewee/legacy deletion, branch creation, commit,
 push, PR, API/frontend/OVR/ranking/similarity/ML work, or Phase 5 activation
 occurred during closure.
+
+## Phase 4D Planning Transition Review Notes
+
+Status: planning prepared
+
+Phase 4D has been introduced as a planning-only transition before any API phase.
+No Phase 4D implementation task is in progress or needs review. `F4D-001` is
+ready for future owner approval, while `F4D-002`, `F4D-003`, and `F4D-004`
+remain pending.
+
+The review focus for the next implementation checkpoint should be that Phase 4D
+stays offline-only: existing cached `.html.gz` files only, no live scraping, no
+cache refresh, no Basketball Reference contact, no data deletion, no
+destructive migrations, and no API/frontend/OVR/ranking/similarity/
+recommendations/ML work.

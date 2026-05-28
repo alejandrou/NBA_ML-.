@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-4c-offline-cached-html-processing-and-load",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4d-full-offline-database-preparation",
+  "current_phase_status": "approved",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -1026,6 +1026,174 @@
         "src/nba_data/scraping/offline_reporting.py",
         "tests/unit/test_offline_reporting.py",
         "docs/validation/TEAM_SEASON_PIPELINE.md"
+      ]
+    },
+    {
+      "id": "F4D-001",
+      "title": "Build cached HTML inventory",
+      "phase_id": "phase-4d-full-offline-database-preparation",
+      "status": "ready",
+      "depends_on": [
+        "F4C-003"
+      ],
+      "description": "Build a repeatable inventory of all currently available cached .html.gz files without scraping, cache refresh, or database writes.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4D-001-cached-html-inventory.md.",
+        "Inventory discovers existing .html.gz files under the configured cache root.",
+        "Inventory identifies source URL or path where possible.",
+        "Inventory extracts or infers team abbreviation and season year where possible.",
+        "Inventory distinguishes valid team-season candidates from unsupported, duplicate, missing-metadata, invalid, and unreadable files.",
+        "Inventory reports total discovered files, valid candidates, invalid or unreadable files, duplicate candidates, missing metadata, and unsupported paths.",
+        "Inventory does not write database rows.",
+        "Inventory does not scrape, refresh cache misses, or contact Basketball Reference.",
+        "Tests use local temporary fixtures only."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Cache refresh",
+        "Database writes",
+        "Alembic migrations",
+        "Data deletion",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4D-001-cached-html-inventory.md",
+        "src/nba_data/scraping/cache_inventory.py",
+        "tests/unit/test_cache_inventory.py"
+      ]
+    },
+    {
+      "id": "F4D-002",
+      "title": "Add full offline backfill command",
+      "phase_id": "phase-4d-full-offline-database-preparation",
+      "status": "pending",
+      "depends_on": [
+        "F4D-001",
+        "F4C-003",
+        "F4-003"
+      ],
+      "description": "Create a repeatable offline command or script that loads valid cached inventory entries into PostgreSQL through the Phase 4C processor and idempotent loaders.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4D-002-full-offline-backfill-command.md.",
+        "Backfill runs only against existing cached files from the inventory.",
+        "Backfill processes each valid inventory entry through the Phase 4C offline processor.",
+        "Backfill loads only validated entries through existing idempotent loaders.",
+        "Invalid processor results are skipped or rejected before DB writes.",
+        "Entry-level transaction boundaries prevent one failed entry from leaving partial writes.",
+        "Rerunning the same backfill does not duplicate core rows.",
+        "Backfill produces a load report using the existing reporting and quarantine model.",
+        "Backfill does not delete existing data, perform destructive migrations, scrape, refresh cache misses, or contact the network."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Cache refresh",
+        "Deleting raw HTML",
+        "Deleting database records",
+        "Deleting PostgreSQL volumes",
+        "Destructive migrations",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4D-002-full-offline-backfill-command.md",
+        "src/nba_data/scraping/offline_backfill.py",
+        "tests/unit/test_offline_backfill.py"
+      ]
+    },
+    {
+      "id": "F4D-003",
+      "title": "Add post-load data quality validation checks",
+      "phase_id": "phase-4d-full-offline-database-preparation",
+      "status": "pending",
+      "depends_on": [
+        "F4D-002"
+      ],
+      "description": "Add checks that prove the loaded local PostgreSQL database is coherent enough for future read-only API work.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4D-003-data-quality-validation-checks.md.",
+        "Validation counts loaded team seasons, player seasons, and player-team-season relationships.",
+        "Validation detects duplicate logical rows.",
+        "Validation detects orphan player/team season relationships.",
+        "Validation detects teams with no players where unexpected.",
+        "Validation detects seasons with suspiciously low counts.",
+        "Validation checks quarantine and failure counts from the backfill report.",
+        "Validation produces a clear report.",
+        "Tests cover passing and failing quality checks.",
+        "No API implementation is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Cache refresh",
+        "Data deletion",
+        "Destructive migrations",
+        "API endpoints",
+        "Frontend",
+        "Generated metrics, OVR, ranking, similarity, recommendations, or ML"
+      ],
+      "expected_files": [
+        "specs/features/F4D-003-data-quality-validation-checks.md",
+        "src/nba_data/validation/offline_database.py",
+        "tests/unit/test_offline_database_validation.py"
+      ]
+    },
+    {
+      "id": "F4D-004",
+      "title": "Document API-ready database readiness workflow",
+      "phase_id": "phase-4d-full-offline-database-preparation",
+      "status": "pending",
+      "depends_on": [
+        "F4D-003"
+      ],
+      "description": "Document the local PostgreSQL workflow that future API work can rely on after Phase 4D is reviewed and approved.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4D-004-api-ready-database-readiness-documentation.md.",
+        "Docs explain how to start local PostgreSQL.",
+        "Docs explain how to run Alembic migrations.",
+        "Docs explain how to run cache inventory, full offline backfill, and data quality checks.",
+        "Docs state what data is expected after a successful run.",
+        "Docs include example SQL queries that prove useful data exists for future API development.",
+        "Docs clearly state API work starts only after Phase 4D is reviewed and approved.",
+        "No API, frontend, generated metrics, OVR, ranking, similarity, recommendations, or ML implementation is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "bash scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Contacting Basketball Reference",
+        "Cache refresh",
+        "Deleting data",
+        "Destructive migrations",
+        "API implementation",
+        "Frontend implementation",
+        "Generated metrics, OVR, ranking, similarity, recommendations, or ML"
+      ],
+      "expected_files": [
+        "specs/features/F4D-004-api-ready-database-readiness-documentation.md",
+        "docs/validation/OFFLINE_DATABASE_PREPARATION.md"
       ]
     },
     {

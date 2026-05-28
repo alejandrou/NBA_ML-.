@@ -1775,3 +1775,33 @@ Task:
   destructive migrations, delete Peewee/legacy code, create a branch, commit,
   push, open a PR, activate Phase 5, or implement
   API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4D Planning Transition
+
+- Confirmed Phase 4C is closed: `F4C-001`, `F4C-002`, and `F4C-003` are
+  reviewed and marked `done`.
+- Introduced `phase-4d-full-offline-database-preparation` as the next current
+  phase before any API phase.
+- Set Phase 4D status to `approved`.
+- Added Phase 4D tasks:
+  - `F4D-001`: Cached HTML inventory.
+  - `F4D-002`: Full offline backfill command.
+  - `F4D-003`: Data quality validation checks.
+  - `F4D-004`: API-ready database readiness documentation.
+- Moved `F4D-001` to `ready` and kept `F4D-002`, `F4D-003`, and `F4D-004`
+  `pending`.
+- Added the Phase 4D phase spec and feature specs for all four proposed tasks.
+- Recorded Phase 4D as offline-only and pre-API: existing cached `.html.gz`
+  files only, no live scraping, no cache refresh, no Basketball Reference
+  contact, no data deletion, no destructive migrations, no API/frontend/OVR/
+  ranking/similarity/recommendations/ML work.
+- Did not implement Phase 4D runtime code, run a backfill, write database rows,
+  run live scraping, contact Basketball Reference, refresh cache misses, delete
+  data, create a branch, commit, push, or open a PR.
+- Validation passed:
+  `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+  `uv run pytest`, and
+  `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+- The first harness validation run failed on untracked new Phase 4D spec files;
+  only the Phase 4D planning files touched in this checkpoint were staged, then
+  harness validation passed.

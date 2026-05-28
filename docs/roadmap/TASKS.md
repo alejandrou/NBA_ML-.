@@ -28,9 +28,10 @@
 
 ## Current
 
-- Current phase: `phase-4c-offline-cached-html-processing-and-load`.
-- Current phase status: `done`.
+- Current phase: `phase-4d-full-offline-database-preparation`.
+- Current phase status: `approved`.
 - No active task.
+- `F4D-001`: Cached HTML inventory is `ready`.
 
 ## Needs Review
 
@@ -38,14 +39,17 @@
 
 ## Next
 
-- Next safe action: prepare a Phase 5 transition proposal only after explicit
-  owner approval.
-- Do not delete data, delete Peewee/legacy code, contact Basketball Reference,
-  run live scraping, refresh cache misses, add migrations, add DB tables or
-  lineage columns, create a branch, commit, push, open a PR, or implement
-  API/frontend/OVR/ranking/similarity/ML work without exact owner approval.
+- Next safe action: implement `F4D-001` only after explicit owner approval.
+- `F4D-001` must inventory existing cached `.html.gz` files only.
+- Do not write database rows, run live scraping, contact Basketball Reference,
+  refresh cache misses, delete data, run destructive migrations, create a
+  branch, commit, push, open a PR, or implement API/frontend/OVR/ranking/
+  similarity/recommendations/ML work without exact owner approval.
 
 ## Later
 
-- Phase 5-7 tasks remain `pending` until explicitly approved under phase
-  governance.
+- `F4D-002`: Full offline backfill command remains `pending`.
+- `F4D-003`: Data quality validation checks remains `pending`.
+- `F4D-004`: API-ready database readiness documentation remains `pending`.
+- Phase 5-7 tasks remain `pending` until Phase 4D is reviewed and approved for
+  closure and the owner explicitly approves an API transition.

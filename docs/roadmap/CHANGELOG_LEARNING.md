@@ -1751,3 +1751,56 @@ and `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`.
   passed, 1 skipped, and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 106
   passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Checkpoint 49 - Phase 4D Planning Transition
+
+### What Changed
+
+Introduced `phase-4d-full-offline-database-preparation` as the current approved
+pre-API phase, added four Phase 4D tasks, and created Phase 4D phase and feature
+specs.
+
+### Why
+
+Future API work should be developed against a real local PostgreSQL database
+loaded from existing cached HTML, not against mocks. Phase 4D adds that
+preparation layer while keeping live scraping, cache refresh, and API
+implementation out of scope.
+
+### Concepts Learned
+
+- A full offline database preparation phase can sit between cached processing
+  and API work without approving API implementation.
+- Cache inventory should happen before any broad offline backfill so unsupported,
+  duplicate, missing-metadata, and unreadable cache files are visible.
+- Data quality checks should prove relationship coherence before API endpoints
+  depend on the database.
+
+### Files to Read
+
+- `specs/phases/phase-4d-full-offline-database-preparation.md`
+- `specs/features/F4D-001-cached-html-inventory.md`
+- `specs/features/F4D-002-full-offline-backfill-command.md`
+- `specs/features/F4D-003-data-quality-validation-checks.md`
+- `specs/features/F4D-004-api-ready-database-readiness-documentation.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings after staging the new
+  Phase 4D planning files required by the harness tracking guard.
+
+### Review Questions
+
+- Should the owner approve `F4D-001` as the first implementation task?

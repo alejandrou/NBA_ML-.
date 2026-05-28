@@ -1657,3 +1657,51 @@ source lineage at the returned result/report level only.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, and
 `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 47 - F4C-003 Offline Load Reporting And Quarantine
+
+### What Changed
+
+Added the F4C-003 feature spec, an offline audit/quarantine report builder, and
+focused unit tests. Processor validation failures now preserve quarantined rows
+separately from validated rows, and loader failures preserve the validated rows
+that failed to load for operator review.
+
+### Why
+
+Phase 4C needs an auditable retry workflow before broader offline loads. The
+operator needs to see parsed, validated, loaded, skipped, and quarantined row
+counts, plus source context and retry hints, without adding database schema or
+contacting Basketball Reference.
+
+### Concepts Learned
+
+- Quarantine belongs at the report boundary for this slice; it does not require
+  new DB tables or lineage columns.
+- Validation-failed rows can be visible for debugging while still staying out
+  of `validated_rows` and loader input.
+- Loader failure quarantine should capture only the failed entry rows because
+  entry-level savepoints already isolate partial writes.
+
+### Files to Read
+
+- `specs/features/F4C-003-offline-load-reporting-and-quarantine-workflow.md`
+- `src/nba_data/scraping/offline_reporting.py`
+- `tests/unit/test_offline_reporting.py`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_reporting.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 106 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.

@@ -35,7 +35,9 @@ loaders. It does not add reporting/quarantine workflow.
 - `F4C-001` is reviewed and marked `done`.
 - The owner approved implementing `F4C-002`.
 - `F4C-002` is reviewed and marked `done`.
-- `F4C-003` remains `pending`.
+- The owner approved implementing `F4C-003` after startup inspection confirmed
+  source-of-truth consistency.
+- `F4C-003` is implemented and awaits review.
 
 ## Current Guardrails
 
@@ -53,8 +55,8 @@ loaders. It does not add reporting/quarantine workflow.
 
 ## Next Safe Action
 
-Stop after `F4C-002` review closure. Ask for explicit owner approval before
-starting `F4C-003`.
+Review `F4C-003` against its feature spec and close it as `done` only after
+approval and validation, or request the smallest corrective change.
 
 ## References
 
@@ -62,6 +64,7 @@ starting `F4C-003`.
 - `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
 - `specs/features/F4C-001-offline-cached-html-processor.md`
 - `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
+- `specs/features/F4C-003-offline-load-reporting-and-quarantine-workflow.md`
 - `specs/phases/phase-4-sqlalchemy-migration.md`
 - `docs/migration/IDEMPOTENT_LOADER_STRATEGY.md`
 - `tasks/feature-list.json`

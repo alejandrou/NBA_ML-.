@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ class OfflineTeamSeasonLoadEntryResult:
     team_abbreviation: str
     season_year: int
     input_rows: int = 0
+    quarantined_rows: tuple[dict[str, Any], ...] = ()
     load_result: TeamSeasonLoadResult | None = None
     error_message: str | None = None
 
@@ -36,6 +37,8 @@ class OfflineTeamSeasonLoadEntryResult:
             "team_abbreviation": self.team_abbreviation,
             "season_year": self.season_year,
             "input_rows": self.input_rows,
+            "quarantined_row_count": len(self.quarantined_rows),
+            "quarantined_rows": list(self.quarantined_rows),
             "load_result": self.load_result.__dict__ if self.load_result is not None else None,
             "error_message": self.error_message,
         }
@@ -117,6 +120,7 @@ def _load_one_entry(
             entry,
             status="failed",
             input_rows=len(rows),
+            quarantined_rows=tuple(rows),
             error_message=str(exc),
         )
 
@@ -133,6 +137,7 @@ def _entry_result(
     *,
     status: Literal["loaded", "skipped", "failed"],
     input_rows: int = 0,
+    quarantined_rows: tuple[dict[str, Any], ...] = (),
     load_result: TeamSeasonLoadResult | None = None,
     error_message: str | None = None,
 ) -> OfflineTeamSeasonLoadEntryResult:
@@ -143,6 +148,7 @@ def _entry_result(
         team_abbreviation=entry.source.team_abbreviation,
         season_year=entry.source.season_year,
         input_rows=input_rows,
+        quarantined_rows=quarantined_rows,
         load_result=load_result,
         error_message=error_message,
     )

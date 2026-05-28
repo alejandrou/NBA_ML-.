@@ -64,6 +64,30 @@ mixed into normalized scraped stats.
 - duplicate natural keys within one normalized batch;
 - required tables that have no normalized rows.
 
+## Phase 4C Reporting And Quarantine
+
+The offline Phase 4C report flow is:
+
+```text
+OfflineTeamSeasonProcessingReport + OfflineTeamSeasonLoadReport -> audit report
+```
+
+The audit report distinguishes parsed, validated, loaded, skipped, and
+quarantined row counts. Validation failures keep invalid normalized rows out of
+loader input while preserving them as quarantined rows with source context,
+validation issues, and retry hints. Loader failures quarantine only the rows for
+the failed entry; successful entries remain separate and can be retried safely
+through the idempotent loader path.
+
+Operator retry flow:
+
+1. For validation quarantines, fix parser, normalizer, source metadata, or the
+   cached HTML fixture, then rerun offline processing before loading.
+2. For loading quarantines, fix the loader input or database-side issue, then
+   rerun the same validated report through the idempotent loader path.
+3. Compare the next audit report and confirm quarantined rows decrease without
+   unexpected duplicate load effects.
+
 ## Known Gaps
 
 Postseason tables, team summary tables, salary tables, database loading,

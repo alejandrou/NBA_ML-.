@@ -1691,3 +1691,55 @@ Task:
   Basketball Reference contact, no cache refresh, no migrations or DB schema
   changes, no data deletion, no API/frontend/OVR/ranking/similarity/ML work,
   and no branch/commit/push/PR without explicit owner approval.
+
+## Phase 4C F4C-003 Offline Load Reporting And Quarantine
+
+- Owner approved starting `F4C-003` after startup inspection confirmed the
+  handoff matched source-of-truth files.
+- Confirmed Phase 4C is current and `in_progress`, `F4C-001` and `F4C-002` are
+  `done`, `F4C-003` was the only next candidate task, and no other task was
+  `approved` or `in_progress`.
+- Promoted `F4C-003` through the allowed task state path and moved it to
+  `needs_review` after implementation and focused validation.
+- Added
+  `specs/features/F4C-003-offline-load-reporting-and-quarantine-workflow.md`.
+- Added `src/nba_data/scraping/offline_reporting.py`.
+- Added `tests/unit/test_offline_reporting.py`.
+- Extended processor reports with parsed row counts and quarantined rows for
+  validation failures while keeping invalid rows out of `validated_rows` and
+  loader input.
+- Extended loader entry reports with quarantined rows for failed loader entries.
+- Added an audit report builder that combines processing and load reports and
+  distinguishes parsed, validated, loaded, skipped, and quarantined rows.
+- Quarantine entries include source URL, cache path, team abbreviation, season
+  year, validation issues where available, error messages, and retry hints.
+- Updated `docs/validation/TEAM_SEASON_PIPELINE.md` with the operator retry
+  workflow for validation and loading quarantines.
+- Ran
+  `uv run pytest tests/unit/test_offline_reporting.py tests/unit/test_offline_processor.py tests/unit/test_offline_loader.py`:
+  passed, 19 passed.
+- Ran focused Ruff on the touched code and test modules: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- First `uv run pytest` attempt timed out before returning output; reran with a
+  longer timeout.
+- Ran `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  106 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-003 Review Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt for the
+  next session.
+- The continuation prompt directs the next session to review `F4C-003`, close it
+  as `done` only after approval and validation, or request the smallest
+  corrective fix.
+- The prompt preserves the Phase 4C guardrails: no live scraping, no Basketball
+  Reference contact, no cache refresh, no migrations or DB schema changes, no
+  data deletion, no API/frontend/OVR/ranking/similarity/ML work, and no
+  branch/commit/push/PR without explicit owner approval.

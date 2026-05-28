@@ -77,7 +77,9 @@ class OfflineTeamSeasonSourceContext:
 class OfflineTeamSeasonEntryResult:
     source: OfflineTeamSeasonSourceContext
     status: Literal["validated", "failed"]
+    parsed_row_count: int = 0
     normalized_rows: tuple[dict[str, Any], ...] = ()
+    quarantined_rows: tuple[dict[str, Any], ...] = ()
     validation_issues: tuple[DataQualityIssue, ...] = ()
     error_message: str | None = None
 
@@ -85,8 +87,11 @@ class OfflineTeamSeasonEntryResult:
         return {
             "source": self.source.to_dict(),
             "status": self.status,
+            "parsed_row_count": self.parsed_row_count,
             "validated_row_count": len(self.normalized_rows),
+            "quarantined_row_count": len(self.quarantined_rows),
             "normalized_rows": list(self.normalized_rows),
+            "quarantined_rows": list(self.quarantined_rows),
             "validation_issues": [_issue_to_dict(issue) for issue in self.validation_issues],
             "error_message": self.error_message,
         }
@@ -174,6 +179,8 @@ def _process_one_source(
             return OfflineTeamSeasonEntryResult(
                 source=context,
                 status="failed",
+                parsed_row_count=len(normalized_rows),
+                quarantined_rows=tuple(normalized_rows),
                 validation_issues=tuple(validation_issues),
                 error_message=(
                     f"Validation failed for cached team-season HTML with "
@@ -184,6 +191,7 @@ def _process_one_source(
         return OfflineTeamSeasonEntryResult(
             source=context,
             status="validated",
+            parsed_row_count=len(normalized_rows),
             normalized_rows=tuple(normalized_rows),
         )
     except Exception as exc:

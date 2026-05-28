@@ -1,6 +1,6 @@
 {
   "current_phase_id": "phase-4c-offline-cached-html-processing-and-load",
-  "current_phase_status": "in_progress",
+  "current_phase_status": "done",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -993,7 +993,7 @@
       "id": "F4C-003",
       "title": "Add offline load reporting and quarantine workflow",
       "phase_id": "phase-4c-offline-cached-html-processing-and-load",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4C-002"
       ],

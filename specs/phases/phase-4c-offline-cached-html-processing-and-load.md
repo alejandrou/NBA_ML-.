@@ -1,6 +1,6 @@
 # Phase 4C - Offline Cached HTML Processing and Load
 
-Status: in_progress
+Status: done
 Phase ID: `phase-4c-offline-cached-html-processing-and-load`
 
 ## Goal
@@ -74,6 +74,17 @@ offline parsing, normalization, and validation pass.
   rows.
 - No live scraping, cache refresh, API/frontend/OVR work, or full historical
   load occurred.
+
+## Closure Summary
+
+Phase 4C is closed after `F4C-001`, `F4C-002`, and `F4C-003` were reviewed and
+marked `done`. The phase leaves behind an offline cached HTML processor,
+idempotent loader bridge, and audit/quarantine reporting workflow over existing
+processing and load reports.
+
+Remaining risk is intentionally deferred: broader pilot operations, API
+exposure, frontend work, generated metrics, OVR, ranking, similarity, and ML
+remain future phase work and require explicit owner approval.
 
 ## Validation
 

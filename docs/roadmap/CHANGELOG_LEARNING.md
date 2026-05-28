@@ -1705,3 +1705,49 @@ Run `uv run pytest tests/unit/test_offline_reporting.py`, then run
   skipped, and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
   passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Checkpoint 48 - F4C-003 Review Closure And Phase 4C Closure
+
+### What Changed
+
+Reviewed and approved `F4C-003`, marked it `done`, and closed
+`phase-4c-offline-cached-html-processing-and-load` as `done`.
+
+### Why
+
+Phase 4C now has all three reviewed pieces needed for the offline cached HTML
+path: processor, loader bridge, and audit/quarantine reporting. Closing the
+phase preserves the next boundary: Phase 5/API work remains pending until the
+owner explicitly approves a transition.
+
+### Concepts Learned
+
+- Report-level quarantine is enough for this phase; persisted lineage columns
+  and DB-backed quarantine tables remain future design work.
+- Phase closure should not automatically activate the next phase.
+- The next transition should be a proposal, not an implementation of API,
+  frontend, OVR, rankings, similarity, or ML.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`,
+and `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.

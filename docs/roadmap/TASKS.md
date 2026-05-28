@@ -14,40 +14,36 @@
 - `F4A-000`: Add legacy parity and acquisition smoke-test strategy.
 - `F4A-001`: Consolidate legacy scrapers behind cache-first providers.
 - `F4A-002`: Design bounded offline cached HTML processing.
+- Phase 4B controlled raw HTML backfill is complete and reviewed.
 - `F4B-001`: Design controlled raw HTML backfill manifest.
 - `F4B-002`: Add raw HTML backfill manifest dry-run validation.
 - `F4B-003`: Add sequential cache-first raw HTML acquisition runner.
 - `F4B-LIVE-001`: Run owner-approved raw HTML backfill pilot.
-- Phase 4B controlled raw HTML backfill is complete and reviewed.
 - Phase 4 SQLAlchemy migration is complete and reviewed.
 - `F4-001`, `F4-002`, and `F4-003` are marked `done`.
-- `F4C-001`: Implement offline cached HTML processor is reviewed and marked
-  `done`.
-- `F4C-002`: Connect offline processor to idempotent loaders is reviewed and
-  marked `done`.
+- Phase 4C offline cached HTML processing and load is complete and reviewed.
+- `F4C-001`: Implement offline cached HTML processor.
+- `F4C-002`: Connect offline processor to idempotent loaders.
+- `F4C-003`: Add offline load reporting and quarantine workflow.
 
 ## Current
 
 - Current phase: `phase-4c-offline-cached-html-processing-and-load`.
-- Current phase status: `in_progress`.
-- `F4C-001`: Implement offline cached HTML processor is `done`.
-- `F4C-002`: Connect offline processor to idempotent loaders is
-  `done`.
-- `F4C-003`: Add offline load reporting and quarantine workflow is
-  `needs_review`.
+- Current phase status: `done`.
+- No active task.
 
 ## Needs Review
 
-- `F4C-003`: Add offline load reporting and quarantine workflow.
+- None.
 
 ## Next
 
-- Next safe action: review `F4C-003` and either close it as `done` after
-  approval and validation or request the smallest corrective change.
+- Next safe action: prepare a Phase 5 transition proposal only after explicit
+  owner approval.
 - Do not delete data, delete Peewee/legacy code, contact Basketball Reference,
   run live scraping, refresh cache misses, add migrations, add DB tables or
-  lineage columns, or implement API/frontend/OVR/ranking/similarity/ML work
-  without exact owner approval.
+  lineage columns, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work without exact owner approval.
 
 ## Later
 

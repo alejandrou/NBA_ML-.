@@ -659,3 +659,56 @@ boundaries.
 No live scraping, Basketball Reference contact, cache refresh, destructive
 migration, data deletion, Peewee/legacy deletion, branch creation, commit,
 push, PR, or `F4C-003` work occurred during review closure.
+
+## Phase 4C F4C-003 Review
+
+Status: approved
+
+`F4C-003` is approved for closure. The implementation adds report-level
+audit/quarantine behavior over existing offline processing and load reports,
+without adding live acquisition, cache refresh, migrations, DB tables, lineage
+columns, API/frontend/OVR work, or a full historical load.
+
+## Phase 4C F4C-003 Review Findings
+
+- The audit report starts from `OfflineTeamSeasonProcessingReport` plus an
+  optional `OfflineTeamSeasonLoadReport`; it does not read raw HTML or accept a
+  network client.
+- Reports distinguish parsed, validated, loaded, skipped, and quarantined row
+  counts.
+- Validation failures preserve invalid normalized rows as quarantined rows while
+  keeping them out of `validated_rows` and loader input.
+- Loader failures quarantine only the validated rows for the failed entry.
+- Quarantine entries retain source URL, cache path, team abbreviation, season
+  year, validation issue details where available, error messages, and retry
+  hints.
+- Retry safety is covered by rerunning the same validated report through the
+  idempotent loader path without duplicate load effects.
+- No `BasketballReferenceClient`, `requests`, `httpx`, cache refresh, new
+  Peewee code, migrations, DB tables, lineage columns, API/frontend/OVR,
+  ranking, similarity, or ML work was introduced.
+
+## Phase 4C F4C-003 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4C Closure Review
+
+Status: approved
+
+Phase 4C is approved for closure. `F4C-001`, `F4C-002`, and `F4C-003` are
+done. The phase leaves behind the offline cached HTML processor, idempotent
+loader bridge, and audit/quarantine reporting workflow needed before any future
+broader pilot or Phase 5 transition.
+
+No live scraping, Basketball Reference contact, cache refresh, destructive
+migration, data deletion, Peewee/legacy deletion, branch creation, commit,
+push, PR, API/frontend/OVR/ranking/similarity/ML work, or Phase 5 activation
+occurred during closure.

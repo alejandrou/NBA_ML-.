@@ -1,7 +1,7 @@
 # Current Phase
 
 Phase ID: `phase-4d-full-offline-database-preparation`
-Status: `approved`
+Status: `in_progress`
 
 ## Phase 4D - Full Offline Database Preparation / Backfill Readiness
 
@@ -19,19 +19,19 @@ The active Phase 4D-A boundary is:
 approved NBA team-season URL manifest -> cache-first acquisition -> HtmlCache .html.gz
 ```
 
-No HTML may be fetched during this planning/docs checkpoint.
+No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 
 ## Transition State
 
 - Phase 4C is closed after `F4C-001`, `F4C-002`, and `F4C-003` were reviewed
   and marked `done`.
-- Phase 4D is approved as the pre-API database preparation phase.
+- Phase 4D is in progress as the pre-API database preparation phase.
 - Phase 4D-A has been inserted before cache inventory, processing, loading, and
   validation work.
-- `F4D-ACQ-001` is `ready` as the first Phase 4D-A task.
+- `F4D-ACQ-001` is implemented and awaiting review.
 - `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
   `F4D-004` remain `pending`.
-- No Phase 4D-A or Phase 4D implementation has started.
+- No live acquisition or database preparation implementation has started.
 
 ## Phase Tasks
 
@@ -77,10 +77,8 @@ No HTML may be fetched during this planning/docs checkpoint.
 
 ## Next Safe Action
 
-Implement `F4D-ACQ-001` only after explicit owner approval. The task may
-generate and dry-run the approved URL manifest, but must not fetch HTML, write
-`.html.gz` files, write database rows, parse, load, backfill, or contact
-Basketball Reference.
+Review `F4D-ACQ-001`. Do not start `F4D-ACQ-LIVE-001` unless the owner
+separately approves live acquisition and the required execution flag is used.
 
 ## References
 

@@ -1854,3 +1854,57 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 
 - Should the owner approve `F4D-ACQ-001` as the first Phase 4D-A implementation
   task?
+
+## Checkpoint 51 - F4D-ACQ-001 NBA Team-Season Manifest Dry Run
+
+### What Changed
+
+Implemented deterministic NBA team-season manifest generation and dry-run
+coverage reporting for Phase 4D-A. The new CLI command
+`uv run nba-data acquisition dry-run-nba-team-seasons` prints the generated
+dry-run report as JSON.
+
+### Why
+
+Phase 4D-A needs an explicit, reviewable URL set before any owner-approved live
+cache acquisition can happen. The first task proves the 775-URL scope and cache
+coverage without contacting Basketball Reference or writing raw HTML.
+
+### Concepts Learned
+
+- The 2000-2025 Basketball Reference season-end-year catalog has 775 NBA
+  team-season URLs: 29 teams for 2000-2004 and 30 teams for 2005-2025.
+- Manifest generation can stay deterministic in code while the future live
+  acquisition task remains separately gated.
+- Dry-run coverage only needs `HtmlCache.path_for_url(...).exists()`, so it can
+  estimate missing cache entries without reading or writing cached HTML.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_manifest.py`
+- `tests/unit/test_nba_team_season_manifest.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-ACQ-001-nba-team-season-manifest.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_manifest.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_nba_team_season_manifest.py`: passed, 7
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 113 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Review Questions
+
+- Should `F4D-ACQ-001` be closed as `done`, leaving `F4D-ACQ-LIVE-001` pending
+  until separate owner approval plus its execution flag?

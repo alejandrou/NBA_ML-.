@@ -1,6 +1,6 @@
 # Phase 4D - Full Offline Database Preparation / Backfill Readiness
 
-Status: approved
+Status: in_progress
 Phase ID: `phase-4d-full-offline-database-preparation`
 
 ## Goal
@@ -105,7 +105,7 @@ team-season catalog:
 - Nets lineage: `NJN` for 2000-2012; `BRK` for 2013-2025.
 - SuperSonics/Thunder lineage: `SEA` for 2000-2008; `OKC` for 2009-2025.
 
-## Done Criteria
+## Phase 4D-A Handoff Criteria
 
 - Phase 4D-A tasks are implemented, reviewed, and marked `done`.
 - The approved manifest and acquisition report cover the 775 expected NBA

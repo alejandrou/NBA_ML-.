@@ -13,12 +13,15 @@ from nba_data.scraping.backfill_manifest import (
 )
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
+from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
 cache_app = typer.Typer(help="HTML cache utilities.")
 backfill_app = typer.Typer(help="Controlled raw HTML backfill utilities.")
+acquisition_app = typer.Typer(help="Phase 4D-A acquisition planning utilities.")
 app.add_typer(cache_app, name="cache")
 app.add_typer(backfill_app, name="backfill")
+app.add_typer(acquisition_app, name="acquisition")
 console = Console()
 
 
@@ -98,4 +101,14 @@ def backfill_acquire(
         console.print_json(data=exc.report.to_dict())
         raise typer.Exit(code=1) from exc
 
+    console.print_json(data=report.to_dict())
+
+
+@acquisition_app.command("dry-run-nba-team-seasons")
+def acquisition_dry_run_nba_team_seasons() -> None:
+    """Plan the Phase 4D-A NBA team-season manifest without downloading anything."""
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    report = build_nba_team_season_dry_run_report(cache=cache)
     console.print_json(data=report.to_dict())

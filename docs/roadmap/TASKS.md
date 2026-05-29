@@ -29,27 +29,23 @@
 ## Current
 
 - Current phase: `phase-4d-full-offline-database-preparation`.
-- Current phase status: `approved`.
+- Current phase status: `in_progress`.
 - Current subphase: Phase 4D-A controlled NBA team-season cache acquisition.
-- No active task.
-- `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan is
-  `ready`.
+- No active implementation task.
 
 ## Needs Review
 
-- None.
+- `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
 
 ## Next
 
-- Next safe action: implement `F4D-ACQ-001` only after explicit owner approval.
-- `F4D-ACQ-001` must generate and dry-run the approved NBA-only team-season
-  manifest for Basketball Reference season end years 2000 through 2025.
-- The manifest must contain exactly 775 unique `/teams/{TEAM}/{YEAR}.html`
-  URLs.
-- Do not fetch HTML, write `.html.gz` files, write database rows, parse, load,
-  backfill, run live scraping, contact Basketball Reference, refresh cache
-  misses, create a branch, commit, push, open a PR, or implement API/frontend/
-  OVR/ranking/similarity/recommendations/ML work without exact owner approval.
+- Next safe action: review `F4D-ACQ-001` and either close it as `done` after
+  approval or request the smallest corrective fix.
+- Do not start `F4D-ACQ-LIVE-001`, fetch HTML, write `.html.gz` files, write
+  database rows, parse, load, backfill, run live scraping, contact Basketball
+  Reference, refresh cache misses, create a branch, commit, push, open a PR, or
+  implement API/frontend/OVR/ranking/similarity/recommendations/ML work without
+  exact owner approval.
 
 ## Later
 

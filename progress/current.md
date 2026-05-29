@@ -1,65 +1,87 @@
 # Current Work
 
-Status: phase_4d_acq_001_ready
+Status: phase_4d_acq_001_needs_review
 
 ## Active Task
 
-- No active task.
-- `F4D-ACQ-001` is `ready`.
+- No active implementation task.
+- `F4D-ACQ-001` is `needs_review`.
 - `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
   `F4D-004` are `pending`.
 
 ## Current Phase
 
 - Phase ID: `phase-4d-full-offline-database-preparation`.
-- Phase status: `approved`.
+- Phase status: `in_progress`.
 - Current subphase: Phase 4D-A controlled NBA team-season cache acquisition.
 - Phase 4C offline cached HTML processing and load is closed.
-- `F4C-001`, `F4C-002`, and `F4C-003` are reviewed and marked `done`.
 - Phase 4D remains pre-API.
 
 ## Latest Checkpoint
 
-- Inserted Phase 4D-A as a controlled acquisition subphase inside Phase 4D.
-- Added Phase 4D-A task specs for:
-  - `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
-  - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
-    acquisition.
-  - `F4D-ACQ-002`: Review acquisition report and cache coverage handoff.
-- Moved `F4D-ACQ-001` to `ready`.
-- Kept `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, and the existing Phase 4D database
-  preparation tasks `pending`.
-- Moved existing `F4D-001` back to `pending` and made it depend on
-  `F4D-ACQ-002`.
-- Documented that seasons 2000-2025 mean Basketball Reference season end years.
-- Documented the exact 775-URL NBA team-season manifest expectation.
-- Documented acquisition policy: default 10 requests/minute, configurable phase
-  max 12 requests/minute, hard cap 20 requests/minute, immediate stop on HTTP
-  429, and async only with bounded concurrency plus a global rate limiter.
-- Did not fetch HTML, write `.html.gz` files, write database rows, parse, load,
-  backfill, implement API/frontend/OVR/ranking/similarity/recommendations/ML
-  work, create a branch, commit, push, or open a PR.
+- Implemented `F4D-ACQ-001` after explicit owner approval.
+- Added deterministic NBA team-season manifest generation for Basketball
+  Reference season end years 2000 through 2025.
+- The generated manifest contains exactly 775 unique
+  `/teams/{TEAM}/{YEAR}.html` URLs.
+- Added a dry-run report that checks existing `HtmlCache` paths and reports
+  cache hits, missing cache entries, skipped entries, unsupported entries, and
+  estimated fetch count.
+- Added `uv run nba-data acquisition dry-run-nba-team-seasons`, which prints
+  the generated dry-run report as JSON and accepts no manifest path, network
+  client, or execution flag.
+- Added unit tests for URL shape, franchise lineage boundaries, dry-run cache
+  coverage, no-client dry-run signature, module boundary restrictions, and CLI
+  JSON output.
+- Moved `F4D-ACQ-001` to `needs_review` and set Phase 4D to `in_progress`.
+- Left `F4D-ACQ-LIVE-001` and later Phase 4D tasks `pending`.
+- Did not fetch HTML, contact Basketball Reference, run live scraping, write
+  `.html.gz` files outside temporary tests, write database rows, parse, load,
+  backfill, delete data, run destructive migrations, remove Peewee or legacy
+  code, implement API/frontend/OVR/ranking/similarity/recommendations/ML work,
+  create a branch, commit, push, or open a PR.
 
 ## Latest Validation
 
+- `uv run pytest tests/unit/test_nba_team_season_manifest.py`: passed, 7
+  passed.
+- `uv run ruff check src/nba_data/scraping/nba_team_season_manifest.py src/nba_data/cli/main.py tests/unit/test_nba_team_season_manifest.py`:
+  passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+- First `uv run pytest` attempt timed out before returning output; reran with a
+  longer timeout.
+- `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee deprecation
   warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
   passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Current Working Tree
+
+- Expected modified files:
+  `docs/roadmap/CHANGELOG_LEARNING.md`, `docs/roadmap/CURRENT_PHASE.md`,
+  `docs/roadmap/TASKS.md`, `progress/current.md`, `progress/history.md`,
+  `specs/phases/phase-4d-full-offline-database-preparation.md`,
+  `src/nba_data/cli/main.py`, and `tasks/feature-list.json`.
+- Expected untracked files:
+  `src/nba_data/scraping/nba_team_season_manifest.py` and
+  `tests/unit/test_nba_team_season_manifest.py`.
+- These changes include the earlier Phase 4D-A handoff-criteria heading fix
+  plus the `F4D-ACQ-001` implementation and progress updates.
 
 ## Next Safe Action
 
-- After validation, request owner approval before implementing `F4D-ACQ-001`.
-- `F4D-ACQ-001` must only generate and dry-run the approved NBA team-season URL
-  manifest and must not fetch HTML or contact Basketball Reference.
-- Do not start `F4D-ACQ-LIVE-001`, run live scraping, contact Basketball
-  Reference, refresh cache misses, write `.html.gz` files, write database rows,
-  parse, load, backfill, delete data, run destructive migrations, remove Peewee
-  or legacy code, implement API/frontend/OVR/ranking/similarity/
-  recommendations/ML, create a branch, commit, push, or open a PR without
-  explicit owner approval.
+- Review `F4D-ACQ-001` against
+  `specs/features/F4D-ACQ-001-nba-team-season-manifest.md`.
+- If approved, mark `F4D-ACQ-001` as `done` and update review/progress docs.
+- If issues are found, move `F4D-ACQ-001` to `changes_requested` and implement
+  only the smallest corrective fix.
+- Do not start `F4D-ACQ-LIVE-001`, fetch HTML, contact Basketball Reference,
+  run live scraping, refresh cache misses, write `.html.gz` files, write
+  database rows, parse, load, backfill, delete data, run destructive
+  migrations, remove Peewee or legacy code, implement API/frontend/OVR/
+  ranking/similarity/recommendations/ML work, create a branch, commit, push, or
+  open a PR without separate explicit owner approval.
 
 ## Continuation Prompt
 
@@ -69,7 +91,7 @@ Use this prompt to continue in a new Codex window:
 Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
 Branch: feature/phase-4c-offline-cached-html-processor
 
-Continue from the staged Phase 4D-A planning/docs update.
+Continue from the F4D-ACQ-001 implementation handoff.
 
 Follow the repo startup protocol first:
 1. Read AGENTS.md.
@@ -80,30 +102,43 @@ Follow the repo startup protocol first:
 6. Read tasks/feature-list.json.
 7. Read specs/phases/phase-4d-full-offline-database-preparation.md.
 8. Read specs/features/F4D-ACQ-001-nba-team-season-manifest.md.
-9. Read specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md.
-10. Read specs/features/F4D-ACQ-002-acquisition-report-and-cache-coverage-review.md.
-11. Read progress/current.md, progress/history.md, and progress/review.md.
-12. Run git status --short --branch.
+9. Read progress/current.md, progress/history.md, and progress/review.md.
+10. Run git status --short --branch.
 
 Current state:
-- Phase 4C is closed.
-- Current phase is phase-4d-full-offline-database-preparation with status approved.
-- Phase 4D-A is the controlled NBA team-season cache acquisition subphase.
-- F4D-ACQ-001 is ready.
+- Phase 4D is in_progress.
+- F4D-ACQ-001 is needs_review.
 - F4D-ACQ-LIVE-001, F4D-ACQ-002, F4D-001, F4D-002, F4D-003, and F4D-004 are pending.
-- F4D-001 depends on F4D-ACQ-002.
-- The staged docs/task update added Phase 4D-A specs and roadmap/progress changes.
+- F4D-ACQ-001 added:
+  - src/nba_data/scraping/nba_team_season_manifest.py
+  - tests/unit/test_nba_team_season_manifest.py
+  - uv run nba-data acquisition dry-run-nba-team-seasons
+- The manifest covers Basketball Reference season end years 2000-2025 and contains exactly 775 unique /teams/{TEAM}/{YEAR}.html URLs.
+- Dry-run checks HtmlCache paths only and reports cache hits, missing entries, skipped entries, unsupported entries, and estimated fetch count.
+- No manifest JSON artifact was committed.
+- Expected uncommitted changes include:
+  - docs/roadmap/CHANGELOG_LEARNING.md
+  - docs/roadmap/CURRENT_PHASE.md
+  - docs/roadmap/TASKS.md
+  - progress/current.md
+  - progress/history.md
+  - specs/phases/phase-4d-full-offline-database-preparation.md
+  - src/nba_data/cli/main.py
+  - tasks/feature-list.json
+  - src/nba_data/scraping/nba_team_season_manifest.py
+  - tests/unit/test_nba_team_season_manifest.py
 - Latest validation passed:
+  - uv run pytest tests/unit/test_nba_team_season_manifest.py: 7 passed
   - python -m json.tool tasks/feature-list.json
   - uv run ruff check .
-  - uv run pytest: 106 passed, 1 skipped, 6 Peewee deprecation warnings
-  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed, 106 passed, 1 skipped, 6 Peewee deprecation warnings
+  - uv run pytest: 113 passed, 1 skipped, 6 Peewee deprecation warnings
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed, 113 passed, 1 skipped, 6 Peewee deprecation warnings
 
 Important constraints:
 - Do not fetch HTML.
 - Do not contact Basketball Reference.
 - Do not run live scraping.
-- Do not write .html.gz files.
+- Do not write .html.gz files except temporary test cache files.
 - Do not write database rows.
 - Do not parse, load, or backfill data.
 - Do not implement API, frontend, OVR, ranking, similarity, recommendations, or ML.
@@ -112,13 +147,9 @@ Important constraints:
 - Do not create a branch, commit, push, or open a PR without explicit owner approval.
 
 Task:
-1. Verify the staged Phase 4D-A planning/docs diff.
-2. Report whether it matches the approved plan.
-3. If I explicitly approve implementation in that session, start F4D-ACQ-001 only.
-4. F4D-ACQ-001 must generate and dry-run the NBA team-season URL manifest only:
-   - seasons 2000-2025 are Basketball Reference season end years;
-   - manifest must contain exactly 775 unique NBA team-season URLs;
-   - only /teams/{TEAM}/{YEAR}.html URLs are allowed;
-   - no network, no HtmlCache writes, no DB writes, no parser/load/backfill.
+1. Review F4D-ACQ-001 against its feature spec and acceptance criteria.
+2. If correct, update progress/review.md, mark F4D-ACQ-001 done, and update progress/current.md, progress/history.md, docs/roadmap/TASKS.md, docs/roadmap/CURRENT_PHASE.md, specs/phases/phase-4d-full-offline-database-preparation.md, docs/roadmap/CHANGELOG_LEARNING.md, and tasks/feature-list.json.
+3. If you find an issue, mark F4D-ACQ-001 changes_requested and implement only the smallest corrective fix.
+4. Run offline validation after review or fixes.
 5. Do not start F4D-ACQ-LIVE-001 without separate explicit owner approval plus the required execution flag.
 ```

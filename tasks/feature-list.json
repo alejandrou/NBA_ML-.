@@ -1,6 +1,6 @@
 {
   "current_phase_id": "phase-4d-full-offline-database-preparation",
-  "current_phase_status": "approved",
+  "current_phase_status": "in_progress",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -1032,7 +1032,7 @@
       "id": "F4D-ACQ-001",
       "title": "Generate NBA team-season URL manifest and dry-run plan",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "ready",
+      "status": "needs_review",
       "depends_on": [
         "F4C-003"
       ],

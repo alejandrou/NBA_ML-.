@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import typer
@@ -13,6 +14,13 @@ from nba_data.scraping.backfill_manifest import (
 )
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
+from nba_data.scraping.nba_team_season_acquisition import (
+    NbaTeamSeasonAcquisitionConfigurationError,
+    NbaTeamSeasonAcquisitionStopped,
+    acquire_nba_team_season_manifest,
+    build_verified_nba_team_season_acquisition_manifest,
+    validate_phase_4d_acquisition_settings,
+)
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
@@ -23,6 +31,11 @@ app.add_typer(cache_app, name="cache")
 app.add_typer(backfill_app, name="backfill")
 app.add_typer(acquisition_app, name="acquisition")
 console = Console()
+_ACQUISITION_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Optional path to write the acquisition JSON report.",
+)
 
 
 @app.command()
@@ -112,3 +125,54 @@ def acquisition_dry_run_nba_team_seasons() -> None:
     cache = HtmlCache(settings.scraper_cache_dir)
     report = build_nba_team_season_dry_run_report(cache=cache)
     console.print_json(data=report.to_dict())
+
+
+@acquisition_app.command("acquire-nba-team-seasons")
+def acquisition_acquire_nba_team_seasons(
+    start_year: int,
+    end_year: int,
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for the deterministic NBA team-season manifest.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved acquisition.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run controlled Phase 4D-A NBA team-season cache acquisition."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    try:
+        validate_phase_4d_acquisition_settings(settings)
+        manifest = build_verified_nba_team_season_acquisition_manifest(
+            start_year=start_year,
+            end_year=end_year,
+        )
+    except NbaTeamSeasonAcquisitionConfigurationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        with BasketballReferenceClient(settings, max_429_retries=0) as client:
+            report = acquire_nba_team_season_manifest(manifest, cache=cache, client=client)
+    except NbaTeamSeasonAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+def _print_and_optionally_write_json(data: dict[str, object], output: Path | None) -> None:
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    console.print_json(data=data)

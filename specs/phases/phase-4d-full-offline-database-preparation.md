@@ -37,14 +37,17 @@ approved NBA team-season manifest
 
 ## Phase Tasks
 
-- `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
+- `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan
+  (`done`).
 - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
-  acquisition.
-- `F4D-ACQ-002`: Review acquisition report and cache coverage handoff.
-- `F4D-001`: Cached HTML inventory.
-- `F4D-002`: Full offline backfill command.
-- `F4D-003`: Data quality validation checks.
-- `F4D-004`: API-ready database readiness documentation.
+  acquisition (`done`; owner-approved 2000-2025 acquisition completed and
+  reviewed).
+- `F4D-ACQ-002`: Review acquisition report and cache coverage handoff
+  (`ready`).
+- `F4D-001`: Cached HTML inventory (`pending`).
+- `F4D-002`: Full offline backfill command (`pending`).
+- `F4D-003`: Data quality validation checks (`pending`).
+- `F4D-004`: API-ready database readiness documentation (`pending`).
 
 ## Phase 4D-A Scope
 
@@ -54,10 +57,18 @@ approved NBA team-season manifest
 - Exactly 775 unique NBA team-season URLs.
 - Only URLs matching `/teams/{TEAM}/{YEAR}.html`.
 - Explicit approved URL manifest before fetching.
+- Live acquisition commands must include explicit start and end year arguments.
+- The live command may run any inclusive subset inside the reviewed 2000-2025
+  catalog.
 - Existing `HtmlCache` path and `.html.gz` conventions.
 - Cache-first acquisition that skips URLs already present.
 - Fetch only missing cache entries during the approved live acquisition task.
 - Write only `.html.gz` raw HTML through `HtmlCache`.
+- Verify the deterministic manifest ID and exactly 775 entries before creating
+  a live client, then filter by requested year range when a subset is requested.
+- Do not overwrite existing cache hits.
+- Store only non-empty HTML-shaped content; do not parse tables during
+  acquisition.
 
 ## Phase 4D-A Disallowed Work
 
@@ -83,6 +94,11 @@ approved NBA team-season manifest
 - The command must be resumable and idempotent.
 - Acquisition reports must include cache hits, fetched, skipped, failed, and
   rate-limited URLs.
+- Acquisition report entries must include index, team, season end year, URL,
+  cache path, status, and error details when applicable.
+- Early-stop reports must include `stopped_reason` and `stopped_at_entry`.
+- Acquisition reports must print as JSON to stdout and may also be written to
+  an operator-provided output path.
 - Sports Reference policy references:
   `https://www.sports-reference.com/bot-traffic.html` and
   `https://www.sports-reference.com/data_use.html`.

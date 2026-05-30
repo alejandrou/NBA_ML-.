@@ -741,3 +741,159 @@ NBA-only, team-season-only, and covers exactly 775 unique
 `/teams/{TEAM}/{YEAR}.html` URLs for Basketball Reference season end years 2000
 through 2025. Live acquisition remains gated behind explicit owner approval and
 an execution flag.
+
+## Phase 4D-A F4D-ACQ-001 Review
+
+Status: approved
+
+`F4D-ACQ-001` is approved for closure. The implementation adds deterministic
+NBA team-season manifest generation and an offline dry-run report for
+Basketball Reference season end years 2000 through 2025, without accepting a
+network client or introducing live acquisition.
+
+## Phase 4D-A F4D-ACQ-001 Review Findings
+
+- The manifest contains exactly 775 unique URLs and every URL matches
+  `/teams/{TEAM}/{YEAR}.html`.
+- The catalog covers the approved NBA team and franchise-lineage boundaries for
+  season end years 2000 through 2025.
+- The dry-run uses `HtmlCache.path_for_url(...)` to report cache hits, missing
+  cache entries, skipped entries, unsupported entries, and estimated fetch
+  count.
+- No manifest JSON artifact was committed.
+- The manifest module does not import or accept `BasketballReferenceClient`,
+  `requests`, `httpx`, parser, loader, or database boundaries.
+- No live scraping, Basketball Reference contact, raw HTML writes, database
+  writes, parser/load/backfill execution, API/frontend/OVR/ranking/similarity/
+  ML work, branch creation, commit, push, or PR occurred during review closure.
+
+## Phase 4D-A F4D-ACQ-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run pytest tests/unit/test_nba_team_season_manifest.py`: passed, 7
+  passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Review Prep
+
+Status: needs_review
+
+`F4D-ACQ-LIVE-001` is ready for review as an offline implementation checkpoint.
+The command exists but was not executed live. Review should confirm that live
+execution remains separately gated after approval and that no Basketball
+Reference contact occurred during implementation.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Review Focus
+
+- The command requires `--owner-approved` and `--execute-approved-manifest`.
+- The live command requires explicit `START_YEAR END_YEAR` arguments.
+- Valid live ranges may be any inclusive subset inside 2000-2025.
+- Invalid live ranges fail before client creation.
+- Manifest ID `nba-team-season-2000-2025` and the 775-entry count are verified
+  before the live client is created, then the manifest is filtered to the
+  requested range.
+- Production acquisition uses only `BasketballReferenceClient`.
+- Cache hits do not call the client and do not overwrite existing `.html.gz`
+  files.
+- Fetched content must be non-empty and HTML-shaped before storage; no table
+  parsing occurs.
+- Cache writes use a temporary gzip file and verification before replacing the
+  final cache file.
+- Partial reports include `stopped_reason`, `stopped_at_entry`, and per-entry
+  index/team/season/URL/cache/status/error details.
+- `--output` writes the same JSON report that is printed to stdout.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed, 12
+  passed.
+- `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed, 19
+  passed after the safe gzip write regression fix.
+- `uv run pytest tests/unit/test_nba_team_season_acquisition.py
+  tests/unit/test_nba_team_season_manifest.py`: passed, 25 passed after the
+  flexible-year refinement.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 131 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after the flexible-year refinement.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 131
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `python -m json.tool tasks/feature-list.json`: passed after the
+  owner-approved acquisition and progress updates.
+- `uv run ruff check .`: passed after the owner-approved acquisition and
+  progress updates.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after the owner-approved acquisition and progress updates.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 132
+  passed, 1 skipped, and 6 Peewee deprecation warnings after the
+  owner-approved acquisition and progress updates.
+
+No live acquisition, Basketball Reference contact, database writes,
+parser/load/backfill execution, API/frontend/OVR/ranking/similarity/ML work,
+branch creation, commit, push, or PR occurred during implementation.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Acquisition Result
+
+Status: needs_review
+
+The owner-approved 2000-2025 live acquisition completed and is ready for review
+against the acquisition report.
+
+- Report path: `reports/acquisition-2000-2025-20260530.json`.
+- Total URLs: 775.
+- Processed entries: 775.
+- Cache hits: 2.
+- Fetched entries: 773.
+- Failed entries: 0.
+- Rate-limited entries: 0.
+- Completed: true.
+- Post-run dry-run: 775 cache hits, 0 missing cache entries, 0 estimated
+  fetches.
+- Final cache count: 775 team-season `.html.gz` files.
+- Session total live requests: 774, including the one initial ATL 2000 request
+  that stopped before final cache write due to the safe-write newline
+  verification issue.
+- Final validation passed after this acquisition result was recorded.
+
+Review should confirm that no DB writes, parser/load/backfill execution, extra
+page types, data deletion, destructive migrations, API/frontend/OVR work,
+branch creation, commit, push, or PR occurred.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Review Closure
+
+Status: approved
+
+`F4D-ACQ-LIVE-001` is approved for closure. The implementation and the
+owner-approved 2000-2025 acquisition report satisfy the task acceptance
+criteria, and the task is marked `done`.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Review Findings
+
+- The command keeps the approved CLI contract:
+  `nba-data acquisition acquire-nba-team-seasons START_YEAR END_YEAR
+  --owner-approved --execute-approved-manifest [--output PATH]`.
+- The saved report contains 775 entries, 2 cache hits, 773 fetched entries, 0
+  skipped entries, 0 failures, 0 rate-limited entries, and `completed=true`.
+- Report entries use only approved `/teams/{TEAM}/{YEAR}.html` URLs; no bad or
+  duplicate URLs were found, and every reported cache path exists locally.
+- Cache artifacts under `data/raw/html/basketball-reference` total 775
+  `.html.gz` files and 0 `.tmp` files.
+- The prior stopped attempts are preserved in progress: one process-launch
+  quoting failure before execution and one safe-write verification stop after
+  the ATL 2000 request, before final cache write.
+- No DB writes, parser/load/backfill execution, extra page types, data
+  deletion, destructive migrations, API/frontend/OVR/ranking/similarity/ML
+  work, branch creation, commit, push, or PR occurred during review closure.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Closure Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  132 passed, 1 skipped, and 6 Peewee deprecation warnings.

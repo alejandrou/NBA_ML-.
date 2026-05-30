@@ -1032,7 +1032,7 @@
       "id": "F4D-ACQ-001",
       "title": "Generate NBA team-season URL manifest and dry-run plan",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4C-003"
       ],
@@ -1071,7 +1071,7 @@
       "id": "F4D-ACQ-LIVE-001",
       "title": "Run owner-approved controlled NBA team-season cache acquisition",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4D-ACQ-001"
       ],
@@ -1083,9 +1083,15 @@
       "acceptance_criteria": [
         "Feature spec exists at specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md.",
         "The command refuses to run without explicit owner approval and an execution flag.",
+        "The live command requires explicit START_YEAR and END_YEAR arguments.",
+        "Valid live ranges may be any inclusive subset inside the reviewed 2000-2025 catalog.",
+        "Invalid live ranges fail before creating a live client.",
+        "The command verifies manifest ID nba-team-season-2000-2025 and the full 775-entry manifest before creating a live client.",
         "Only approved manifest URLs matching /teams/{TEAM}/{YEAR}.html are eligible.",
-        "Existing cache hits are skipped without network requests.",
+        "Existing cache hits are skipped without network requests or cache overwrites.",
         "Only missing cache entries are fetched and written as .html.gz through HtmlCache.",
+        "Fetched content is non-empty and HTML-shaped before storage without parsing tables.",
+        "Cache writes do not leave partial or corrupt final .html.gz files on failure.",
         "Default rate limit is 10 requests/minute.",
         "Configurable max for this phase is 12 requests/minute.",
         "The hard cap remains 20 requests/minute.",
@@ -1094,6 +1100,9 @@
         "Safe transient failures may use retry/backoff without bypassing rate limits.",
         "The command is resumable and idempotent.",
         "The report includes cache hits, fetched, skipped, failed, and rate-limited URLs.",
+        "Report entries include index, team, season_end_year, URL, cache path, status, and error details when applicable.",
+        "Early-stop reports include stopped_reason and stopped_at_entry.",
+        "The report is printed as JSON to stdout and, when --output is provided, written to that path as the same JSON.",
         "No database writes, parser/load/backfill execution, API/frontend/OVR/ranking/similarity/ML work, or non-team-season acquisition is introduced."
       ],
       "validation": [
@@ -1121,7 +1130,7 @@
       "id": "F4D-ACQ-002",
       "title": "Review acquisition report and cache coverage handoff",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "ready",
       "depends_on": [
         "F4D-ACQ-LIVE-001"
       ],

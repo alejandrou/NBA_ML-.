@@ -28,17 +28,22 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - Phase 4D is in progress as the pre-API database preparation phase.
 - Phase 4D-A has been inserted before cache inventory, processing, loading, and
   validation work.
-- `F4D-ACQ-001` is implemented and awaiting review.
-- `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
-  `F4D-004` remain `pending`.
-- No live acquisition or database preparation implementation has started.
+- `F4D-ACQ-001` is reviewed and marked `done`.
+- `F4D-ACQ-LIVE-001` command implementation and owner-approved live execution
+  are reviewed and marked `done`.
+- `F4D-ACQ-002` is `ready`.
+- `F4D-001`, `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
+- The 2000-2025 acquisition report completed with 775 processed entries, 773
+  fetched entries, 2 cache hits, 0 failures, and 0 rate-limited entries.
+- No database preparation implementation has started.
 
 ## Phase Tasks
 
 - `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
 - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
-  acquisition.
-- `F4D-ACQ-002`: Review acquisition report and cache coverage handoff.
+  acquisition (`done`; live acquisition completed and reviewed).
+- `F4D-ACQ-002`: Review acquisition report and cache coverage handoff
+  (`ready`).
 - `F4D-001`: Cached HTML inventory.
 - `F4D-002`: Full offline backfill command.
 - `F4D-003`: Data quality validation checks.
@@ -51,8 +56,10 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - Basketball Reference season end years 2000 through 2025 only.
 - The acquisition manifest must contain exactly 775 unique URLs.
 - Only `/teams/{TEAM}/{YEAR}.html` URLs are allowed.
-- Do not fetch HTML until `F4D-ACQ-LIVE-001` receives explicit owner approval
-  and uses an execution flag.
+- Live acquisition commands require explicit start and end year arguments and
+  currently support inclusive subsets inside 2000-2025 only.
+- Do not rerun live acquisition or fetch extra HTML unless the owner separately
+  approves another live execution with the required execution flags.
 - Do not run live scraping or contact Basketball Reference in `F4D-ACQ-001`.
 - Do not refresh cache hits.
 - Do not write database rows, parse, load, backfill, or run data quality checks
@@ -71,14 +78,16 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - Async is allowed only with bounded concurrency and a global rate limiter.
 - Use retry/backoff only for safe transient failures without bypassing rate
   limits.
+- Acquisition reports print JSON to stdout and may also be written with
+  `--output`.
 - Sports Reference policy references:
   `https://www.sports-reference.com/bot-traffic.html` and
   `https://www.sports-reference.com/data_use.html`.
 
 ## Next Safe Action
 
-Review `F4D-ACQ-001`. Do not start `F4D-ACQ-LIVE-001` unless the owner
-separately approves live acquisition and the required execution flag is used.
+Prepare `F4D-ACQ-002` acquisition report and cache coverage handoff. Do not
+start it as `in_progress` until normal task governance selects it.
 
 ## References
 

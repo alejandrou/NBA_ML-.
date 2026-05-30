@@ -1899,6 +1899,55 @@ Run `uv run pytest tests/unit/test_nba_team_season_manifest.py`,
   passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-001` was reviewed and approved for closure.
+- `F4D-ACQ-LIVE-001` remains `pending` until separate owner approval plus its
+  execution flag.
+
+## Checkpoint 52 - F4D-ACQ-001 Review Closure
+
+### What Changed
+
+Reviewed and closed `F4D-ACQ-001` as `done`. Phase 4D remains `in_progress`,
+and all live acquisition plus later database preparation tasks remain
+`pending`.
+
+### Why
+
+The manifest and dry-run implementation meets the approved acquisition planning
+scope, so the project can now wait for an explicit owner decision on controlled
+live acquisition without starting it automatically.
+
+### Concepts Learned
+
+- Review closure should update the task state separately from implementation
+  commits when the worktree is already clean.
+- `F4D-ACQ-LIVE-001` remains a sensitive-gate task even after the manifest task
+  is done.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/history.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
 - `uv run pytest`: passed on rerun with a longer timeout, 113 passed, 1
   skipped, and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
@@ -1906,5 +1955,218 @@ Run `uv run pytest tests/unit/test_nba_team_season_manifest.py`,
 
 ### Review Questions
 
-- Should `F4D-ACQ-001` be closed as `done`, leaving `F4D-ACQ-LIVE-001` pending
-  until separate owner approval plus its execution flag?
+- Should the owner approve `F4D-ACQ-LIVE-001` controlled live cache acquisition
+  in a separate session with the required execution flag?
+
+## Checkpoint 53 - F4D-ACQ-LIVE-001 Offline Command Implementation
+
+### What Changed
+
+Implemented the controlled NBA team-season acquisition command without running
+it live. The command requires both `--owner-approved` and
+`--execute-approved-manifest`, verifies the deterministic 775-entry manifest
+before creating the live client, skips cache hits without overwrite, validates
+HTML-shaped content before storage, and reports partial stops with entry-level
+details.
+
+### Why
+
+The project needs the live acquisition mechanism to be reviewable before any
+network execution. This keeps owner approval for implementation separate from
+owner approval for contacting Basketball Reference.
+
+### Concepts Learned
+
+- Live command approval should have two independent gates: an owner approval
+  flag and an execution flag.
+- Deterministic manifest validation must happen before creating the live HTTP
+  client.
+- Cache writes for live acquisition should use temporary verified gzip files so
+  failed writes do not leave partial final `.html.gz` files.
+- A useful acquisition report needs both aggregate stop details and per-entry
+  context for later coverage review.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `tests/unit/test_nba_team_season_acquisition.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed, 12
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 125 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 125
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` is `needs_review`.
+- No live acquisition was executed for this refinement checkpoint.
+
+## Checkpoint 54 - F4D-ACQ-LIVE-001 Flexible-Year CLI Refinement
+
+### What Changed
+
+Refined the live acquisition command so the owner can request a specific
+inclusive season-end-year range while preserving the two safety flags. Added
+optional `--output` support to write the same JSON report printed to stdout.
+
+### Why
+
+The full 2000-2025 acquisition can take a long time. Supporting reviewed
+subsets such as 2020-2025 lets the owner download smaller chunks from the
+console without bypassing the acquisition safety rules.
+
+### Concepts Learned
+
+- Flexible live acquisition should still validate the full reviewed manifest
+  before filtering to a requested range.
+- `START_YEAR END_YEAR` should be required for live commands so operator intent
+  is explicit.
+- Dry-run can stay as the full-manifest preview while live execution supports
+  narrower reviewed ranges.
+- Report output should be usable both as stdout JSON and as a saved file for
+  later review.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_nba_team_season_acquisition.py`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py
+tests/unit/test_nba_team_season_manifest.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused acquisition and manifest tests: passed, 25 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 131 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 131
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` remains `needs_review`.
+- No live acquisition was executed for the prior CLI refinement checkpoint.
+
+## Checkpoint 55 - F4D-ACQ-LIVE-001 Full Acquisition
+
+### What Changed
+
+Ran the owner-approved full 2000-2025 NBA team-season acquisition through the
+controlled command and produced a JSON report under `reports/`.
+
+### Why
+
+The Phase 4D-A cache needs complete Basketball Reference NBA team-season HTML
+coverage before the next acquisition-review and offline inventory tasks can
+proceed.
+
+### Concepts Learned
+
+- Absolute paths with spaces can be split incorrectly when launching a
+  background process; use relative output paths or explicit quoting.
+- Safe gzip verification needs newline preservation on Windows when comparing
+  fetched HTML text after a write/read round trip.
+- A post-run dry-run is a simple independent check that cache coverage is
+  complete without making additional live requests.
+
+### Files to Read
+
+- `reports/acquisition-2000-2025-20260530.json`
+- `progress/current.md`
+- `progress/review.md`
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+
+### How to Test
+
+Run `uv run nba-data acquisition dry-run-nba-team-seasons` to verify all 775
+entries are cache hits. Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py`
+to verify the acquisition command safeguards.
+
+### Validation
+
+- Focused acquisition tests after the safe-write fix: passed, 19 passed.
+- Post-run dry-run: 775 cache hits, 0 missing, 0 estimated fetches.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 132
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Acquisition report completed with 775 processed entries, 2 cache hits, 773
+  fetched entries, 0 failures, and 0 rate-limited entries.
+- `F4D-ACQ-LIVE-001` remains `needs_review`.
+
+## Checkpoint 56 - F4D-ACQ-LIVE-001 Review Closure
+
+### What Changed
+
+Reviewed and closed `F4D-ACQ-LIVE-001` as `done`. Moved `F4D-ACQ-002` to
+`ready` as the next acquisition report and cache coverage handoff task.
+
+### Why
+
+The controlled acquisition command and saved report satisfy the approved
+Phase 4D-A live acquisition criteria, and cache coverage is complete enough to
+handoff into a formal coverage review before inventory work begins.
+
+### Concepts Learned
+
+- Closure should preserve stopped-run context even when the final run
+  succeeds.
+- A saved acquisition report plus local cache artifact checks can approve the
+  checkpoint without another network request.
+- Handoff tasks should become `ready`, not `approved`, after a sensitive-gate
+  acquisition closes.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/history.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  132 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` is `done`.
+- `F4D-ACQ-002` is `ready`.

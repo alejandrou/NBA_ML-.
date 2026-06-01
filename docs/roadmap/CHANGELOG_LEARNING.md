@@ -2207,3 +2207,110 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 
 - `F4D-ACQ-LIVE-001` is `done`.
 - `F4D-ACQ-002` is `ready`.
+
+## Checkpoint 57 - F4D-001 Cached HTML Inventory
+
+### What Changed
+
+Implemented the offline cached HTML inventory utility and tests. The task is
+now `needs_review`.
+
+### Why
+
+Phase 4D needs a structured, repeatable inventory of existing `HtmlCache`
+`.html.gz` files before the future full offline backfill command can safely
+choose inputs.
+
+### Concepts Learned
+
+- Cache inventory can use `HtmlCache` filename conventions to reconstruct
+  Basketball Reference team-season source URLs without contacting the network.
+- Valid inventory entries should be constrained by the reviewed Phase 4D
+  2000-2025 NBA team-season manifest, not by loose filename shape alone.
+- Root containment must happen on resolved paths before gzip reads so escaped
+  paths cannot become inventory inputs.
+
+### Files to Read
+
+- `src/nba_data/scraping/cache_inventory.py`
+- `tests/unit/test_cache_inventory.py`
+- `specs/features/F4D-001-cached-html-inventory.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_cache_inventory.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused cache inventory tests: passed, 8 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 141 passed, 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 141
+  passed and 6 Peewee deprecation warnings.
+- Real local inventory check: 775 discovered files, 775 valid candidates, and
+  0 duplicate, invalid/unreadable, missing-metadata, or unsupported entries.
+
+### Outcome
+
+- `F4D-001` is `needs_review`.
+- `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
+
+## Checkpoint 58 - F4D-002 Full Offline Backfill Command
+
+### What Changed
+
+Implemented the full offline backfill command and orchestration utility. The
+task is now `needs_review`.
+
+### Why
+
+Phase 4D needs a repeatable way to turn the reviewed cached HTML inventory into
+local PostgreSQL rows using the already validated offline processor, loader,
+and audit report path.
+
+### Concepts Learned
+
+- The inventory remains the safe selection boundary; the backfill should not
+  rediscover or invent inputs outside `F4D-001`.
+- Explicit-path processor sources preserve the reviewed cache artifact chosen
+  by inventory, instead of recomputing a URL path and accidentally skipping a
+  reviewed local file.
+- The orchestration layer should not own commits when the loader contract
+  already preserves caller-owned transaction behavior.
+- The CLI can own the local PostgreSQL transaction while staying gated behind
+  an explicit execution flag.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_backfill.py`
+- `tests/unit/test_offline_backfill.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-002-full-offline-backfill-command.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_backfill.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused offline backfill tests: passed, 10 passed.
+- Focused offline pipeline tests including cache inventory, offline backfill,
+  processor, loader, reporting, and team-season loader: passed, 46 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- Focused Ruff on the offline backfill module, CLI, and tests: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 150
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-001` is `done`.
+- `F4D-002` is `needs_review`.
+- `F4D-003` and `F4D-004` remain `pending`.

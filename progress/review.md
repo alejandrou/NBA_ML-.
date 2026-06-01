@@ -897,3 +897,90 @@ criteria, and the task is marked `done`.
   warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   132 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4D F4D-001 Review Prep
+
+Status: needs_review
+
+`F4D-001` is ready for review. The implementation adds an offline cached HTML
+inventory utility and unit tests without adding a CLI command, network client,
+parser, loader, database session, migration, or backfill execution.
+
+## Phase 4D F4D-001 Review Focus
+
+- `build_cached_html_inventory(cache=HtmlCache(...))` discovers only existing
+  `.html.gz` files under the configured cache root.
+- Resolved file paths are checked against the cache root before any gzip read.
+- Basketball Reference team-season metadata is inferred from existing
+  `HtmlCache` filename conventions and reported as `source_url`,
+  `team_abbreviation`, `season_year`, `season_end_year`, and `page_type`.
+- Valid candidates are limited to the reviewed 2000-2025 NBA team-season
+  manifest.
+- Duplicate, missing-metadata, unsupported-path, and invalid/unreadable entries
+  are separately counted and preserved in the report.
+- Unit tests use only temporary local cache fixtures.
+- Real local cache inspection found 775 valid candidates and no inventory
+  anomalies.
+
+## Phase 4D F4D-001 Checks
+
+- `uv run pytest tests/unit/test_cache_inventory.py`: passed, 8 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 141 passed, 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  141 passed and 6 Peewee deprecation warnings.
+
+No live scraping, Basketball Reference contact, cache refresh, parser/load/
+backfill execution, database write, data deletion, destructive migration,
+API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
+commit, push, or PR occurred during implementation.
+
+## Phase 4D F4D-001 Review Closure
+
+Status: approved
+
+The owner approved `F4D-001` and it is marked `done`. The cached HTML inventory
+utility and tests are accepted as the safe input boundary for `F4D-002`.
+
+## Phase 4D F4D-002 Review Prep
+
+Status: needs_review
+
+`F4D-002` is ready for review. The implementation adds the full offline
+backfill utility and guarded CLI command without scraping, contacting
+Basketball Reference, refreshing cache, deleting data, running migrations, or
+introducing API/frontend/OVR/ranking/similarity/recommendations/ML work.
+
+## Phase 4D F4D-002 Review Focus
+
+- `run_full_offline_backfill(...)` builds the F4D-001 inventory and selects
+  only entries with `status == "valid"`.
+- Valid inventory entries become explicit-path `OfflineTeamSeasonSource`
+  inputs, preserving the reviewed cache artifact path for processing.
+- Processing runs through `process_offline_team_season_sources(...)`.
+- Loading runs through `load_offline_team_season_report(...)`, preserving the
+  existing entry-level nested transaction behavior.
+- Reporting runs through `build_offline_team_season_audit_report(...)`.
+- `run_full_offline_backfill(...)` does not call `commit()` or `rollback()`;
+  the CLI owns the outer transaction.
+- `nba-data backfill offline` refuses to write unless
+  `--execute-approved-backfill` is supplied.
+- Unit tests cover valid routing, skipped inventory statuses, idempotent rerun,
+  loader rollback, caller-owned commit behavior, report serialization, CLI
+  guard behavior, and no-network/no-migration boundaries.
+
+## Phase 4D F4D-002 Checks
+
+- `uv run pytest tests/unit/test_offline_backfill.py`: passed, 10 passed.
+- `uv run pytest tests/unit/test_cache_inventory.py tests/unit/test_offline_backfill.py tests/unit/test_offline_processor.py tests/unit/test_offline_loader.py tests/unit/test_offline_reporting.py tests/unit/test_team_season_loader.py`:
+  passed, 46 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- Focused Ruff on `src/nba_data/scraping/offline_backfill.py`,
+  `src/nba_data/cli/main.py`, and `tests/unit/test_offline_backfill.py`:
+  passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  150 passed, 1 skipped, and 6 Peewee deprecation warnings.

@@ -1165,7 +1165,7 @@
       "id": "F4D-001",
       "title": "Build cached HTML inventory",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4D-ACQ-002"
       ],
@@ -1206,7 +1206,7 @@
       "id": "F4D-002",
       "title": "Add full offline backfill command",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4D-001",
         "F4C-003",

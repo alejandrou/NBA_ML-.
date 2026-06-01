@@ -31,12 +31,15 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - `F4D-ACQ-001` is reviewed and marked `done`.
 - `F4D-ACQ-LIVE-001` command implementation and owner-approved live execution
   are reviewed and marked `done`.
-- `F4D-ACQ-002` is `needs_review` after the acquisition report and cache
-  coverage handoff were documented.
-- `F4D-001`, `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
+- `F4D-ACQ-002` is reviewed and marked `done`.
+- `F4D-001` is reviewed by the owner and marked `done`.
+- `F4D-002` is `needs_review` after full offline backfill command
+  implementation.
+- `F4D-003` and `F4D-004` remain `pending`.
 - The 2000-2025 acquisition report completed with 775 processed entries, 773
   fetched entries, 2 cache hits, 0 failures, and 0 rate-limited entries.
-- No database preparation implementation has started.
+- No live scraping, cache refresh, or Basketball Reference contact has started
+  for `F4D-002`.
 
 ## Phase Tasks
 
@@ -44,11 +47,11 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
   acquisition (`done`; live acquisition completed and reviewed).
 - `F4D-ACQ-002`: Review acquisition report and cache coverage handoff
-  (`ready`).
-- `F4D-001`: Cached HTML inventory.
-- `F4D-002`: Full offline backfill command.
-- `F4D-003`: Data quality validation checks.
-- `F4D-004`: API-ready database readiness documentation.
+  (`done`).
+- `F4D-001`: Cached HTML inventory (`done`).
+- `F4D-002`: Full offline backfill command (`needs_review`).
+- `F4D-003`: Data quality validation checks (`pending`).
+- `F4D-004`: API-ready database readiness documentation (`pending`).
 
 ## Current Guardrails
 
@@ -87,8 +90,8 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 
 ## Next Safe Action
 
-Review `F4D-ACQ-002` acquisition report and cache coverage handoff. If the
-review is approved, proceed to `F4D-001` cache inventory.
+Review `F4D-002`, the offline backfill utility and guarded CLI command. Keep
+`F4D-003` pending until review is complete.
 
 ## References
 

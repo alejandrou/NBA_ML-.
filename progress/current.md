@@ -1,130 +1,67 @@
 # Current Work
 
-Status: phase_4d_acq_002_needs_review
+Status: f4d_002_needs_review
 
 ## Active Task
 
 - No active implementation task.
-- `F4D-ACQ-001` is reviewed and marked `done`.
-- `F4D-ACQ-LIVE-001` is reviewed and marked `done`.
-- `F4D-ACQ-002` is `needs_review` after the acquisition report and cache
-  coverage handoff were documented.
-- `F4D-001`, `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
+- `F4D-001 - Build cached HTML inventory` was approved by the owner and is
+  marked `done`.
+- `F4D-002 - Add full offline backfill command` is `needs_review`.
+- `F4D-003` and `F4D-004` remain `pending`.
 
 ## Current Phase
 
 - Phase ID: `phase-4d-full-offline-database-preparation`.
 - Phase status: `in_progress`.
-- Current subphase: Phase 4D-A controlled NBA team-season cache acquisition.
 - Phase 4D remains pre-API.
 
 ## Latest Checkpoint
 
-- Reviewed the saved Phase 4D-A acquisition report and documented the cache
-  coverage handoff for `F4D-ACQ-002`.
-- Final acquisition report remains unchanged:
-  - `manifest_id`: `nba-team-season-2000-2025`.
-  - `season_start_year`: 2000.
-  - `season_end_year`: 2025.
-  - `total_urls`: 775.
-  - `processed_entries`: 775.
-  - `cache_hits`: 2.
-  - `fetched`: 773.
-  - `failed`: 0.
-  - `rate_limited`: 0.
-  - `live_request_count`: 773 for the final successful run.
-  - `completed`: true.
-- Session total live requests for the checkpoint remained 774 because the
-  initial safe-write verification stop occurred after one ATL 2000 request but
-  before a final cache file was written.
-- Offline dry-run after acquisition confirmed 775 cache hits, 0 missing cache
-  entries, and 0 estimated fetches.
-- Final cache count under `data/raw/html/basketball-reference` is 775
-  team-season `.html.gz` files.
-- Follow-up local artifact check confirmed the cache directory contains 775
-  gzip files and no `.tmp` files.
-- Review verification found 775 report entries, 0 duplicate URLs, 0 unsupported
-  URL shapes, and 0 missing reported cache paths.
-- `F4D-ACQ-LIVE-001` remains `done`.
-- `F4D-ACQ-002` is now ready for review.
-- No database rows were written, no parser/load/backfill was run, no data was
-  deleted, no destructive migration was run, no Peewee or legacy code was
-  removed, no API/frontend/OVR/ranking/similarity/recommendations/ML work was
-  implemented, `scripts/harness/close.sh` was not run, and no branch, commit,
-  push, or PR was created.
+- Implemented `src/nba_data/scraping/offline_backfill.py`.
+- Added `tests/unit/test_offline_backfill.py`.
+- Added `nba-data backfill offline --execute-approved-backfill` with optional
+  `--max-workers` and `--output`.
+- The backfill utility builds the `F4D-001` cache inventory, selects only valid
+  entries, creates explicit-path `OfflineTeamSeasonSource` inputs, processes
+  them through the existing offline processor, loads through the existing
+  idempotent loader bridge, and builds the existing audit/quarantine report.
+- `run_full_offline_backfill(...)` does not commit or rollback; caller-owned
+  transaction behavior is preserved.
+- The CLI owns the PostgreSQL session and transaction and refuses to run
+  without `--execute-approved-backfill`.
+- No live scraping, Basketball Reference contact, cache refresh, HTML
+  download, data deletion, destructive migration, API/frontend/OVR/ranking/
+  similarity/recommendations/ML work, branch, commit, push, or PR occurred.
 
 ## Latest Validation
 
+- `uv run pytest tests/unit/test_offline_backfill.py`: passed, 10 passed.
+- `uv run pytest tests/unit/test_cache_inventory.py tests/unit/test_offline_backfill.py tests/unit/test_offline_processor.py tests/unit/test_offline_loader.py tests/unit/test_offline_reporting.py tests/unit/test_team_season_loader.py`:
+  passed, 46 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
+- Focused Ruff on `offline_backfill.py`, `cli/main.py`, and
+  `test_offline_backfill.py`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 133 passed, 6 warnings.
+- `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  133 passed, 6 warnings.
+  150 passed, 1 skipped, and 6 Peewee deprecation warnings.
 
 ## Current Working Tree
 
-- Expected modified review files:
+- Expected new files:
+  `src/nba_data/scraping/cache_inventory.py`,
+  `src/nba_data/scraping/offline_backfill.py`,
+  `tests/unit/test_cache_inventory.py`, and
+  `tests/unit/test_offline_backfill.py`.
+- Expected modified state/progress files:
   `docs/roadmap/CHANGELOG_LEARNING.md`, `docs/roadmap/CURRENT_PHASE.md`,
   `docs/roadmap/TASKS.md`, `progress/current.md`, `progress/history.md`,
-  `progress/review.md`,
-  `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`,
-  `specs/phases/phase-4d-full-offline-database-preparation.md`,
-  `src/nba_data/cli/main.py`, and `tasks/feature-list.json`.
-- Expected new files:
-  `src/nba_data/scraping/nba_team_season_acquisition.py` and
-  `tests/unit/test_nba_team_season_acquisition.py`.
-- Live acquisition report/log artifacts exist under `reports/`.
-- Raw cache files were written under `data/raw/html/basketball-reference` as
-  `.html.gz` files.
-- No database files, branch, commit, push, or PR were created.
+  `progress/review.md`, `specs/phases/phase-4d-full-offline-database-preparation.md`,
+  `tasks/feature-list.json`, and `src/nba_data/cli/main.py`.
 
 ## Next Safe Action
 
-- Prepare `F4D-ACQ-002`, the acquisition report and cache coverage handoff.
-- Do not start `F4D-ACQ-002` as `in_progress` until normal task governance
-  selects it.
-- Do not rerun live acquisition unless the owner separately approves another
-  live execution with the required flags.
-
-## Continuation Prompt
-
-Use this prompt to continue in a new Codex window:
-
-```text
-Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
-Branch: feature/phase-4c-offline-cached-html-processor
-
-Continue after F4D-ACQ-LIVE-001 review closure.
-
-Follow the repo startup protocol first.
-
-Current state:
-- Phase 4D is in_progress.
-- F4D-ACQ-001 is done.
-- F4D-ACQ-LIVE-001 is done.
-- F4D-ACQ-002 is ready.
-- F4D-001, F4D-002, F4D-003, and F4D-004 are pending.
-- The owner-approved live acquisition command completed for 2000-2025.
-- Report: reports/acquisition-2000-2025-20260530.json.
-- Raw cache folder: data/raw/html/basketball-reference.
-- Cache artifacts: 775 .html.gz files, 0 .tmp files.
-- Final successful run: 775 processed, 2 cache hits, 773 fetched, 0 failed, 0 rate-limited, completed=true.
-- Post-run dry-run: 775 cache hits, 0 missing, 0 estimated fetches.
-- F4D-ACQ-LIVE-001 review closure verified 0 duplicate URLs, 0 unsupported URL shapes, and 0 missing reported cache paths.
-- No database rows were written and no parsing/loading/backfill was run.
-
-Next safe action:
-- Prepare F4D-ACQ-002 only after respecting phase/task governance.
-- F4D-ACQ-002 must review/document the saved acquisition report and cache coverage without fetching HTML, writing DB rows, parsing, loading, or backfilling.
-
-Important constraints:
-- Do not rerun live acquisition without separate explicit owner approval plus the required flags.
-- Do not fetch extra HTML.
-- Do not contact Basketball Reference again.
-- Do not write database rows.
-- Do not parse, load, or backfill data.
-- Do not implement API, frontend, OVR, ranking, similarity, recommendations, or ML.
-- Do not delete raw HTML, database records, Docker/PostgreSQL volumes, Peewee, or legacy code.
-- Do not run destructive migrations.
-- Do not create a branch, commit, push, or open a PR without explicit owner approval.
-```
+- Review `F4D-002`.
+- Keep `F4D-003` pending until the offline backfill command is reviewed.

@@ -43,9 +43,9 @@ approved NBA team-season manifest
   acquisition (`done`; owner-approved 2000-2025 acquisition completed and
   reviewed).
 - `F4D-ACQ-002`: Review acquisition report and cache coverage handoff
-  (`ready`).
-- `F4D-001`: Cached HTML inventory (`pending`).
-- `F4D-002`: Full offline backfill command (`pending`).
+  (`done`).
+- `F4D-001`: Cached HTML inventory (`done`).
+- `F4D-002`: Full offline backfill command (`needs_review`).
 - `F4D-003`: Data quality validation checks (`pending`).
 - `F4D-004`: API-ready database readiness documentation (`pending`).
 
@@ -129,7 +129,8 @@ team-season catalog:
 - No disallowed page type was acquired.
 - No database writes, parser/load/backfill execution, API/frontend/OVR/ranking/
   similarity/recommendations/ML work occurred.
-- Phase 4D can then proceed to `F4D-001` cache inventory.
+- Phase 4D can then proceed through `F4D-001` cache inventory and `F4D-002`
+  offline backfill before post-load data quality checks.
 
 ## Validation
 

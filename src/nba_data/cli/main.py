@@ -6,6 +6,7 @@ from rich.console import Console
 
 from nba_data import __version__
 from nba_data.config.settings import get_settings
+from nba_data.db.session import create_db_engine, create_session_factory
 from nba_data.scraping.backfill_manifest import (
     BackfillAcquisitionError,
     ManifestValidationError,
@@ -22,6 +23,7 @@ from nba_data.scraping.nba_team_season_acquisition import (
     validate_phase_4d_acquisition_settings,
 )
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
+from nba_data.scraping.offline_backfill import run_full_offline_backfill
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
 cache_app = typer.Typer(help="HTML cache utilities.")
@@ -35,6 +37,11 @@ _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
     help="Optional path to write the acquisition JSON report.",
+)
+_OFFLINE_BACKFILL_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Optional path to write the offline backfill JSON report.",
 )
 
 
@@ -115,6 +122,46 @@ def backfill_acquire(
         raise typer.Exit(code=1) from exc
 
     console.print_json(data=report.to_dict())
+
+
+@backfill_app.command("offline")
+def backfill_offline(
+    execute_approved_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-backfill",
+        help="Required explicit confirmation to write PostgreSQL rows from cached HTML.",
+    ),
+    max_workers: int = typer.Option(
+        1,
+        "--max-workers",
+        help="Local worker count for processing already-cached HTML files.",
+    ),
+    output: Path | None = _OFFLINE_BACKFILL_OUTPUT_OPTION,
+) -> None:
+    """Run Phase 4D full offline backfill from cached inventory entries."""
+
+    if not execute_approved_backfill:
+        msg = "Refusing offline backfill without --execute-approved-backfill"
+        console.print(msg)
+        raise typer.Exit(code=1)
+    if max_workers < 1:
+        raise typer.BadParameter("max_workers must be at least 1")
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session, session.begin():
+            report = run_full_offline_backfill(
+                cache=cache,
+                session=session,
+                max_workers=max_workers,
+            )
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
 
 
 @acquisition_app.command("dry-run-nba-team-seasons")

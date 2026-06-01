@@ -2119,3 +2119,81 @@ Task:
   destructive migrations, remove Peewee or legacy code, implement API/frontend/
   OVR/ranking/similarity/recommendations/ML work, run
   `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D F4D-001 Cached HTML Inventory Implementation
+
+- Confirmed no task was `in_progress`, `F4D-001` depends on `F4D-ACQ-002`, and
+  `F4D-ACQ-002` is `done`.
+- Synchronized stale Phase 4D docs that still described `F4D-ACQ-002` as
+  awaiting review.
+- Implemented `src/nba_data/scraping/cache_inventory.py` with frozen
+  dataclasses and `to_dict()` report shapes for cached HTML inventory entries
+  and aggregate counts.
+- The inventory discovers local `.html.gz` files under `HtmlCache.root_dir`,
+  rejects resolved paths outside the cache root before reading, identifies
+  Basketball Reference cache paths, infers team-season metadata from existing
+  cache filename conventions, and checks readable HTML-shaped gzip content
+  without parsing tables.
+- Valid candidates are restricted to the approved Phase 4D 2000-2025 NBA
+  team-season manifest; duplicates, missing metadata, unsupported paths, and
+  invalid/unreadable files receive explicit statuses.
+- Added `tests/unit/test_cache_inventory.py` with temporary cache fixtures for
+  valid entries, duplicates, unsupported paths, missing metadata, invalid gzip
+  files, escaped-path protection, empty cache roots, report serialization, and
+  no-network/no-parser/no-loader boundaries.
+- Real local inventory inspection over `data/raw/html` reported 775 discovered
+  files, 775 valid candidates, 0 invalid/unreadable files, 0 duplicate
+  candidates, 0 missing metadata, and 0 unsupported paths.
+- Ran `uv run pytest tests/unit/test_cache_inventory.py`: passed, 8 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 141 passed, 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  141 passed and 6 Peewee deprecation warnings.
+- Moved `F4D-001` to `needs_review`; `F4D-002`, `F4D-003`, and `F4D-004`
+  remain `pending`.
+- Did not scrape, contact Basketball Reference, refresh cache, parse tables,
+  load, backfill, write database rows, delete data, run destructive migrations,
+  remove Peewee or legacy code, implement API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, run `scripts/harness/close.sh`, create a branch,
+  commit, push, or open a PR.
+
+## Phase 4D F4D-002 Full Offline Backfill Command Implementation
+
+- Owner approved `F4D-001`; marked it `done` before starting `F4D-002`.
+- Confirmed no other task was `in_progress`.
+- Confirmed `F4D-002` depends on `F4D-001`, `F4C-003`, and `F4-003`, all
+  marked `done`.
+- Implemented `src/nba_data/scraping/offline_backfill.py` with a frozen
+  `OfflineBackfillReport`, `build_offline_team_season_sources_from_inventory`,
+  and `run_full_offline_backfill`.
+- The offline backfill chain is:
+  F4D-001 inventory -> valid entries only -> explicit-path
+  `OfflineTeamSeasonSource` -> existing offline processor -> existing loader
+  bridge -> existing audit/quarantine reporting.
+- Added `nba-data backfill offline --execute-approved-backfill` with optional
+  `--max-workers` and `--output`.
+- The utility does not commit or rollback; the CLI opens and owns the local
+  PostgreSQL session transaction and refuses execution without the explicit
+  backfill flag.
+- Added `tests/unit/test_offline_backfill.py` covering report serialization,
+  valid-only routing, skipped inventory statuses, idempotent reruns, loader
+  rollback, caller-owned commit behavior, CLI guard behavior, CLI report output,
+  and no-network/no-migration boundaries.
+- Ran `uv run pytest tests/unit/test_offline_backfill.py`: passed, 10 passed.
+- Ran focused offline pipeline tests including cache inventory, offline
+  backfill, processor, loader, reporting, and team-season loader: passed, 46
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran focused Ruff on the offline backfill module, CLI, and tests: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Moved `F4D-002` to `needs_review`; `F4D-003` and `F4D-004` remain
+  `pending`.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  download HTML, delete data, run destructive migrations, remove Peewee or
+  legacy code, implement API/frontend/OVR/ranking/similarity/recommendations/
+  ML work, create a branch, commit, push, or open a PR.

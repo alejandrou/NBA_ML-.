@@ -28,6 +28,7 @@
 - `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
 - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
   acquisition.
+- `F4D-ACQ-002`: Review acquisition report and cache coverage handoff.
 
 ## Current
 
@@ -38,12 +39,12 @@
 
 ## Needs Review
 
-- None.
+- `F4D-ACQ-002`: Acquisition report and cache coverage handoff.
 
 ## Next
 
-- Next safe action: prepare `F4D-ACQ-002`, the acquisition report and cache
-  coverage handoff.
+- Next safe action: review `F4D-ACQ-002`, the acquisition report and cache
+  coverage handoff, then proceed to `F4D-001` if approved.
 - Do not rerun live acquisition, fetch extra HTML, write database rows, parse,
   load, backfill, contact Basketball Reference again, refresh or overwrite
   cache hits, create a branch, commit, push, open a PR, or implement
@@ -52,8 +53,7 @@
 
 ## Later
 
-- `F4D-ACQ-002`: Acquisition report and cache coverage review remains
-  `ready`.
+- `F4D-ACQ-002`: Acquisition report and cache coverage review is `needs_review`.
 - `F4D-001`: Cached HTML inventory remains `pending` behind `F4D-ACQ-002`.
 - `F4D-002`: Full offline backfill command remains `pending`.
 - `F4D-003`: Data quality validation checks remains `pending`.

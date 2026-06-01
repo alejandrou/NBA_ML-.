@@ -1958,6 +1958,43 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 - Should the owner approve `F4D-ACQ-LIVE-001` controlled live cache acquisition
   in a separate session with the required execution flag?
 
+## Checkpoint 53 - Phase 4D-A Acquisition Report Handoff
+
+### What Changed
+
+Documented the controlled Phase 4D-A acquisition report and cache coverage
+handoff in `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md`, and moved
+`F4D-ACQ-002` to review state.
+
+### Why
+
+Phase 4D needs a recorded handoff that proves the reviewed NBA team-season
+cache is complete before cache inventory and offline processing can start.
+
+### Concepts Learned
+
+- Acquisition review and cache-coverage review are separate from acquisition
+  execution.
+- A complete handoff should preserve report totals, coverage status, and prior
+  aborted attempts without implying new scraping work.
+- `F4D-001` should remain offline and cache-only.
+
+### Files to Read
+
+- `reports/acquisition-2000-2025-20260530.json`
+- `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json` and the repository validation
+commands.
+
+### Review Questions
+
+- Should the cache inventory task carry forward the coverage counts into its
+  own report template?
+
 ## Checkpoint 53 - F4D-ACQ-LIVE-001 Offline Command Implementation
 
 ### What Changed

@@ -1130,7 +1130,7 @@
       "id": "F4D-ACQ-002",
       "title": "Review acquisition report and cache coverage handoff",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "ready",
+      "status": "needs_review",
       "depends_on": [
         "F4D-ACQ-LIVE-001"
       ],

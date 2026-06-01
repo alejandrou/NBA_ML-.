@@ -31,7 +31,8 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 - `F4D-ACQ-001` is reviewed and marked `done`.
 - `F4D-ACQ-LIVE-001` command implementation and owner-approved live execution
   are reviewed and marked `done`.
-- `F4D-ACQ-002` is `ready`.
+- `F4D-ACQ-002` is `needs_review` after the acquisition report and cache
+  coverage handoff were documented.
 - `F4D-001`, `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
 - The 2000-2025 acquisition report completed with 775 processed entries, 773
   fetched entries, 2 cache hits, 0 failures, and 0 rate-limited entries.
@@ -86,8 +87,8 @@ No HTML may be fetched during `F4D-ACQ-001` manifest and dry-run work.
 
 ## Next Safe Action
 
-Prepare `F4D-ACQ-002` acquisition report and cache coverage handoff. Do not
-start it as `in_progress` until normal task governance selects it.
+Review `F4D-ACQ-002` acquisition report and cache coverage handoff. If the
+review is approved, proceed to `F4D-001` cache inventory.
 
 ## References
 

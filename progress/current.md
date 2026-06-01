@@ -1,13 +1,14 @@
 # Current Work
 
-Status: phase_4d_acq_002_ready
+Status: phase_4d_acq_002_needs_review
 
 ## Active Task
 
 - No active implementation task.
 - `F4D-ACQ-001` is reviewed and marked `done`.
 - `F4D-ACQ-LIVE-001` is reviewed and marked `done`.
-- `F4D-ACQ-002` is `ready`.
+- `F4D-ACQ-002` is `needs_review` after the acquisition report and cache
+  coverage handoff were documented.
 - `F4D-001`, `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
 
 ## Current Phase
@@ -19,19 +20,9 @@ Status: phase_4d_acq_002_ready
 
 ## Latest Checkpoint
 
-- Reviewed and approved `F4D-ACQ-LIVE-001` for closure after the
-  owner-approved full 2000-2025 live acquisition.
-- First launch stopped before execution because an absolute `--output` path
-  containing the project directory space was split by the process launcher.
-- Second launch made one live request and stopped safely before final cache
-  write because safe gzip verification detected newline normalization.
-- Fixed the safe gzip writer to preserve newlines during write/read
-  verification and added a regression test.
-- Relaunched the approved command:
-  `uv run nba-data acquisition acquire-nba-team-seasons 2000 2025
-  --owner-approved --execute-approved-manifest --output
-  reports/acquisition-2000-2025-20260530.json`.
-- Final acquisition report:
+- Reviewed the saved Phase 4D-A acquisition report and documented the cache
+  coverage handoff for `F4D-ACQ-002`.
+- Final acquisition report remains unchanged:
   - `manifest_id`: `nba-team-season-2000-2025`.
   - `season_start_year`: 2000.
   - `season_end_year`: 2025.
@@ -43,22 +34,19 @@ Status: phase_4d_acq_002_ready
   - `rate_limited`: 0.
   - `live_request_count`: 773 for the final successful run.
   - `completed`: true.
-- Session total live requests for this checkpoint were 774 because the initial
-  safe-write verification stop occurred after one ATL 2000 request but before
-  a final cache file was written.
+- Session total live requests for the checkpoint remained 774 because the
+  initial safe-write verification stop occurred after one ATL 2000 request but
+  before a final cache file was written.
 - Offline dry-run after acquisition confirmed 775 cache hits, 0 missing cache
   entries, and 0 estimated fetches.
 - Final cache count under `data/raw/html/basketball-reference` is 775
   team-season `.html.gz` files.
 - Follow-up local artifact check confirmed the cache directory contains 775
-  gzip files and no `.tmp` files. The final artifacts are named like
-  `teams-atl-2000.html.gz` and are intended to be read offline through
-  `HtmlCache`.
+  gzip files and no `.tmp` files.
 - Review verification found 775 report entries, 0 duplicate URLs, 0 unsupported
   URL shapes, and 0 missing reported cache paths.
-- `F4D-ACQ-LIVE-001` is marked `done`.
-- `F4D-ACQ-002` is moved to `ready` as the next acquisition report and cache
-  coverage handoff task, without approving or starting it.
+- `F4D-ACQ-LIVE-001` remains `done`.
+- `F4D-ACQ-002` is now ready for review.
 - No database rows were written, no parser/load/backfill was run, no data was
   deleted, no destructive migration was run, no Peewee or legacy code was
   removed, no API/frontend/OVR/ranking/similarity/recommendations/ML work was
@@ -67,19 +55,11 @@ Status: phase_4d_acq_002_ready
 
 ## Latest Validation
 
-- `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed, 19
-  passed after the safe-write regression fix.
-- Focused Ruff on the touched acquisition and acquisition test modules:
-  passed.
-- Offline dry-run after acquisition:
-  `cache_hits=775`, `missing_cache_entries=0`, `estimated_fetch_count=0`.
-- Local cache artifact extension check: 775 `.gz` files and 0 `.tmp` files.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
-  warnings.
+- `uv run pytest`: passed, 133 passed, 6 warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  132 passed, 1 skipped, and 6 Peewee deprecation warnings.
+  133 passed, 6 warnings.
 
 ## Current Working Tree
 

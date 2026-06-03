@@ -2197,3 +2197,73 @@ Task:
   download HTML, delete data, run destructive migrations, remove Peewee or
   legacy code, implement API/frontend/OVR/ranking/similarity/recommendations/
   ML work, create a branch, commit, push, or open a PR.
+
+## Phase 4E Official Wide Stats Planning
+
+- Prepared future proposed Phase 4E without changing the current Phase 4D
+  state.
+- Added `specs/phases/phase-4e-official-wide-stats-persistence.md`.
+- Added feature specs `F4E-001` through `F4E-006`.
+- Added `docs/architecture/OFFICIAL_STATS_SCHEMA.md` with the target
+  `core` / `stats` / `features` separation and the reviewed team-stint versus
+  aggregate table families.
+- Added `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md` to preserve useful
+  legacy concepts while rejecting legacy player-name matching and Peewee schema
+  patterns for new work.
+- Added `F4E-001` through `F4E-006` to `tasks/feature-list.json` as
+  `pending`.
+- Kept `current_phase_id` as `phase-4d-full-offline-database-preparation` and
+  did not promote any F4E task to `ready`, `approved`, `in_progress`, or
+  `done`.
+- Inspected normalized keys emitted by the current normalizer from already
+  cached team-season HTML for representative ATL season end years 2000, 2005,
+  2010, 2015, 2020, and 2025.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 151 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 151 passed and 6 Peewee deprecation warnings.
+- Did not implement SQLAlchemy stats models, create Alembic migrations,
+  implement repositories or loaders, run backfills, contact Basketball
+  Reference, refresh cache, write database rows, create a branch, commit, push,
+  or open a PR.
+
+## Phase 4D Final Block Closure
+
+- Owner explicitly approved closing `F4D-002`, `F4D-003`, and `F4D-004`
+  together to finish Phase 4D.
+- Reviewed and closed `F4D-002`, the full offline backfill command.
+- Implemented `src/nba_data/validation/offline_database.py` for read-only
+  post-load database validation.
+- Added `nba-data validate offline-database --backfill-report ...`.
+- Added `tests/unit/test_offline_database_validation.py`.
+- Added `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
+- Marked `F4D-002`, `F4D-003`, and `F4D-004` as `done`.
+- Marked `phase-4d-full-offline-database-preparation` as `done`.
+- Confirmed all F4E tasks remain `pending`; no F4E task was promoted.
+- Validated the owner-confirmed PostgreSQL baseline:
+  - `core.seasons`: 26.
+  - `core.teams`: 37.
+  - `core.team_aliases`: 775.
+  - `core.team_seasons`: 775.
+  - `core.players`: 2551.
+  - `core.player_seasons`: 12676.
+  - `core.player_team_seasons`: 14344.
+- Validated `reports/offline-backfill-2000-2025.json`: 775 selected inventory
+  entries, 775 loaded entries, 129000 loaded rows, 0 failed entries, and 0
+  quarantined entries.
+- Ran `uv run pytest tests/unit/test_offline_database_validation.py`: passed,
+  8 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- Ran `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  159 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  159 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, implement F4E/F5/API/frontend/stats
+  persistence/OVR/ranking/similarity/recommendations/ML work, create a branch,
+  commit, push, or open a PR.

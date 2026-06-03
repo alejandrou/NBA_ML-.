@@ -2314,3 +2314,130 @@ tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
 - `F4D-001` is `done`.
 - `F4D-002` is `needs_review`.
 - `F4D-003` and `F4D-004` remain `pending`.
+
+## Checkpoint 59 - Phase 4E Official Wide Stats Planning
+
+### What Changed
+
+Prepared Phase 4E as a future proposed phase for official Basketball Reference
+wide stats persistence. Added the phase spec, six feature specs, the official
+stats schema design document, and a legacy stats schema review. Added
+`F4E-001` through `F4E-006` to `tasks/feature-list.json` as `pending` tasks.
+
+### Why
+
+Future API work needs official player statistics in typed relational `stats`
+tables, not only normalized `values` dictionaries or legacy Peewee tables.
+The plan preserves `core` for identity, `stats` for official scraped stats, and
+`features` for generated metrics.
+
+### Concepts Learned
+
+- Real team-stint stats should FK to `core.player_team_seasons.id`.
+- Official `TOT` aggregate stats should live in separate `player_season_*`
+  tables that FK to `core.player_seasons.id`.
+- `stats.player_team_season_roster` is team-stint only.
+- The current normalizer emits keys for roster, totals, per-game, per-minute,
+  per-possession, advanced, shooting, adjusted shooting, and play-by-play;
+  F4E-001 must inspect these keys before final columns are frozen.
+- Legacy `player_stats` and `player_advanced` are useful semantic references
+  but must not be copied as-is because they depend on legacy player rows and
+  display-name matching.
+
+### Files to Read
+
+- `specs/phases/phase-4e-official-wide-stats-persistence.md`
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
+- `specs/features/F4E-001-official-wide-stats-schema-plan.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 151 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  151 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Phase 4D remains current and `in_progress`.
+- `F4D-002` remains `needs_review`; `F4D-003` and `F4D-004` remain `pending`.
+- F4E is not promoted to current and no F4E task is `ready`, `approved`,
+  `in_progress`, or `done`.
+- No SQLAlchemy stats models, Alembic migrations, loaders, backfills, live
+  scraping, cache refresh, database writes, branch, commit, push, or PR were
+  introduced.
+
+## Checkpoint 60 - Phase 4D Final Database Readiness Closure
+
+### What Changed
+
+Closed `F4D-002`, `F4D-003`, and `F4D-004` as an explicitly owner-approved
+block. Added the read-only offline database validation module, CLI command,
+unit tests, and API-ready database preparation documentation. Marked Phase 4D
+as `done`.
+
+### Why
+
+Future API work needs a verified local PostgreSQL core database, not only a
+successful backfill command. The final Phase 4D closure records the exact
+database counts, checks the saved offline backfill report, and gives the owner
+a repeatable readiness workflow.
+
+### Concepts Learned
+
+- Phase 4D validation should be read-only: query `core.*`, inspect the saved
+  offline backfill report, and fail with actionable issues.
+- The approved Phase 4D core baseline is intentionally exact so future phases
+  can detect drift before building on top of the data.
+- SQLite tests without uniqueness/FK constraints are useful for simulating
+  corrupted database states that PostgreSQL constraints normally prevent.
+- `TOT` must remain out of real team, team alias, and team-season rows.
+- F4E planning can remain present in the worktree while every F4E task stays
+  `pending` until a separate owner-approved transition.
+
+### Files to Read
+
+- `src/nba_data/validation/offline_database.py`
+- `tests/unit/test_offline_database_validation.py`
+- `docs/validation/OFFLINE_DATABASE_PREPARATION.md`
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run nba-data validate offline-database --backfill-report
+reports/offline-backfill-2000-2025.json`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_offline_database_validation.py`: passed, 8
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-002`, `F4D-003`, and `F4D-004` are `done`.
+- Phase 4D is `done`.
+- `F4E-001` through `F4E-006` remain `pending`.
+- No live scraping, Basketball Reference contact, cache refresh, data deletion,
+  destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
+  similarity/recommendations/ML work, branch, commit, push, or PR occurred.

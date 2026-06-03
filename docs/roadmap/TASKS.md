@@ -25,37 +25,38 @@
 - `F4C-001`: Implement offline cached HTML processor.
 - `F4C-002`: Connect offline processor to idempotent loaders.
 - `F4C-003`: Add offline load reporting and quarantine workflow.
+- Phase 4D full offline database preparation is complete and reviewed.
 - `F4D-ACQ-001`: Generate NBA team-season URL manifest and dry-run plan.
 - `F4D-ACQ-LIVE-001`: Run owner-approved controlled NBA team-season cache
   acquisition.
 - `F4D-ACQ-002`: Review acquisition report and cache coverage handoff.
 - `F4D-001`: Build cached HTML inventory.
+- `F4D-002`: Add full offline backfill command.
+- `F4D-003`: Add post-load data quality validation checks.
+- `F4D-004`: Document API-ready database readiness workflow.
 
 ## Current
 
 - Current phase: `phase-4d-full-offline-database-preparation`.
-- Current phase status: `in_progress`.
+- Current phase status: `done`.
 - No active implementation task.
-
-## Needs Review
-
-- `F4D-002`: Add full offline backfill command.
+- No task is in `needs_review`.
 
 ## Next
 
-- Next safe action: review `F4D-002`, the full offline backfill command.
+- Next safe action: prepare a Phase 4D to Phase 4E transition summary and wait
+  for explicit owner approval before promoting any Phase 4E task.
+- `F4E-001` through `F4E-006` remain `pending`.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, create a branch, commit,
-  push, open a PR, or implement
-  API/frontend/OVR/ranking/similarity/recommendations/ML work without separate
-  explicit owner approval.
+  push, open a PR, or implement F4E/F5/API/frontend/stats persistence/OVR/
+  ranking/similarity/recommendations/ML work without separate explicit owner
+  approval.
 
 ## Later
 
-- `F4D-ACQ-002`: Acquisition report and cache coverage review is `done`.
-- `F4D-001`: Cached HTML inventory is `done`.
-- `F4D-002`: Full offline backfill command is `needs_review`.
-- `F4D-003`: Data quality validation checks remains `pending`.
-- `F4D-004`: API-ready database readiness documentation remains `pending`.
-- Phase 5-7 tasks remain `pending` until Phase 4D is reviewed and approved for
-  closure and the owner explicitly approves an API transition.
+- Proposed Phase 4E has been prepared as a future official wide stats
+  persistence phase. It is not active.
+- Phase 5-7 tasks remain `pending` until Phase 4D and any approved pre-API
+  stats work are reviewed and approved for closure and the owner explicitly
+  approves an API transition.

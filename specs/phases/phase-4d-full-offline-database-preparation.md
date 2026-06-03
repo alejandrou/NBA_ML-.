@@ -1,6 +1,6 @@
 # Phase 4D - Full Offline Database Preparation / Backfill Readiness
 
-Status: in_progress
+Status: done
 Phase ID: `phase-4d-full-offline-database-preparation`
 
 ## Goal
@@ -45,9 +45,9 @@ approved NBA team-season manifest
 - `F4D-ACQ-002`: Review acquisition report and cache coverage handoff
   (`done`).
 - `F4D-001`: Cached HTML inventory (`done`).
-- `F4D-002`: Full offline backfill command (`needs_review`).
-- `F4D-003`: Data quality validation checks (`pending`).
-- `F4D-004`: API-ready database readiness documentation (`pending`).
+- `F4D-002`: Full offline backfill command (`done`).
+- `F4D-003`: Data quality validation checks (`done`).
+- `F4D-004`: API-ready database readiness documentation (`done`).
 
 ## Phase 4D-A Scope
 
@@ -131,6 +131,31 @@ team-season catalog:
   similarity/recommendations/ML work occurred.
 - Phase 4D can then proceed through `F4D-001` cache inventory and `F4D-002`
   offline backfill before post-load data quality checks.
+
+## Phase 4D Closure
+
+Phase 4D is closed after the owner explicitly approved closing `F4D-002`,
+`F4D-003`, and `F4D-004` together.
+
+The closed Phase 4D baseline is:
+
+```text
+core.seasons                26
+core.teams                  37
+core.team_aliases           775
+core.team_seasons           775
+core.players                2551
+core.player_seasons         12676
+core.player_team_seasons    14344
+```
+
+The offline backfill report records 775 selected inventory entries, 775 loaded
+entries, 129000 loaded rows, 0 failed entries, and 0 quarantined entries. The
+readiness workflow is documented in
+`docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
+
+No API, frontend, stats persistence, generated metrics, OVR, ranking,
+similarity, recommendations, or ML implementation is included in Phase 4D.
 
 ## Validation
 

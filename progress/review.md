@@ -984,3 +984,66 @@ introducing API/frontend/OVR/ranking/similarity/recommendations/ML work.
   timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4D F4D-002 Review Closure
+
+Status: approved
+
+`F4D-002` is approved for closure. The full offline backfill command stays
+within the reviewed Phase 4D boundary: it reads only the F4D-001 local cache
+inventory, selects valid entries, processes through Phase 4C offline processor
+inputs, loads through existing idempotent core loaders, preserves caller-owned
+transaction behavior, and produces the existing audit/quarantine report.
+
+No live scraping, Basketball Reference contact, cache refresh, data deletion,
+destructive migration, API/frontend/stats persistence/OVR/ranking/similarity/
+recommendations/ML work, branch creation, commit, push, or PR occurred during
+review closure.
+
+## Phase 4D F4D-003 Review Closure
+
+Status: approved
+
+`F4D-003` is approved for closure. The implementation adds read-only offline
+database validation over the loaded `core` schema and the saved backfill
+report. It checks expected table counts, season coverage, duplicate logical
+rows, orphan relationships, team-seasons without players, suspiciously low
+per-season counts, `TOT` real-team misuse, missing Basketball Reference player
+IDs, and nonzero backfill failure/quarantine counts.
+
+## Phase 4D F4D-004 Review Closure
+
+Status: approved
+
+`F4D-004` is approved for closure. The readiness workflow is documented in
+`docs/validation/OFFLINE_DATABASE_PREPARATION.md`, including local PostgreSQL
+startup, Alembic migration commands, cache inventory, full offline backfill,
+data quality validation, expected loaded counts, and SQL queries useful for
+future read-only API exploration.
+
+## Phase 4D Final Closure Review
+
+Status: approved
+
+Phase 4D is approved for closure. `F4D-002`, `F4D-003`, and `F4D-004` were
+explicitly owner-approved for block closure and are marked `done`. Phase 4D is
+marked `done`; `F4E-001` through `F4E-006` remain `pending`.
+
+## Phase 4D Final Closure Checks
+
+- `uv run pytest tests/unit/test_offline_database_validation.py`: passed, 8
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+
+No live scraping, Basketball Reference contact, cache refresh, data deletion,
+destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
+similarity/recommendations/ML work, branch creation, commit, push, or PR
+occurred during final Phase 4D closure.

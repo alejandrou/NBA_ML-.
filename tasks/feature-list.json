@@ -1,6 +1,6 @@
 {
   "current_phase_id": "phase-4d-full-offline-database-preparation",
-  "current_phase_status": "in_progress",
+  "current_phase_status": "done",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -1206,7 +1206,7 @@
       "id": "F4D-002",
       "title": "Add full offline backfill command",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4D-001",
         "F4C-003",
@@ -1250,7 +1250,7 @@
       "id": "F4D-003",
       "title": "Add post-load data quality validation checks",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4D-002"
       ],
@@ -1293,7 +1293,7 @@
       "id": "F4D-004",
       "title": "Document API-ready database readiness workflow",
       "phase_id": "phase-4d-full-offline-database-preparation",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4D-003"
       ],
@@ -1327,6 +1327,248 @@
       "expected_files": [
         "specs/features/F4D-004-api-ready-database-readiness-documentation.md",
         "docs/validation/OFFLINE_DATABASE_PREPARATION.md"
+      ]
+    },
+    {
+      "id": "F4E-001",
+      "title": "Plan official wide stats schema",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4D-004"
+      ],
+      "description": "Prepare the official Basketball Reference wide stats schema plan without implementing models, migrations, loaders, or database writes.",
+      "acceptance_criteria": [
+        "Phase spec exists at specs/phases/phase-4e-official-wide-stats-persistence.md.",
+        "Feature spec exists at specs/features/F4E-001-official-wide-stats-schema-plan.md.",
+        "Design doc exists at docs/architecture/OFFICIAL_STATS_SCHEMA.md.",
+        "Legacy stats review exists at docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md.",
+        "The design documents the core/stats/features separation.",
+        "The design documents separate team-stint and TOT aggregate stats tables.",
+        "The design documents stats.player_team_season_roster as team-stint only.",
+        "The design records normalized keys emitted by the current normalizer before final columns are frozen.",
+        "The design rejects JSONB as primary stat storage.",
+        "No SQLAlchemy stats models, Alembic migrations, loaders, backfills, or database writes are introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "SQLAlchemy stats models",
+        "Alembic migrations",
+        "Stats repositories",
+        "Stats loaders",
+        "Backfill execution",
+        "Live scraping",
+        "Cache refresh",
+        "Database writes",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/phases/phase-4e-official-wide-stats-persistence.md",
+        "specs/features/F4E-001-official-wide-stats-schema-plan.md",
+        "docs/architecture/OFFICIAL_STATS_SCHEMA.md",
+        "docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md"
+      ]
+    },
+    {
+      "id": "F4E-002",
+      "title": "Add stats models and Alembic migration",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4E-001"
+      ],
+      "description": "Implement the reviewed stats schema as additive SQLAlchemy 2.0 models and an Alembic migration.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-002-stats-models-and-alembic-migration.md.",
+        "The stats schema is created through Alembic.",
+        "All reviewed team-stint and aggregate wide stats tables exist.",
+        "Real-team stat tables FK to core.player_team_seasons.id.",
+        "Aggregate TOT tables FK to core.player_seasons.id.",
+        "Each wide table has a surrogate primary key plus a unique FK constraint at its grain.",
+        "Official stat columns are typed and nullable by default.",
+        "No JSONB primary stat storage is introduced.",
+        "No repositories, loaders, backfill command, API, frontend, or generated metrics are introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "uv run alembic upgrade head",
+        "uv run alembic check",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Cache refresh",
+        "Stats loading",
+        "Data deletion",
+        "Destructive migrations",
+        "Peewee removal",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-002-stats-models-and-alembic-migration.md",
+        "src/nba_data/db/models/stats.py",
+        "alembic/versions"
+      ]
+    },
+    {
+      "id": "F4E-003",
+      "title": "Add idempotent stats repositories",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4E-002"
+      ],
+      "description": "Add SQLAlchemy repositories that upsert official wide stats rows idempotently without owning transaction commits.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-003-idempotent-stats-repositories.md.",
+        "Repository methods cover roster, team-stint stats, and aggregate stats tables.",
+        "Team-stint stats upsert by player_team_season_id.",
+        "Aggregate TOT stats upsert by player_season_id.",
+        "Repositories do not call session.commit() or session.rollback().",
+        "Duplicate natural keys fail before any write.",
+        "Reruns do not create duplicate stats rows.",
+        "Tests cover idempotency, duplicate input, rollback behavior, FK grain enforcement, and TOT separation."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Cache refresh",
+        "Backfill execution",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-003-idempotent-stats-repositories.md",
+        "src/nba_data/db/repositories/stats.py",
+        "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-004",
+      "title": "Load normalized rows into wide stats",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4E-003"
+      ],
+      "description": "Convert validated normalized team-season rows into typed wide stats rows through the approved stats repositories.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md.",
+        "Loader starts from parsed, normalized, and validated rows.",
+        "Loader maps every supported source_table to the expected wide stats table.",
+        "Real-team rows load through core.player_team_seasons.id.",
+        "Aggregate TOT rows load through core.player_seasons.id.",
+        "Roster rows load only to stats.player_team_season_roster.",
+        "Missing core identity rows produce actionable failures.",
+        "Reruns do not duplicate stats rows.",
+        "Tests cover routing, type conversion, idempotency, missing identity rows, duplicate input, and TOT separation."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Cache refresh",
+        "New official source tables",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md",
+        "src/nba_data/scraping/loaders",
+        "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-005",
+      "title": "Add offline stats backfill command",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4E-004"
+      ],
+      "description": "Add a guarded offline command that loads official wide stats from existing cached HTML through the approved offline processing and loading chain.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-005-offline-stats-backfill-command.md.",
+        "Command refuses to write stats without an explicit execution flag.",
+        "Backfill selects only valid cached inventory entries.",
+        "Backfill loads no stats for processor failure entries.",
+        "Backfill reports loaded, skipped, failed, and quarantined stats rows.",
+        "Rerunning the same backfill does not duplicate stats rows.",
+        "Tests cover CLI guard behavior, no-network boundaries, idempotency, partial-failure reporting, and transaction rollback."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Basketball Reference contact",
+        "Cache refresh",
+        "Data deletion",
+        "Destructive migrations",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-005-offline-stats-backfill-command.md",
+        "src/nba_data/scraping",
+        "src/nba_data/cli/main.py",
+        "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-006",
+      "title": "Add official stats validation checks",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "pending",
+      "depends_on": [
+        "F4E-005"
+      ],
+      "description": "Add post-load validation checks proving official wide stats are coherent, queryable, and separated from generated metrics.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-006-official-stats-validation-checks.md.",
+        "Validation covers all F4E wide stats tables.",
+        "Validation detects duplicate rows and orphan FKs.",
+        "Validation detects incorrect TOT placement.",
+        "Validation catches obvious impossible numeric values.",
+        "Validation confirms generated metrics are not stored in stats.",
+        "Tests cover passing and failing checks.",
+        "No API implementation is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Cache refresh",
+        "Data deletion",
+        "Destructive migrations",
+        "API endpoints",
+        "Frontend",
+        "Generated metrics, OVR, ranking, similarity, recommendations, or ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-006-official-stats-validation-checks.md",
+        "src/nba_data/validation",
+        "tests/unit"
       ]
     },
     {

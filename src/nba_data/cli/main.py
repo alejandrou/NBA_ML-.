@@ -24,14 +24,19 @@ from nba_data.scraping.nba_team_season_acquisition import (
 )
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
 from nba_data.scraping.offline_backfill import run_full_offline_backfill
+from nba_data.validation.offline_database import (
+    validate_offline_database as run_offline_database_validation,
+)
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
 cache_app = typer.Typer(help="HTML cache utilities.")
 backfill_app = typer.Typer(help="Controlled raw HTML backfill utilities.")
 acquisition_app = typer.Typer(help="Phase 4D-A acquisition planning utilities.")
+validation_app = typer.Typer(help="Offline data quality validation utilities.")
 app.add_typer(cache_app, name="cache")
 app.add_typer(backfill_app, name="backfill")
 app.add_typer(acquisition_app, name="acquisition")
+app.add_typer(validation_app, name="validate")
 console = Console()
 _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
@@ -42,6 +47,14 @@ _OFFLINE_BACKFILL_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
     help="Optional path to write the offline backfill JSON report.",
+)
+_OFFLINE_DATABASE_BACKFILL_REPORT_OPTION = typer.Option(
+    ...,
+    "--backfill-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Path to the Phase 4D offline backfill JSON report.",
 )
 
 
@@ -162,6 +175,31 @@ def backfill_offline(
         engine.dispose()
 
     _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@validation_app.command("offline-database")
+def validate_offline_database(
+    backfill_report: Path = _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION,
+) -> None:
+    """Validate the local Phase 4D PostgreSQL core database state."""
+
+    try:
+        backfill_data = json.loads(backfill_report.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"Invalid backfill report JSON: {exc}") from exc
+
+    settings = get_settings()
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            report = run_offline_database_validation(session, backfill_data)
+    finally:
+        engine.dispose()
+
+    console.print_json(data=report.to_dict())
+    if not report.passed:
+        raise typer.Exit(code=1)
 
 
 @acquisition_app.command("dry-run-nba-team-seasons")

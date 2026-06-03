@@ -1,55 +1,77 @@
 # Current Work
 
-Status: phase_4_closed_ready_for_commit_push_pr_approval
+Status: phase_4d_done
 
 ## Active Task
 
-- `F4-001` is `done`.
-- `F4-002` is `done`.
-- `F4-003` is `done`.
-- No task is currently `approved`, `in_progress`, or `needs_review`.
+- No active implementation task.
+- `F4D-002`, `F4D-003`, and `F4D-004` were explicitly owner-approved for block
+  closure and are marked `done`.
+- Phase 4D is marked `done`.
 
 ## Current Phase
 
-- Phase ID: `phase-4-sqlalchemy-migration`.
+- Phase ID: `phase-4d-full-offline-database-preparation`.
 - Phase status: `done`.
-- Phase 4B controlled raw HTML backfill is closed.
-- Phase 4 SQLAlchemy migration is closed.
-- Phase 4C offline cached HTML processing and load remains pending and is not
-  approved.
+- Phase 4D remains pre-API.
 
-## Phase 4 Closure Summary
+## Latest Checkpoint
 
-- `F4-001` added additive SQLAlchemy core relationship models and Alembic
-  revision `0002_core_team_player_season.py`.
-- `F4-003` added the local PostgreSQL database validation path and aligned raw
-  timestamp metadata with existing nullable migrations.
-- `F4-002` added idempotent SQLAlchemy repositories and
-  `load_team_season_core(...)` for already-normalized rows.
-- Review confirmed validation and duplicate natural-key checks happen before
-  writes, repository logic is portable select-then-insert/update, commits stay
-  caller-owned, rollback behavior is covered, meaningful names are preserved,
-  `player_name` is not an identity key, and `TOT` aggregate rows do not create
-  real team membership records.
-- No new Alembic revision was added for `F4-002`.
+- Reviewed and closed `F4D-002`, the guarded full offline backfill command.
+- Added `src/nba_data/validation/offline_database.py`.
+- Added `nba-data validate offline-database --backfill-report ...`.
+- Added `tests/unit/test_offline_database_validation.py`.
+- Added `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
+- The validation checks table counts, season coverage, duplicate logical rows,
+  orphan relationships, team-seasons without players, suspiciously low
+  per-season counts, `TOT` real-team misuse, missing Basketball Reference
+  player IDs, and backfill failure/quarantine counts.
+- The owner-confirmed local PostgreSQL baseline is:
+
+```text
+core.seasons                26
+core.teams                  37
+core.team_aliases           775
+core.team_seasons           775
+core.players                2551
+core.player_seasons         12676
+core.player_team_seasons    14344
+```
+
+- `reports/offline-backfill-2000-2025.json` records 775 selected inventory
+  entries, 775 loaded entries, 129000 loaded rows, 0 failed entries, and 0
+  quarantined entries.
+- No live scraping, Basketball Reference contact, cache refresh, data deletion,
+  destructive migration, API/frontend/stats persistence/OVR/ranking/
+  similarity/recommendations/ML work, branch, commit, push, or PR occurred.
 
 ## Latest Validation
 
+- `uv run pytest tests/unit/test_offline_database_validation.py`: passed, 8
+  passed.
+- Focused Ruff on offline database validation, CLI, exports, and tests: passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 88 passed and 6 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  88 passed and 6 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/db-validate.sh`: passed;
-  `alembic check` reported no new upgrade operations and the PostgreSQL smoke
-  test passed.
-- `uv run alembic current`: `0002_core_team_player_season (head)`.
-- `git diff --cached --name-only -- .env data/raw`: passed with no output.
+- `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+
+## Current Working Tree
+
+- Expected Phase 4D new files:
+  `src/nba_data/validation/offline_database.py`,
+  `tests/unit/test_offline_database_validation.py`, and
+  `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
+- Existing expected future Phase 4E planning files remain uncommitted and
+  pending; no F4E task has been promoted.
+- Reports under `reports/` and raw cache under `data/raw/` remain ignored and
+  should not be committed.
 
 ## Next Safe Action
 
-- Prepare commit, push, and PR only after explicit owner approval.
-- Do not start Phase 4C, cached HTML processing/loading, live scraping,
-  Basketball Reference contact, data deletion, destructive migrations,
-  Peewee/legacy deletion, API/frontend, generated metrics, OVR, ranking,
-  similarity, or ML work without explicit owner approval.
+- Prepare a Phase 4D to Phase 4E transition summary and ask for explicit owner
+  approval before promoting any Phase 4E task.

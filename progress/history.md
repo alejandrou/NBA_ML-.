@@ -1351,3 +1351,919 @@ Tarea inicial:
   process cached HTML, delete or reset DB data, apply destructive migrations,
   delete legacy/Peewee code, create a branch, commit, push, open a PR, or
   implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4 Merge And Phase 4C Handoff
+
+- PR #6, `[codex] Close Phase 4 SQLAlchemy migration`, was merged into
+  `main`: `https://github.com/alejandrou/NBA_ML-./pull/6`.
+- GitHub CI for PR #6 passed.
+- Local `main` was fast-forwarded to `origin/main` after the merge.
+- Current task state: `F4-001`, `F4-002`, and `F4-003` are `done`.
+- Current phase state: `phase-4-sqlalchemy-migration` is `done`.
+- Phase 4C tasks remain `pending`; no Phase 4C task has been approved or
+  started.
+- Next safe development step is explicit owner approval to activate
+  `phase-4c-offline-cached-html-processing-and-load` and select `F4C-001`.
+- Do not run live scraping, contact Basketball Reference, refresh cache misses,
+  write DB loader data from cached HTML, delete data, run destructive
+  migrations, delete Peewee/legacy code, create a branch, commit, push, open a
+  PR, or implement API/frontend/OVR/ranking/similarity/ML work without explicit
+  owner approval.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Expected branch: main
+
+Goal: continue after the merged Phase 4 SQLAlchemy migration and prepare the
+next development step for Phase 4C. Follow the repo startup protocol first.
+
+Startup protocol:
+1. Read AGENTS.md.
+2. Run C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh.
+3. Read docs/ai/WORKFLOW_PROTOCOL.md.
+4. Read docs/roadmap/PHASE_GOVERNANCE.md.
+5. Read docs/roadmap/CURRENT_PHASE.md.
+6. Read tasks/feature-list.json.
+7. Read specs/phases/phase-4-sqlalchemy-migration.md.
+8. Read specs/phases/phase-4c-offline-cached-html-processing-and-load.md.
+9. Read specs/features/F4C-001-offline-cached-html-processor.md if it exists;
+   if it does not exist, inspect tasks/feature-list.json and the Phase 4C spec
+   before proposing the smallest spec/task-state update.
+10. Read progress/current.md, progress/history.md, and progress/review.md.
+11. Run git status --short --branch.
+
+Context:
+- PR #6 is merged: https://github.com/alejandrou/NBA_ML-./pull/6.
+- Phase 4 is closed and merged.
+- current_phase_id is phase-4-sqlalchemy-migration.
+- current_phase_status is done.
+- F4-001, F4-002, and F4-003 are done.
+- Phase 4C remains pending/future and has not been approved yet.
+- F4C-001 is the expected next candidate task:
+  implement an offline cached HTML processor that reads only existing .html.gz
+  cache files, parses, normalizes, and validates team-season rows without any
+  network client and without database writes.
+
+Owner approval for this session:
+- I approve transitioning the roadmap from Phase 4 to
+  phase-4c-offline-cached-html-processing-and-load.
+- I approve preparing F4C-001 as the first Phase 4C task.
+- Before implementing runtime code, inspect whether the F4C-001 feature spec
+  exists and whether task state/current phase docs need a transition update.
+
+Guardrails:
+- No live scraping.
+- Do not contact Basketball Reference.
+- Do not refresh cache misses.
+- Do not write DB loader data from cached HTML in F4C-001.
+- Do not delete raw HTML, database records, volumes, Peewee, or legacy code.
+- No destructive migrations.
+- No API/frontend/OVR/ranking/similarity/ML.
+- Do not create a branch, commit, push, or open a PR without explicit owner
+  approval in that session.
+
+Task:
+1. Inspect the Phase 4C specs/tasks/progress state.
+2. If source-of-truth files still point to Phase 4 as done, propose or make the
+   smallest transition update to set Phase 4C as current and F4C-001 as ready
+   or approved according to phase governance and the approval above.
+3. Then either produce a concise implementation plan for F4C-001 or, if the
+   state is already decision-complete, implement only the smallest F4C-001
+   slice.
+4. Keep all tests offline and fixture/cache based.
+5. Update progress/current.md and progress/history.md after the checkpoint.
+```
+
+## Phase 4C Planning Transition
+
+- Created branch `feature/phase-4c-offline-cached-html-processor` from
+  `main` after confirming `main...origin/main`.
+- Preserved existing local progress handoff edits on the new branch.
+- Activated `phase-4c-offline-cached-html-processing-and-load` as the current
+  phase with status `approved`.
+- Moved `F4C-001` from `pending` to `ready` as the first Phase 4C task.
+- Kept `F4C-001` unapproved; no task is currently `approved`, `in_progress`,
+  or `needs_review`.
+- Kept `F4C-002` and `F4C-003` pending.
+- Added `specs/features/F4C-001-offline-cached-html-processor.md` for the
+  offline cached HTML processor boundary.
+- Updated roadmap state and task docs for the Phase 4C transition.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed.
+- Did not implement runtime code, run live scraping, contact Basketball
+  Reference, refresh cache misses, write DB data, apply migrations, delete raw
+  HTML, delete database records or volumes, delete Peewee/legacy code, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-001 Offline Cached HTML Processor
+
+- Owner approved implementing `F4C-001`.
+- Moved `phase-4c-offline-cached-html-processing-and-load` to `in_progress`
+  and moved `F4C-001` from `ready` to `in_progress`, then to `needs_review`
+  after validation.
+- Added `src/nba_data/scraping/offline_processor.py`.
+- Added `tests/unit/test_offline_processor.py`.
+- The processor accepts URL sources resolved through `HtmlCache.path_for_url`
+  and explicit `.html.gz` paths under the configured cache root.
+- Explicit URL sources must be Basketball Reference team-season pages matching
+  `/teams/{TEAM}/{YEAR}.html`.
+- Explicit path sources must include team abbreviation and season end year
+  metadata, resolve under the cache root, and end in `.html.gz`.
+- The processor reads cached gzip content once for each source, then calls
+  `parse_team_season_page`, `normalize_team_season_page`, and
+  `validate_normalized_team_season_rows`.
+- Successful entries return validated normalized rows plus source context.
+- Cache misses, invalid paths, read errors, and validation failures return
+  per-input failures without refreshing cache misses or blocking later inputs.
+- Default execution is sequential with `max_workers=1`; bounded local workers
+  preserve input order for already-cached local work.
+- Ran `uv run pytest tests/unit/test_offline_processor.py`: passed, 9 passed.
+- Ran `uv run ruff check src/nba_data/scraping/offline_processor.py tests/unit/test_offline_processor.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 96 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  96 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, write DB data, apply migrations, delete raw HTML, delete database
+  records or volumes, delete Peewee/legacy code, create a branch, commit, push,
+  open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-001 Continuation Handoff
+
+- Current branch: `feature/phase-4c-offline-cached-html-processor`.
+- `F4C-001` is `needs_review`.
+- `phase-4c-offline-cached-html-processing-and-load` remains `in_progress`.
+- `F4C-002` and `F4C-003` remain `pending`.
+- Next safe action: review `F4C-001` and either close it as `done` after
+  approval or move it to `changes_requested` with the smallest corrective fix.
+- Do not start `F4C-002` or connect database loaders until the owner explicitly
+  approves the next task.
+
+Suggested continuation prompt:
+
+```text
+Repo: c:\Users\adhc_\Desktop\PYTHON\Projects\Scraping nba-reference
+Branch: feature/phase-4c-offline-cached-html-processor
+
+Follow the repo startup protocol first:
+1. Read AGENTS.md.
+2. Run C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh.
+3. Read docs/ai/WORKFLOW_PROTOCOL.md.
+4. Read docs/roadmap/PHASE_GOVERNANCE.md.
+5. Read docs/roadmap/CURRENT_PHASE.md.
+6. Read tasks/feature-list.json.
+7. Read specs/phases/phase-4c-offline-cached-html-processing-and-load.md.
+8. Read specs/features/F4C-001-offline-cached-html-processor.md.
+9. Read progress/current.md, progress/history.md, and progress/review.md.
+10. Run git status --short --branch.
+
+Context:
+- Phase 4 SQLAlchemy migration is closed and merged via PR #6.
+- Phase 4C is current:
+  current_phase_id = phase-4c-offline-cached-html-processing-and-load
+  current_phase_status = in_progress
+- F4C-001 has been implemented and is now needs_review.
+- F4C-002 and F4C-003 remain pending.
+- The F4C-001 implementation added:
+  - src/nba_data/scraping/offline_processor.py
+  - tests/unit/test_offline_processor.py
+- The processor reads only existing .html.gz cache files, then parses,
+  normalizes, and validates team-season rows.
+- It accepts URL sources resolved through HtmlCache.path_for_url and explicit
+  .html.gz paths under the cache root.
+- It does not accept BasketballReferenceClient, requests, httpx, or any generic
+  network client.
+- It does not write database rows or call loaders.
+- Cache misses, invalid paths, read errors, and validation failures are
+  per-input failures and do not refresh the cache.
+- Latest validation passed:
+  - python -m json.tool tasks/feature-list.json
+  - uv run pytest tests/unit/test_offline_processor.py: 9 passed
+  - uv run ruff check .
+  - uv run pytest: 96 passed, 1 skipped, 6 Peewee deprecation warnings
+  - C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh: passed
+
+Guardrails:
+- No live scraping.
+- Do not contact Basketball Reference.
+- Do not refresh cache misses.
+- Do not write DB loader data from cached HTML in F4C-001.
+- Do not start F4C-002 or connect database loaders.
+- Do not delete raw HTML, database records, volumes, Peewee, or legacy code.
+- No destructive migrations.
+- No API/frontend/OVR/ranking/similarity/ML.
+- Do not create another branch, commit, push, or open a PR without explicit
+  owner approval.
+
+Task:
+1. Review the F4C-001 diff against its feature spec and acceptance criteria.
+2. If it is correct, update progress/review.md, mark F4C-001 done, and update
+   progress/current.md, progress/history.md, docs/roadmap/TASKS.md, and
+   tasks/feature-list.json.
+3. If you find an issue, mark F4C-001 changes_requested and implement only the
+   smallest corrective fix.
+4. Run offline validation after review or fixes.
+5. Do not start F4C-002 unless I explicitly approve it in that session.
+```
+
+## Phase 4C F4C-001 Review Closure
+
+- Reviewed `F4C-001` against its feature spec and acceptance criteria.
+- Marked `F4C-001` as `done`.
+- Confirmed the offline processor reads only existing cached `.html.gz` inputs,
+  then calls parse, normalize, and validate in order.
+- Confirmed URL inputs are explicit Basketball Reference team-season pages
+  resolved through `HtmlCache.path_for_url`.
+- Confirmed explicit path inputs require team and season metadata, must end in
+  `.html.gz`, and must resolve under the cache root.
+- Confirmed cache misses, invalid paths, read errors, and validation failures
+  are per-input failures and do not refresh the cache or block other inputs.
+- Confirmed successful entries return validated normalized rows plus source
+  context.
+- Confirmed the processor does not accept or import
+  `BasketballReferenceClient`, `requests`, `httpx`, or a generic network
+  client.
+- Confirmed no database sessions, SQLAlchemy loader calls, migrations, raw HTML
+  deletion, API/frontend/OVR/ranking/similarity/ML work, or `F4C-002` loader
+  connection was introduced.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 96 passed, 1 skipped, and 6 Peewee deprecation
+  warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  96 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `phase-4c-offline-cached-html-processing-and-load` in progress.
+- Kept `F4C-002` and `F4C-003` pending until explicit owner approval.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, write DB data, delete data, run destructive migrations, delete
+  Peewee/legacy code, create a branch, commit, push, open a PR, or implement
+  API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Offline Processor Loader Connection
+
+- Owner approved implementing `F4C-002` only and stopping before `F4C-003`.
+- Promoted `F4C-002` through the allowed task state path and moved it to
+  `needs_review` after validation.
+- Added
+  `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`.
+- Added `src/nba_data/scraping/offline_loader.py`.
+- Added `tests/unit/test_offline_loader.py`.
+- The offline loader orchestration starts from
+  `OfflineTeamSeasonProcessingReport` entries, not raw HTML.
+- Processor failure entries are marked skipped and do not call DB loaders.
+- Validated entries are converted into `TeamSeasonLoadBatch` and loaded through
+  `load_team_season_core(...)`.
+- Each validated entry runs inside a nested transaction savepoint so loader
+  exceptions roll back partial writes for that entry.
+- Loader orchestration does not call `session.commit()`.
+- Source lineage is preserved only in returned result objects as `source_url`,
+  `cache_path`, `team_abbreviation`, and `season_year`.
+- Ran `uv run pytest tests/unit/test_offline_loader.py`: passed, 6 passed.
+- Ran `uv run ruff check src/nba_data/scraping/offline_loader.py tests/unit/test_offline_loader.py`:
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 102 passed, 1 skipped, and 6 Peewee
+  deprecation warnings after rerunning with a longer timeout.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  102 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `F4C-003` pending.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Handoff
+
+- Current branch:
+  `feature/phase-4c-offline-cached-html-processor`.
+- Current task state: `F4C-002` is `needs_review`.
+- `F4C-001` is `done`.
+- `F4C-003` remains `pending`.
+- Next safe action: review `F4C-002` against
+  `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
+  and either close it as `done` after approval or request changes.
+- Do not start `F4C-003` until the owner explicitly approves it after
+  `F4C-002` review closure.
+- Continuation prompt is recorded in `progress/current.md`.
+
+## Phase 4C F4C-002 Review Closure
+
+- Reviewed `F4C-002` against its feature spec and acceptance criteria.
+- Marked `F4C-002` as `done`.
+- Confirmed the offline loader starts from
+  `OfflineTeamSeasonProcessingReport` entries, not raw HTML.
+- Confirmed only `status="validated"` entries are converted into
+  `TeamSeasonLoadBatch` and loaded through `load_team_season_core(...)`.
+- Confirmed processor failure entries are skipped and do not call DB loaders.
+- Confirmed each validated entry runs inside a nested transaction savepoint so
+  loader exceptions roll back partial writes for that entry.
+- Confirmed loader orchestration does not call `session.commit()`.
+- Confirmed idempotent reruns do not create duplicate core rows.
+- Confirmed source lineage is preserved only in returned result objects as
+  `source_url`, `cache_path`, `team_abbreviation`, and `season_year`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 102 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  102 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Kept `phase-4c-offline-cached-html-processing-and-load` in progress.
+- Kept `F4C-003` pending until explicit owner approval.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-002 Closure Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt.
+- The continuation prompt explicitly approves starting `F4C-003` in the next
+  session only after startup inspection confirms source-of-truth consistency.
+- The next task remains `F4C-003`: add offline load reporting and quarantine
+  workflow.
+- The prompt preserves the Phase 4C guardrails: no live scraping, no
+  Basketball Reference contact, no cache refresh, no migrations or DB schema
+  changes, no data deletion, no API/frontend/OVR/ranking/similarity/ML work,
+  and no branch/commit/push/PR without explicit owner approval.
+
+## Phase 4C F4C-003 Offline Load Reporting And Quarantine
+
+- Owner approved starting `F4C-003` after startup inspection confirmed the
+  handoff matched source-of-truth files.
+- Confirmed Phase 4C is current and `in_progress`, `F4C-001` and `F4C-002` are
+  `done`, `F4C-003` was the only next candidate task, and no other task was
+  `approved` or `in_progress`.
+- Promoted `F4C-003` through the allowed task state path and moved it to
+  `needs_review` after implementation and focused validation.
+- Added
+  `specs/features/F4C-003-offline-load-reporting-and-quarantine-workflow.md`.
+- Added `src/nba_data/scraping/offline_reporting.py`.
+- Added `tests/unit/test_offline_reporting.py`.
+- Extended processor reports with parsed row counts and quarantined rows for
+  validation failures while keeping invalid rows out of `validated_rows` and
+  loader input.
+- Extended loader entry reports with quarantined rows for failed loader entries.
+- Added an audit report builder that combines processing and load reports and
+  distinguishes parsed, validated, loaded, skipped, and quarantined rows.
+- Quarantine entries include source URL, cache path, team abbreviation, season
+  year, validation issues where available, error messages, and retry hints.
+- Updated `docs/validation/TEAM_SEASON_PIPELINE.md` with the operator retry
+  workflow for validation and loading quarantines.
+- Ran
+  `uv run pytest tests/unit/test_offline_reporting.py tests/unit/test_offline_processor.py tests/unit/test_offline_loader.py`:
+  passed, 19 passed.
+- Ran focused Ruff on the touched code and test modules: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- First `uv run pytest` attempt timed out before returning output; reran with a
+  longer timeout.
+- Ran `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  106 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, or implement API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4C F4C-003 Review Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt for the
+  next session.
+- The continuation prompt directs the next session to review `F4C-003`, close it
+  as `done` only after approval and validation, or request the smallest
+  corrective fix.
+- The prompt preserves the Phase 4C guardrails: no live scraping, no Basketball
+  Reference contact, no cache refresh, no migrations or DB schema changes, no
+  data deletion, no API/frontend/OVR/ranking/similarity/ML work, and no
+  branch/commit/push/PR without explicit owner approval.
+
+## Phase 4C F4C-003 Review Closure And Phase 4C Closure
+
+- Reviewed `F4C-003` against its feature spec and acceptance criteria.
+- Marked `F4C-003` as `done`.
+- Marked `phase-4c-offline-cached-html-processing-and-load` as `done`.
+- Confirmed `F4C-001`, `F4C-002`, and `F4C-003` are all reviewed and marked
+  `done`.
+- Confirmed the F4C-003 audit report starts from existing processing/load
+  report objects and does not read raw HTML, accept network clients, refresh
+  cache misses, or write database rows.
+- Confirmed reports distinguish parsed, validated, loaded, skipped, and
+  quarantined rows.
+- Confirmed validation failures preserve quarantined rows separately from
+  `validated_rows` and loader input.
+- Confirmed loader failures preserve quarantined rows for the failed entry.
+- Confirmed quarantine entries include source context, validation/error details,
+  and retry hints.
+- Confirmed retry safety is covered by idempotent loader rerun tests.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  106 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache
+  misses, add migrations, add DB tables or lineage columns, delete data, run
+  destructive migrations, delete Peewee/legacy code, create a branch, commit,
+  push, open a PR, activate Phase 5, or implement
+  API/frontend/OVR/ranking/similarity/ML work.
+
+## Phase 4D Planning Transition
+
+- Confirmed Phase 4C is closed: `F4C-001`, `F4C-002`, and `F4C-003` are
+  reviewed and marked `done`.
+- Introduced `phase-4d-full-offline-database-preparation` as the next current
+  phase before any API phase.
+- Set Phase 4D status to `approved`.
+- Added Phase 4D tasks:
+  - `F4D-001`: Cached HTML inventory.
+  - `F4D-002`: Full offline backfill command.
+  - `F4D-003`: Data quality validation checks.
+  - `F4D-004`: API-ready database readiness documentation.
+- Moved `F4D-001` to `ready` and kept `F4D-002`, `F4D-003`, and `F4D-004`
+  `pending`.
+- Added the Phase 4D phase spec and feature specs for all four proposed tasks.
+- Recorded Phase 4D as offline-only and pre-API: existing cached `.html.gz`
+  files only, no live scraping, no cache refresh, no Basketball Reference
+  contact, no data deletion, no destructive migrations, no API/frontend/OVR/
+  ranking/similarity/recommendations/ML work.
+- Did not implement Phase 4D runtime code, run a backfill, write database rows,
+  run live scraping, contact Basketball Reference, refresh cache misses, delete
+  data, create a branch, commit, push, or open a PR.
+- Validation passed:
+  `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+  `uv run pytest`, and
+  `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+- The first harness validation run failed on untracked new Phase 4D spec files;
+  only the Phase 4D planning files touched in this checkpoint were staged, then
+  harness validation passed.
+
+## Phase 4D-A Controlled Acquisition Planning Update
+
+- Inserted Phase 4D-A as a controlled NBA team-season cache acquisition
+  subphase inside `phase-4d-full-offline-database-preparation`.
+- Added `F4D-ACQ-001`, `F4D-ACQ-LIVE-001`, and `F4D-ACQ-002` ahead of the
+  existing Phase 4D database preparation tasks.
+- Moved only `F4D-ACQ-001` to `ready`.
+- Kept `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` `pending`.
+- Moved existing `F4D-001` back to `pending` and made it depend on
+  `F4D-ACQ-002`.
+- Added feature specs for the Phase 4D-A manifest, controlled live acquisition,
+  and acquisition report review tasks.
+- Documented that seasons 2000-2025 mean Basketball Reference season end years.
+- Documented that the manifest must contain exactly 775 unique NBA team-season
+  URLs and only `/teams/{TEAM}/{YEAR}.html` URLs.
+- Documented the acquisition policy: explicit owner approval and execution flag
+  for live acquisition, default 10 requests/minute, configurable phase max 12
+  requests/minute, hard cap 20 requests/minute, immediate stop on HTTP 429, and
+  async only with bounded concurrency plus a global rate limiter.
+- Did not fetch HTML, contact Basketball Reference, write `.html.gz` files,
+  write database rows, parse, load, backfill, implement API/frontend/OVR/
+  ranking/similarity/recommendations/ML work, create a branch, commit, push, or
+  open a PR.
+- Validation passed:
+  `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+  `uv run pytest`, and
+  `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Phase 4D-A Continuation Handoff
+
+- Updated `progress/current.md` with a paste-ready continuation prompt for a
+  new Codex window.
+- The prompt instructs the next session to verify the staged Phase 4D-A
+  planning/docs diff before making any additional changes.
+- The prompt preserves the current task state: `F4D-ACQ-001` is `ready`, while
+  `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` remain `pending`.
+- The prompt explicitly blocks HTML fetching, Basketball Reference contact,
+  live scraping, `.html.gz` writes, database writes, parser/load/backfill work,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, destructive
+  migrations, data deletion, and branch/commit/push/PR actions without explicit
+  owner approval.
+- The prompt limits any next implementation, if separately approved, to
+  `F4D-ACQ-001` manifest generation and dry-run planning only.
+
+## Phase 4D-A Handoff Criteria Heading Fix
+
+- Fixed a low-priority documentation ambiguity in
+  `specs/phases/phase-4d-full-offline-database-preparation.md`.
+- Renamed `## Done Criteria` to `## Phase 4D-A Handoff Criteria` because the
+  listed criteria describe the Phase 4D-A acquisition handoff before `F4D-001`,
+  not full Phase 4D completion.
+- Left task states unchanged: `F4D-ACQ-001` remains `ready`, and
+  `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` remain `pending`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  106 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not start `F4D-ACQ-001`, fetch HTML, contact Basketball Reference, run
+  live scraping, write `.html.gz` files, write database rows, parse, load,
+  backfill, delete data, run destructive migrations, remove Peewee or legacy
+  code, implement API/frontend/OVR/ranking/similarity/recommendations/ML work,
+  create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-001 NBA Team-Season Manifest Dry Run
+
+- Owner explicitly approved implementing `F4D-ACQ-001`.
+- Promoted Phase 4D to `in_progress`.
+- Moved `F4D-ACQ-001` through the approved implementation path and left it in
+  `needs_review` after validation.
+- Added `src/nba_data/scraping/nba_team_season_manifest.py`.
+- Added `tests/unit/test_nba_team_season_manifest.py`.
+- Added `uv run nba-data acquisition dry-run-nba-team-seasons`.
+- The manifest generator covers Basketball Reference season end years 2000
+  through 2025.
+- The generated manifest contains exactly 775 unique NBA team-season URLs.
+- Every generated URL uses
+  `https://www.basketball-reference.com/teams/{TEAM}/{YEAR}.html`.
+- The dry-run report checks existing `HtmlCache` paths and reports cache hits,
+  missing cache entries, skipped entries, unsupported entries, estimated fetch
+  count, and per-entry cache paths/status.
+- The dry-run does not accept a network client.
+- No repo-tracked 775-entry manifest JSON artifact was created.
+- `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`, and
+  `F4D-004` remain `pending`.
+- Ran `uv run pytest tests/unit/test_nba_team_season_manifest.py`: passed, 7
+  passed.
+- Ran focused Ruff on the new manifest module, CLI update, and tests: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- First `uv run pytest` attempt timed out before returning output; reran with a
+  longer timeout.
+- Ran `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  113 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not fetch HTML, contact Basketball Reference, run live scraping, write
+  `.html.gz` files outside temporary tests, write database rows, parse, load,
+  backfill, delete data, run destructive migrations, remove Peewee or legacy
+  code, implement API/frontend/OVR/ranking/similarity/recommendations/ML work,
+  create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-001 Review Continuation Handoff
+
+- Refreshed `progress/current.md` with the exact continuation prompt for a new
+  Codex window.
+- Recorded the expected dirty worktree for the review handoff:
+  `docs/roadmap/CHANGELOG_LEARNING.md`, `docs/roadmap/CURRENT_PHASE.md`,
+  `docs/roadmap/TASKS.md`, `progress/current.md`, `progress/history.md`,
+  `specs/phases/phase-4d-full-offline-database-preparation.md`,
+  `src/nba_data/cli/main.py`, `tasks/feature-list.json`,
+  `src/nba_data/scraping/nba_team_season_manifest.py`, and
+  `tests/unit/test_nba_team_season_manifest.py`.
+- Next safe action remains review of `F4D-ACQ-001`; live acquisition remains
+  blocked behind separate explicit owner approval plus the required execution
+  flag.
+- Did not fetch HTML, contact Basketball Reference, run live scraping, write
+  `.html.gz` files, write database rows, parse, load, backfill, create a
+  branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-001 Review Closure
+
+- Reviewed `F4D-ACQ-001` against its feature spec and acceptance criteria.
+- Marked `F4D-ACQ-001` as `done`.
+- Confirmed the manifest generator covers Basketball Reference season end
+  years 2000 through 2025 and produces exactly 775 unique
+  `/teams/{TEAM}/{YEAR}.html` URLs.
+- Confirmed the dry-run report uses existing `HtmlCache` path conventions and
+  reports cache hits, missing cache entries, skipped entries, unsupported
+  entries, and estimated fetch count.
+- Confirmed the dry-run does not accept a network client and no manifest JSON
+  artifact was committed.
+- Left `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`, `F4D-003`,
+  and `F4D-004` `pending`.
+- Kept Phase 4D status `in_progress`.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  113 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not start `F4D-ACQ-LIVE-001`, fetch HTML, contact Basketball Reference,
+  run live scraping, refresh cache misses, write `.html.gz` files, write
+  database rows, parse, load, backfill, delete data, run destructive
+  migrations, remove Peewee or legacy code, implement API/frontend/OVR/
+  ranking/similarity/recommendations/ML work, run `scripts/harness/close.sh`,
+  create a branch, commit, push, or open a PR.
+
+## Phase 4D-A Post-Review Continuation Handoff
+
+- Refreshed `progress/current.md` with an exact paste-ready continuation prompt.
+- Preserved the current state: Phase 4D is `in_progress`, `F4D-ACQ-001` is
+  `done`, and `F4D-ACQ-LIVE-001`, `F4D-ACQ-002`, `F4D-001`, `F4D-002`,
+  `F4D-003`, and `F4D-004` remain `pending`.
+- Recorded the expected modified closeout files:
+  `docs/roadmap/CHANGELOG_LEARNING.md`, `docs/roadmap/CURRENT_PHASE.md`,
+  `docs/roadmap/TASKS.md`, `progress/current.md`, `progress/history.md`,
+  `progress/review.md`,
+  `specs/phases/phase-4d-full-offline-database-preparation.md`, and
+  `tasks/feature-list.json`.
+- Next safe action remains waiting for separate explicit owner approval before
+  starting `F4D-ACQ-LIVE-001`.
+- Did not fetch HTML, contact Basketball Reference, run live scraping, write
+  `.html.gz` files, write database rows, parse, load, backfill, run
+  `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Offline Command Implementation
+
+- Owner approved implementing the `F4D-ACQ-LIVE-001` command path but not
+  running live acquisition.
+- Moved `F4D-ACQ-LIVE-001` to `needs_review` after offline implementation and
+  validation.
+- Added `src/nba_data/scraping/nba_team_season_acquisition.py`.
+- Added `tests/unit/test_nba_team_season_acquisition.py`.
+- Added `uv run nba-data acquisition acquire-nba-team-seasons
+  --owner-approved --execute-approved-manifest`.
+- The command refuses to run without both approval flags.
+- The command verifies manifest ID `nba-team-season-2000-2025` and exactly 775
+  entries before creating the live client.
+- The production CLI path uses only `BasketballReferenceClient`; no direct
+  `requests`, `httpx`, or alternate HTTP path was introduced.
+- Cache hits skip client calls and are not overwritten.
+- Cache misses fetch with `force_refresh=False`, validate non-empty
+  HTML-shaped content, and use a temporary verified gzip write before replacing
+  the final `.html.gz`.
+- Early stops report `stopped_reason` and `stopped_at_entry`; report entries
+  include index, team, season end year, URL, cache path, status, and error
+  details when applicable.
+- Unit tests cover approval gates, manifest validation before client creation,
+  cache-hit no-overwrite behavior, cache-miss writes, invalid content, safe
+  write cleanup, generic failure, rate-limit stop, report shape, rate policy,
+  and CLI fake-client behavior.
+- Ran `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed,
+  12 passed.
+- Ran focused Ruff on the touched code and test modules: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- First `uv run pytest` attempt timed out before returning output; reran with a
+  longer timeout.
+- Ran `uv run pytest`: passed, 125 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  125 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not execute live acquisition, fetch HTML, contact Basketball Reference,
+  write live `.html.gz` files, write database rows, parse, load, backfill,
+  delete data, run destructive migrations, remove Peewee or legacy code,
+  implement API/frontend/OVR/ranking/similarity/recommendations/ML work, run
+  `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Flexible-Year Command Refinement
+
+- Refined the owner-run live command to require explicit `START_YEAR END_YEAR`
+  arguments while keeping `--owner-approved --execute-approved-manifest`.
+- Kept the official dry-run command unchanged:
+  `uv run nba-data acquisition dry-run-nba-team-seasons`.
+- Added support for any inclusive live subset inside the reviewed 2000-2025
+  catalog.
+- Added rejection for invalid live ranges before creating the live client,
+  including pre-2000, post-2025, and reversed ranges.
+- Preserved full reviewed manifest validation: manifest ID
+  `nba-team-season-2000-2025` and all 775 entries are verified before client
+  creation, then filtered to the requested range.
+- Added `--output` so the acquisition JSON report can be printed to stdout and
+  written to an operator-provided report file.
+- Confirmed normal command execution does not require setting env vars because
+  settings defaults already provide 10 requests/minute, 6 second minimum delay,
+  and no force refresh.
+- Ran `uv run pytest tests/unit/test_nba_team_season_acquisition.py
+  tests/unit/test_nba_team_season_manifest.py`: passed, 25 passed.
+- Ran focused Ruff on the touched acquisition, CLI, and test modules: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 131 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  131 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not execute live acquisition, fetch HTML, contact Basketball Reference,
+  write live `.html.gz` files, write database rows, parse, load, backfill,
+  delete data, run destructive migrations, remove Peewee or legacy code,
+  implement API/frontend/OVR/ranking/similarity/recommendations/ML work, run
+  `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Owner-Approved Full Acquisition
+
+- Owner explicitly approved running full 2000-2025 live acquisition.
+- First launch stopped before execution due to a process-launch quoting issue
+  with an absolute output path containing a space.
+- Second launch made one live request and stopped safely before final cache
+  write because gzip verification exposed newline normalization.
+- Fixed the safe gzip writer to preserve newlines during write/read
+  verification and added a regression test.
+- Relaunched:
+  `uv run nba-data acquisition acquire-nba-team-seasons 2000 2025
+  --owner-approved --execute-approved-manifest --output
+  reports/acquisition-2000-2025-20260530.json`.
+- Final successful acquisition report:
+  - total URLs: 775.
+  - processed entries: 775.
+  - cache hits: 2.
+  - fetched entries: 773.
+  - failed entries: 0.
+  - rate-limited entries: 0.
+  - live request count in final successful run: 773.
+  - completed: true.
+- Total live requests during the checkpoint were 774 because the first
+  safe-write stop happened after one ATL 2000 request and before any final cache
+  file was written.
+- Post-run dry-run reported 775 cache hits, 0 missing cache entries, 0 skipped
+  entries, 0 unsupported entries, and 0 estimated fetches.
+- Final cache count under `data/raw/html/basketball-reference` is 775
+  team-season `.html.gz` files.
+- Follow-up local artifact check confirmed 775 `.gz` files and 0 `.tmp` files;
+  the downloaded cache artifacts are final `.html.gz` files intended for later
+  offline `HtmlCache` parsing, not temporary files.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee
+  deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  132 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Did not write database rows, parse, load, backfill, delete data, run
+  destructive migrations, remove Peewee or legacy code, implement API/frontend/
+  OVR/ranking/similarity/recommendations/ML work, run
+  `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D-A F4D-ACQ-LIVE-001 Review Closure
+
+- Reviewed the controlled acquisition command and the saved
+  `reports/acquisition-2000-2025-20260530.json` report.
+- Marked `F4D-ACQ-LIVE-001` as `done`.
+- Moved `F4D-ACQ-002` to `ready` as the next handoff task, without approving
+  or starting it.
+- Confirmed the final acquisition report contains 775 processed entries, 2
+  cache hits, 773 fetched entries, 0 skipped entries, 0 failures, 0
+  rate-limited entries, and `completed=true`.
+- Confirmed the report has 775 entries, no bad or duplicate URLs, and all
+  reported cache paths exist.
+- Confirmed the cache directory contains 775 `.html.gz` files and 0 `.tmp`
+  files.
+- Preserved the prior stopped-run details: one process-launch quoting failure
+  before execution and one safe-write verification stop after the ATL 2000
+  request, before final cache write.
+- Fixed the stale Phase 4D spec wording that still said live execution was not
+  run.
+- Did not rerun live acquisition, fetch extra HTML, contact Basketball
+  Reference again, write database rows, parse, load, backfill, delete data, run
+  destructive migrations, remove Peewee or legacy code, implement API/frontend/
+  OVR/ranking/similarity/recommendations/ML work, run
+  `scripts/harness/close.sh`, create a branch, commit, push, or open a PR.
+
+## Phase 4D F4D-001 Cached HTML Inventory Implementation
+
+- Confirmed no task was `in_progress`, `F4D-001` depends on `F4D-ACQ-002`, and
+  `F4D-ACQ-002` is `done`.
+- Synchronized stale Phase 4D docs that still described `F4D-ACQ-002` as
+  awaiting review.
+- Implemented `src/nba_data/scraping/cache_inventory.py` with frozen
+  dataclasses and `to_dict()` report shapes for cached HTML inventory entries
+  and aggregate counts.
+- The inventory discovers local `.html.gz` files under `HtmlCache.root_dir`,
+  rejects resolved paths outside the cache root before reading, identifies
+  Basketball Reference cache paths, infers team-season metadata from existing
+  cache filename conventions, and checks readable HTML-shaped gzip content
+  without parsing tables.
+- Valid candidates are restricted to the approved Phase 4D 2000-2025 NBA
+  team-season manifest; duplicates, missing metadata, unsupported paths, and
+  invalid/unreadable files receive explicit statuses.
+- Added `tests/unit/test_cache_inventory.py` with temporary cache fixtures for
+  valid entries, duplicates, unsupported paths, missing metadata, invalid gzip
+  files, escaped-path protection, empty cache roots, report serialization, and
+  no-network/no-parser/no-loader boundaries.
+- Real local inventory inspection over `data/raw/html` reported 775 discovered
+  files, 775 valid candidates, 0 invalid/unreadable files, 0 duplicate
+  candidates, 0 missing metadata, and 0 unsupported paths.
+- Ran `uv run pytest tests/unit/test_cache_inventory.py`: passed, 8 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 141 passed, 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  141 passed and 6 Peewee deprecation warnings.
+- Moved `F4D-001` to `needs_review`; `F4D-002`, `F4D-003`, and `F4D-004`
+  remain `pending`.
+- Did not scrape, contact Basketball Reference, refresh cache, parse tables,
+  load, backfill, write database rows, delete data, run destructive migrations,
+  remove Peewee or legacy code, implement API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, run `scripts/harness/close.sh`, create a branch,
+  commit, push, or open a PR.
+
+## Phase 4D F4D-002 Full Offline Backfill Command Implementation
+
+- Owner approved `F4D-001`; marked it `done` before starting `F4D-002`.
+- Confirmed no other task was `in_progress`.
+- Confirmed `F4D-002` depends on `F4D-001`, `F4C-003`, and `F4-003`, all
+  marked `done`.
+- Implemented `src/nba_data/scraping/offline_backfill.py` with a frozen
+  `OfflineBackfillReport`, `build_offline_team_season_sources_from_inventory`,
+  and `run_full_offline_backfill`.
+- The offline backfill chain is:
+  F4D-001 inventory -> valid entries only -> explicit-path
+  `OfflineTeamSeasonSource` -> existing offline processor -> existing loader
+  bridge -> existing audit/quarantine reporting.
+- Added `nba-data backfill offline --execute-approved-backfill` with optional
+  `--max-workers` and `--output`.
+- The utility does not commit or rollback; the CLI opens and owns the local
+  PostgreSQL session transaction and refuses execution without the explicit
+  backfill flag.
+- Added `tests/unit/test_offline_backfill.py` covering report serialization,
+  valid-only routing, skipped inventory statuses, idempotent reruns, loader
+  rollback, caller-owned commit behavior, CLI guard behavior, CLI report output,
+  and no-network/no-migration boundaries.
+- Ran `uv run pytest tests/unit/test_offline_backfill.py`: passed, 10 passed.
+- Ran focused offline pipeline tests including cache inventory, offline
+  backfill, processor, loader, reporting, and team-season loader: passed, 46
+  passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran focused Ruff on the offline backfill module, CLI, and tests: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- Moved `F4D-002` to `needs_review`; `F4D-003` and `F4D-004` remain
+  `pending`.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  download HTML, delete data, run destructive migrations, remove Peewee or
+  legacy code, implement API/frontend/OVR/ranking/similarity/recommendations/
+  ML work, create a branch, commit, push, or open a PR.
+
+## Phase 4E Official Wide Stats Planning
+
+- Prepared future proposed Phase 4E without changing the current Phase 4D
+  state.
+- Added `specs/phases/phase-4e-official-wide-stats-persistence.md`.
+- Added feature specs `F4E-001` through `F4E-006`.
+- Added `docs/architecture/OFFICIAL_STATS_SCHEMA.md` with the target
+  `core` / `stats` / `features` separation and the reviewed team-stint versus
+  aggregate table families.
+- Added `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md` to preserve useful
+  legacy concepts while rejecting legacy player-name matching and Peewee schema
+  patterns for new work.
+- Added `F4E-001` through `F4E-006` to `tasks/feature-list.json` as
+  `pending`.
+- Kept `current_phase_id` as `phase-4d-full-offline-database-preparation` and
+  did not promote any F4E task to `ready`, `approved`, `in_progress`, or
+  `done`.
+- Inspected normalized keys emitted by the current normalizer from already
+  cached team-season HTML for representative ATL season end years 2000, 2005,
+  2010, 2015, 2020, and 2025.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 151 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`:
+  passed, 151 passed and 6 Peewee deprecation warnings.
+- Did not implement SQLAlchemy stats models, create Alembic migrations,
+  implement repositories or loaders, run backfills, contact Basketball
+  Reference, refresh cache, write database rows, create a branch, commit, push,
+  or open a PR.
+
+## Phase 4D Final Block Closure
+
+- Owner explicitly approved closing `F4D-002`, `F4D-003`, and `F4D-004`
+  together to finish Phase 4D.
+- Reviewed and closed `F4D-002`, the full offline backfill command.
+- Implemented `src/nba_data/validation/offline_database.py` for read-only
+  post-load database validation.
+- Added `nba-data validate offline-database --backfill-report ...`.
+- Added `tests/unit/test_offline_database_validation.py`.
+- Added `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
+- Marked `F4D-002`, `F4D-003`, and `F4D-004` as `done`.
+- Marked `phase-4d-full-offline-database-preparation` as `done`.
+- Confirmed all F4E tasks remain `pending`; no F4E task was promoted.
+- Validated the owner-confirmed PostgreSQL baseline:
+  - `core.seasons`: 26.
+  - `core.teams`: 37.
+  - `core.team_aliases`: 775.
+  - `core.team_seasons`: 775.
+  - `core.players`: 2551.
+  - `core.player_seasons`: 12676.
+  - `core.player_team_seasons`: 14344.
+- Validated `reports/offline-backfill-2000-2025.json`: 775 selected inventory
+  entries, 775 loaded entries, 129000 loaded rows, 0 failed entries, and 0
+  quarantined entries.
+- Ran `uv run pytest tests/unit/test_offline_database_validation.py`: passed,
+  8 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- Ran `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  159 passed and 6 Peewee deprecation warnings.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed,
+  159 passed and 6 Peewee deprecation warnings.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, implement F4E/F5/API/frontend/stats
+  persistence/OVR/ranking/similarity/recommendations/ML work, create a branch,
+  commit, push, or open a PR.

@@ -1478,3 +1478,966 @@ phase begins.
 Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 `uv run pytest`, Git Bash harness validation, Git Bash DB validation, and
 `uv run alembic current`.
+
+## Checkpoint 42 - Phase 4C Planning Transition
+
+### What Changed
+
+Created `feature/phase-4c-offline-cached-html-processor`, activated
+`phase-4c-offline-cached-html-processing-and-load` as the current approved
+phase, moved `F4C-001` to `ready`, and added the missing F4C-001 feature spec.
+
+### Why
+
+Phase 4 was closed and merged, and the owner approved the roadmap transition to
+Phase 4C plus preparation of `F4C-001`. The task remains unapproved so runtime
+code does not start until the next explicit implementation checkpoint.
+
+### Concepts Learned
+
+- A phase can be approved while its first task remains only `ready`.
+- `F4C-001` is processor-only: existing `.html.gz` files feed parse,
+  normalize, and validate steps, with no network client and no DB writes.
+- Loader connection belongs to `F4C-002`; reporting and quarantine workflow
+  belongs to `F4C-003`.
+
+### Files to Read
+
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+- `specs/phases/phase-4c-offline-cached-html-processing-and-load.md`
+- `specs/features/F4C-001-offline-cached-html-processor.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json` and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`.
+
+## Checkpoint 43 - F4C-001 Offline Cached HTML Processor
+
+### What Changed
+
+Implemented the first Phase 4C runtime boundary in
+`src/nba_data/scraping/offline_processor.py` and added offline unit tests in
+`tests/unit/test_offline_processor.py`.
+
+### Why
+
+The owner approved `F4C-001`, whose scope is existing cached `.html.gz` inputs
+through parse, normalize, and validate only. Loader connection remains reserved
+for `F4C-002`.
+
+### Concepts Learned
+
+- A processor report can expose only validated rows while keeping invalid rows
+  out of loader reach.
+- Cache misses should be entry-level failures in offline processing, not a
+  reason to refresh the cache.
+- Bounded workers are safe only when the work is local cached gzip I/O and the
+  final report preserves input order.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_processor.py`
+- `tests/unit/test_offline_processor.py`
+- `specs/features/F4C-001-offline-cached-html-processor.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_processor.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 44 - F4C-001 Review Closure
+
+### What Changed
+
+Reviewed and approved `F4C-001`, then marked the task `done` while keeping
+Phase 4C in progress and leaving `F4C-002` and `F4C-003` pending.
+
+### Why
+
+The offline cached HTML processor met the feature spec: it reads existing
+`.html.gz` inputs, parses, normalizes, validates, and reports per-input
+successes or failures without network clients, cache refresh, database writes,
+or loader connection.
+
+### Concepts Learned
+
+- Review closure should update the task board, current phase notes, review
+  notes, history, and learning changelog together.
+- Processor-only closure keeps loader integration behind the next explicit
+  task approval.
+- Offline validation can pass while the PostgreSQL integration smoke test stays
+  skipped when local database prerequisites are not active.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `docs/roadmap/TASKS.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 45 - F4C-002 Offline Processor Loader Connection
+
+### What Changed
+
+Connected validated offline processor entries to the existing idempotent core
+loader through `src/nba_data/scraping/offline_loader.py` and added focused
+offline tests in `tests/unit/test_offline_loader.py`.
+
+### Why
+
+The owner approved `F4C-002` only: validated cached HTML processor output can
+now flow into Phase 4 core loaders while `F4C-003` reporting and quarantine
+workflow remains pending.
+
+### Concepts Learned
+
+- Entry-level savepoints let one loader failure roll back partial writes without
+  requiring the orchestration layer to own the outer transaction.
+- Processor failures are already pre-loader failures, so the loader bridge
+  should skip them rather than reclassify or quarantine them in `F4C-002`.
+- Source lineage can stay useful at report level without adding schema columns.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_loader.py`
+- `tests/unit/test_offline_loader.py`
+- `specs/features/F4C-002-connect-offline-processor-to-idempotent-loaders.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_loader.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 46 - F4C-002 Review Closure
+
+### What Changed
+
+Reviewed and approved `F4C-002`, marked it `done`, and kept Phase 4C in
+progress with `F4C-003` still pending until explicit owner approval.
+
+### Why
+
+The loader bridge met the feature spec: it loads only validated offline
+processor entries through the existing idempotent core loader, skips processor
+failures, rolls back failed entries with savepoints, avoids commits, and keeps
+source lineage at the returned result/report level only.
+
+### Concepts Learned
+
+- Review closure for loader work should prove both idempotency and transaction
+  ownership boundaries.
+- Savepoint tests are enough for `F4C-002`; richer reporting and quarantine
+  behavior remains a separate `F4C-003` concern.
+- Source lineage can support operator troubleshooting without adding schema
+  columns.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `src/nba_data/scraping/offline_loader.py`
+- `tests/unit/test_offline_loader.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+## Checkpoint 47 - F4C-003 Offline Load Reporting And Quarantine
+
+### What Changed
+
+Added the F4C-003 feature spec, an offline audit/quarantine report builder, and
+focused unit tests. Processor validation failures now preserve quarantined rows
+separately from validated rows, and loader failures preserve the validated rows
+that failed to load for operator review.
+
+### Why
+
+Phase 4C needs an auditable retry workflow before broader offline loads. The
+operator needs to see parsed, validated, loaded, skipped, and quarantined row
+counts, plus source context and retry hints, without adding database schema or
+contacting Basketball Reference.
+
+### Concepts Learned
+
+- Quarantine belongs at the report boundary for this slice; it does not require
+  new DB tables or lineage columns.
+- Validation-failed rows can be visible for debugging while still staying out
+  of `validated_rows` and loader input.
+- Loader failure quarantine should capture only the failed entry rows because
+  entry-level savepoints already isolate partial writes.
+
+### Files to Read
+
+- `specs/features/F4C-003-offline-load-reporting-and-quarantine-workflow.md`
+- `src/nba_data/scraping/offline_reporting.py`
+- `tests/unit/test_offline_reporting.py`
+- `docs/validation/TEAM_SEASON_PIPELINE.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_reporting.py`, then run
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 106 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Checkpoint 48 - F4C-003 Review Closure And Phase 4C Closure
+
+### What Changed
+
+Reviewed and approved `F4C-003`, marked it `done`, and closed
+`phase-4c-offline-cached-html-processing-and-load` as `done`.
+
+### Why
+
+Phase 4C now has all three reviewed pieces needed for the offline cached HTML
+path: processor, loader bridge, and audit/quarantine reporting. Closing the
+phase preserves the next boundary: Phase 5/API work remains pending until the
+owner explicitly approves a transition.
+
+### Concepts Learned
+
+- Report-level quarantine is enough for this phase; persisted lineage columns
+  and DB-backed quarantine tables remain future design work.
+- Phase closure should not automatically activate the next phase.
+- The next transition should be a proposal, not an implementation of API,
+  frontend, OVR, rankings, similarity, or ML.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/current.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`,
+and `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Checkpoint 49 - Phase 4D Planning Transition
+
+### What Changed
+
+Introduced `phase-4d-full-offline-database-preparation` as the current approved
+pre-API phase, added four Phase 4D tasks, and created Phase 4D phase and feature
+specs.
+
+### Why
+
+Future API work should be developed against a real local PostgreSQL database
+loaded from existing cached HTML, not against mocks. Phase 4D adds that
+preparation layer while keeping live scraping, cache refresh, and API
+implementation out of scope.
+
+### Concepts Learned
+
+- A full offline database preparation phase can sit between cached processing
+  and API work without approving API implementation.
+- Cache inventory should happen before any broad offline backfill so unsupported,
+  duplicate, missing-metadata, and unreadable cache files are visible.
+- Data quality checks should prove relationship coherence before API endpoints
+  depend on the database.
+
+### Files to Read
+
+- `specs/phases/phase-4d-full-offline-database-preparation.md`
+- `specs/features/F4D-001-cached-html-inventory.md`
+- `specs/features/F4D-002-full-offline-backfill-command.md`
+- `specs/features/F4D-003-data-quality-validation-checks.md`
+- `specs/features/F4D-004-api-ready-database-readiness-documentation.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings after staging the new
+  Phase 4D planning files required by the harness tracking guard.
+
+### Review Questions
+
+- Should the owner approve `F4D-001` as the first implementation task?
+
+## Checkpoint 50 - Phase 4D-A Controlled Acquisition Planning
+
+### What Changed
+
+Inserted Phase 4D-A as a controlled NBA team-season cache acquisition subphase
+inside Phase 4D, before cache inventory and database preparation work.
+
+### Why
+
+Phase 4D needs real cached Basketball Reference NBA team-season HTML before it
+can inventory, process, load, and validate a useful local PostgreSQL database
+for future API development.
+
+### Concepts Learned
+
+- Seasons 2000-2025 are Basketball Reference season end years.
+- The NBA team-season manifest for this range must contain exactly 775 unique
+  `/teams/{TEAM}/{YEAR}.html` URLs.
+- Live acquisition needs a separate task with explicit owner approval, an
+  execution flag, cache-first behavior, a global rate limiter, and immediate
+  stop/report behavior on HTTP 429.
+
+### Files to Read
+
+- `specs/phases/phase-4d-full-offline-database-preparation.md`
+- `specs/features/F4D-ACQ-001-nba-team-season-manifest.md`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+- `specs/features/F4D-ACQ-002-acquisition-report-and-cache-coverage-review.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 106 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 106
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Review Questions
+
+- Should the owner approve `F4D-ACQ-001` as the first Phase 4D-A implementation
+  task?
+
+## Checkpoint 51 - F4D-ACQ-001 NBA Team-Season Manifest Dry Run
+
+### What Changed
+
+Implemented deterministic NBA team-season manifest generation and dry-run
+coverage reporting for Phase 4D-A. The new CLI command
+`uv run nba-data acquisition dry-run-nba-team-seasons` prints the generated
+dry-run report as JSON.
+
+### Why
+
+Phase 4D-A needs an explicit, reviewable URL set before any owner-approved live
+cache acquisition can happen. The first task proves the 775-URL scope and cache
+coverage without contacting Basketball Reference or writing raw HTML.
+
+### Concepts Learned
+
+- The 2000-2025 Basketball Reference season-end-year catalog has 775 NBA
+  team-season URLs: 29 teams for 2000-2004 and 30 teams for 2005-2025.
+- Manifest generation can stay deterministic in code while the future live
+  acquisition task remains separately gated.
+- Dry-run coverage only needs `HtmlCache.path_for_url(...).exists()`, so it can
+  estimate missing cache entries without reading or writing cached HTML.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_manifest.py`
+- `tests/unit/test_nba_team_season_manifest.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-ACQ-001-nba-team-season-manifest.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_manifest.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_nba_team_season_manifest.py`: passed, 7
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 113 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-001` was reviewed and approved for closure.
+- `F4D-ACQ-LIVE-001` remains `pending` until separate owner approval plus its
+  execution flag.
+
+## Checkpoint 52 - F4D-ACQ-001 Review Closure
+
+### What Changed
+
+Reviewed and closed `F4D-ACQ-001` as `done`. Phase 4D remains `in_progress`,
+and all live acquisition plus later database preparation tasks remain
+`pending`.
+
+### Why
+
+The manifest and dry-run implementation meets the approved acquisition planning
+scope, so the project can now wait for an explicit owner decision on controlled
+live acquisition without starting it automatically.
+
+### Concepts Learned
+
+- Review closure should update the task state separately from implementation
+  commits when the worktree is already clean.
+- `F4D-ACQ-LIVE-001` remains a sensitive-gate task even after the manifest task
+  is done.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/history.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 113 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 113
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Review Questions
+
+- Should the owner approve `F4D-ACQ-LIVE-001` controlled live cache acquisition
+  in a separate session with the required execution flag?
+
+## Checkpoint 53 - Phase 4D-A Acquisition Report Handoff
+
+### What Changed
+
+Documented the controlled Phase 4D-A acquisition report and cache coverage
+handoff in `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md`, and moved
+`F4D-ACQ-002` to review state.
+
+### Why
+
+Phase 4D needs a recorded handoff that proves the reviewed NBA team-season
+cache is complete before cache inventory and offline processing can start.
+
+### Concepts Learned
+
+- Acquisition review and cache-coverage review are separate from acquisition
+  execution.
+- A complete handoff should preserve report totals, coverage status, and prior
+  aborted attempts without implying new scraping work.
+- `F4D-001` should remain offline and cache-only.
+
+### Files to Read
+
+- `reports/acquisition-2000-2025-20260530.json`
+- `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md`
+- `progress/current.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json` and the repository validation
+commands.
+
+### Review Questions
+
+- Should the cache inventory task carry forward the coverage counts into its
+  own report template?
+
+## Checkpoint 53 - F4D-ACQ-LIVE-001 Offline Command Implementation
+
+### What Changed
+
+Implemented the controlled NBA team-season acquisition command without running
+it live. The command requires both `--owner-approved` and
+`--execute-approved-manifest`, verifies the deterministic 775-entry manifest
+before creating the live client, skips cache hits without overwrite, validates
+HTML-shaped content before storage, and reports partial stops with entry-level
+details.
+
+### Why
+
+The project needs the live acquisition mechanism to be reviewable before any
+network execution. This keeps owner approval for implementation separate from
+owner approval for contacting Basketball Reference.
+
+### Concepts Learned
+
+- Live command approval should have two independent gates: an owner approval
+  flag and an execution flag.
+- Deterministic manifest validation must happen before creating the live HTTP
+  client.
+- Cache writes for live acquisition should use temporary verified gzip files so
+  failed writes do not leave partial final `.html.gz` files.
+- A useful acquisition report needs both aggregate stop details and per-entry
+  context for later coverage review.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `tests/unit/test_nba_team_season_acquisition.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py`,
+`python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_nba_team_season_acquisition.py`: passed, 12
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed on rerun with a longer timeout, 125 passed, 1
+  skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 125
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` is `needs_review`.
+- No live acquisition was executed for this refinement checkpoint.
+
+## Checkpoint 54 - F4D-ACQ-LIVE-001 Flexible-Year CLI Refinement
+
+### What Changed
+
+Refined the live acquisition command so the owner can request a specific
+inclusive season-end-year range while preserving the two safety flags. Added
+optional `--output` support to write the same JSON report printed to stdout.
+
+### Why
+
+The full 2000-2025 acquisition can take a long time. Supporting reviewed
+subsets such as 2020-2025 lets the owner download smaller chunks from the
+console without bypassing the acquisition safety rules.
+
+### Concepts Learned
+
+- Flexible live acquisition should still validate the full reviewed manifest
+  before filtering to a requested range.
+- `START_YEAR END_YEAR` should be required for live commands so operator intent
+  is explicit.
+- Dry-run can stay as the full-manifest preview while live execution supports
+  narrower reviewed ranges.
+- Report output should be usable both as stdout JSON and as a saved file for
+  later review.
+
+### Files to Read
+
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_nba_team_season_acquisition.py`
+- `specs/features/F4D-ACQ-LIVE-001-controlled-nba-team-season-cache-acquisition.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py
+tests/unit/test_nba_team_season_manifest.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused acquisition and manifest tests: passed, 25 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 131 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 131
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` remains `needs_review`.
+- No live acquisition was executed for the prior CLI refinement checkpoint.
+
+## Checkpoint 55 - F4D-ACQ-LIVE-001 Full Acquisition
+
+### What Changed
+
+Ran the owner-approved full 2000-2025 NBA team-season acquisition through the
+controlled command and produced a JSON report under `reports/`.
+
+### Why
+
+The Phase 4D-A cache needs complete Basketball Reference NBA team-season HTML
+coverage before the next acquisition-review and offline inventory tasks can
+proceed.
+
+### Concepts Learned
+
+- Absolute paths with spaces can be split incorrectly when launching a
+  background process; use relative output paths or explicit quoting.
+- Safe gzip verification needs newline preservation on Windows when comparing
+  fetched HTML text after a write/read round trip.
+- A post-run dry-run is a simple independent check that cache coverage is
+  complete without making additional live requests.
+
+### Files to Read
+
+- `reports/acquisition-2000-2025-20260530.json`
+- `progress/current.md`
+- `progress/review.md`
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+
+### How to Test
+
+Run `uv run nba-data acquisition dry-run-nba-team-seasons` to verify all 775
+entries are cache hits. Run `uv run pytest tests/unit/test_nba_team_season_acquisition.py`
+to verify the acquisition command safeguards.
+
+### Validation
+
+- Focused acquisition tests after the safe-write fix: passed, 19 passed.
+- Post-run dry-run: 775 cache hits, 0 missing, 0 estimated fetches.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 132
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Acquisition report completed with 775 processed entries, 2 cache hits, 773
+  fetched entries, 0 failures, and 0 rate-limited entries.
+- `F4D-ACQ-LIVE-001` remains `needs_review`.
+
+## Checkpoint 56 - F4D-ACQ-LIVE-001 Review Closure
+
+### What Changed
+
+Reviewed and closed `F4D-ACQ-LIVE-001` as `done`. Moved `F4D-ACQ-002` to
+`ready` as the next acquisition report and cache coverage handoff task.
+
+### Why
+
+The controlled acquisition command and saved report satisfy the approved
+Phase 4D-A live acquisition criteria, and cache coverage is complete enough to
+handoff into a formal coverage review before inventory work begins.
+
+### Concepts Learned
+
+- Closure should preserve stopped-run context even when the final run
+  succeeds.
+- A saved acquisition report plus local cache artifact checks can approve the
+  checkpoint without another network request.
+- Handoff tasks should become `ready`, not `approved`, after a sensitive-gate
+  acquisition closes.
+
+### Files to Read
+
+- `progress/review.md`
+- `progress/history.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 132 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  132 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-ACQ-LIVE-001` is `done`.
+- `F4D-ACQ-002` is `ready`.
+
+## Checkpoint 57 - F4D-001 Cached HTML Inventory
+
+### What Changed
+
+Implemented the offline cached HTML inventory utility and tests. The task is
+now `needs_review`.
+
+### Why
+
+Phase 4D needs a structured, repeatable inventory of existing `HtmlCache`
+`.html.gz` files before the future full offline backfill command can safely
+choose inputs.
+
+### Concepts Learned
+
+- Cache inventory can use `HtmlCache` filename conventions to reconstruct
+  Basketball Reference team-season source URLs without contacting the network.
+- Valid inventory entries should be constrained by the reviewed Phase 4D
+  2000-2025 NBA team-season manifest, not by loose filename shape alone.
+- Root containment must happen on resolved paths before gzip reads so escaped
+  paths cannot become inventory inputs.
+
+### Files to Read
+
+- `src/nba_data/scraping/cache_inventory.py`
+- `tests/unit/test_cache_inventory.py`
+- `specs/features/F4D-001-cached-html-inventory.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_cache_inventory.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused cache inventory tests: passed, 8 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 141 passed, 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 141
+  passed and 6 Peewee deprecation warnings.
+- Real local inventory check: 775 discovered files, 775 valid candidates, and
+  0 duplicate, invalid/unreadable, missing-metadata, or unsupported entries.
+
+### Outcome
+
+- `F4D-001` is `needs_review`.
+- `F4D-002`, `F4D-003`, and `F4D-004` remain `pending`.
+
+## Checkpoint 58 - F4D-002 Full Offline Backfill Command
+
+### What Changed
+
+Implemented the full offline backfill command and orchestration utility. The
+task is now `needs_review`.
+
+### Why
+
+Phase 4D needs a repeatable way to turn the reviewed cached HTML inventory into
+local PostgreSQL rows using the already validated offline processor, loader,
+and audit report path.
+
+### Concepts Learned
+
+- The inventory remains the safe selection boundary; the backfill should not
+  rediscover or invent inputs outside `F4D-001`.
+- Explicit-path processor sources preserve the reviewed cache artifact chosen
+  by inventory, instead of recomputing a URL path and accidentally skipping a
+  reviewed local file.
+- The orchestration layer should not own commits when the loader contract
+  already preserves caller-owned transaction behavior.
+- The CLI can own the local PostgreSQL transaction while staying gated behind
+  an explicit execution flag.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_backfill.py`
+- `tests/unit/test_offline_backfill.py`
+- `src/nba_data/cli/main.py`
+- `specs/features/F4D-002-full-offline-backfill-command.md`
+
+### How to Test
+
+Run `uv run pytest tests/unit/test_offline_backfill.py`, `python -m json.tool
+tasks/feature-list.json`, `uv run ruff check .`, `uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused offline backfill tests: passed, 10 passed.
+- Focused offline pipeline tests including cache inventory, offline backfill,
+  processor, loader, reporting, and team-season loader: passed, 46 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- Focused Ruff on the offline backfill module, CLI, and tests: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: first run timed out at 120 seconds; rerun with a longer
+  timeout passed, 150 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 150
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-001` is `done`.
+- `F4D-002` is `needs_review`.
+- `F4D-003` and `F4D-004` remain `pending`.
+
+## Checkpoint 59 - Phase 4E Official Wide Stats Planning
+
+### What Changed
+
+Prepared Phase 4E as a future proposed phase for official Basketball Reference
+wide stats persistence. Added the phase spec, six feature specs, the official
+stats schema design document, and a legacy stats schema review. Added
+`F4E-001` through `F4E-006` to `tasks/feature-list.json` as `pending` tasks.
+
+### Why
+
+Future API work needs official player statistics in typed relational `stats`
+tables, not only normalized `values` dictionaries or legacy Peewee tables.
+The plan preserves `core` for identity, `stats` for official scraped stats, and
+`features` for generated metrics.
+
+### Concepts Learned
+
+- Real team-stint stats should FK to `core.player_team_seasons.id`.
+- Official `TOT` aggregate stats should live in separate `player_season_*`
+  tables that FK to `core.player_seasons.id`.
+- `stats.player_team_season_roster` is team-stint only.
+- The current normalizer emits keys for roster, totals, per-game, per-minute,
+  per-possession, advanced, shooting, adjusted shooting, and play-by-play;
+  F4E-001 must inspect these keys before final columns are frozen.
+- Legacy `player_stats` and `player_advanced` are useful semantic references
+  but must not be copied as-is because they depend on legacy player rows and
+  display-name matching.
+
+### Files to Read
+
+- `specs/phases/phase-4e-official-wide-stats-persistence.md`
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
+- `specs/features/F4E-001-official-wide-stats-schema-plan.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 151 passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  151 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Phase 4D remains current and `in_progress`.
+- `F4D-002` remains `needs_review`; `F4D-003` and `F4D-004` remain `pending`.
+- F4E is not promoted to current and no F4E task is `ready`, `approved`,
+  `in_progress`, or `done`.
+- No SQLAlchemy stats models, Alembic migrations, loaders, backfills, live
+  scraping, cache refresh, database writes, branch, commit, push, or PR were
+  introduced.
+
+## Checkpoint 60 - Phase 4D Final Database Readiness Closure
+
+### What Changed
+
+Closed `F4D-002`, `F4D-003`, and `F4D-004` as an explicitly owner-approved
+block. Added the read-only offline database validation module, CLI command,
+unit tests, and API-ready database preparation documentation. Marked Phase 4D
+as `done`.
+
+### Why
+
+Future API work needs a verified local PostgreSQL core database, not only a
+successful backfill command. The final Phase 4D closure records the exact
+database counts, checks the saved offline backfill report, and gives the owner
+a repeatable readiness workflow.
+
+### Concepts Learned
+
+- Phase 4D validation should be read-only: query `core.*`, inspect the saved
+  offline backfill report, and fail with actionable issues.
+- The approved Phase 4D core baseline is intentionally exact so future phases
+  can detect drift before building on top of the data.
+- SQLite tests without uniqueness/FK constraints are useful for simulating
+  corrupted database states that PostgreSQL constraints normally prevent.
+- `TOT` must remain out of real team, team alias, and team-season rows.
+- F4E planning can remain present in the worktree while every F4E task stays
+  `pending` until a separate owner-approved transition.
+
+### Files to Read
+
+- `src/nba_data/validation/offline_database.py`
+- `tests/unit/test_offline_database_validation.py`
+- `docs/validation/OFFLINE_DATABASE_PREPARATION.md`
+- `tasks/feature-list.json`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run nba-data validate offline-database --backfill-report
+reports/offline-backfill-2000-2025.json`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_offline_database_validation.py`: passed, 8
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
+- `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
+  passed with `passed: true` and no issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 159
+  passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4D-002`, `F4D-003`, and `F4D-004` are `done`.
+- Phase 4D is `done`.
+- `F4E-001` through `F4E-006` remain `pending`.
+- No live scraping, Basketball Reference contact, cache refresh, data deletion,
+  destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
+  similarity/recommendations/ML work, branch, commit, push, or PR occurred.

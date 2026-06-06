@@ -2441,3 +2441,68 @@ reports/offline-backfill-2000-2025.json`, and
 - No live scraping, Basketball Reference contact, cache refresh, data deletion,
   destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
   similarity/recommendations/ML work, branch, commit, push, or PR occurred.
+
+## Checkpoint 61 - Phase 4E F4E-001 Official Stats Schema Plan
+
+### What Changed
+
+Activated Phase 4E and moved `F4E-001` to `needs_review` as a
+documentation-only schema design checkpoint. Finalized
+`docs/architecture/OFFICIAL_STATS_SCHEMA.md` as the contract for 17 typed wide
+`stats` tables and updated the F4E specs, roadmap, progress, review notes, and
+legacy stats review.
+
+### Why
+
+Phase 4D delivered reviewed `core` identity and relationships. Phase 4E needs a
+precise official-stats persistence design before `F4E-002` can safely add
+SQLAlchemy models and an Alembic migration.
+
+### Concepts Learned
+
+- Official stats belong in schema `stats`; generated metrics remain future
+  `features` work.
+- Team-stint stats and roster rows should FK to
+  `core.player_team_seasons.id`.
+- Aggregate player-season stats, including official `TOT` rows, should FK to
+  `core.player_seasons.id`.
+- Current cached team-season pages emit the expected nine source families from
+  the parser/normalizer sample, but that sample did not emit `TOT` rows.
+- Missing known official columns should load as `NULL`; unknown normalized keys
+  should be reported or quarantined until the schema is reviewed.
+- Legacy roster, totals, and advanced models are useful concepts, but their
+  name-based identity, loose year fields, string numeric fields, and missing
+  idempotency must not be copied.
+
+### Files to Read
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `specs/features/F4E-001-official-wide-stats-schema-plan.md`
+- `specs/features/F4E-002-stats-models-and-alembic-migration.md`
+- `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 158 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 158
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Phase 4E is current and `in_progress`.
+- `F4E-001` is `needs_review`.
+- `F4E-002` through `F4E-006` remain `pending`.
+- No SQLAlchemy stats models, Alembic migrations, repositories, loaders,
+  backfill commands, database writes, live scraping, Basketball Reference
+  contact, cache refresh, API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, branch, commit, push, or PR occurred.

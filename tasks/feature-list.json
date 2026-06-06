@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-4d-full-offline-database-preparation",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4e-official-wide-stats-persistence",
+  "current_phase_status": "in_progress",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -1333,7 +1333,7 @@
       "id": "F4E-001",
       "title": "Plan official wide stats schema",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4D-004"
       ],

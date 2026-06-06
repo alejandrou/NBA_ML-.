@@ -1047,3 +1047,44 @@ No live scraping, Basketball Reference contact, cache refresh, data deletion,
 destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
 similarity/recommendations/ML work, branch creation, commit, push, or PR
 occurred during final Phase 4D closure.
+
+## Phase 4E F4E-001 Review Prep
+
+Status: needs_review
+
+`F4E-001` is ready for owner review as a documentation-only schema design
+checkpoint. Phase 4E is now current and `in_progress`; `F4E-001` is
+`needs_review`; `F4E-002` through `F4E-006` remain `pending`.
+
+## Phase 4E F4E-001 Review Focus
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md` documents all 17 reviewed
+  `stats` tables.
+- Team-stint and roster tables FK to `core.player_team_seasons.id`.
+- Aggregate player-season tables FK to `core.player_seasons.id`.
+- Every table has a surrogate PK, unique FK grain constraint, lineage columns,
+  nullable stat columns, and reviewed SQL type recommendations.
+- The design records observed normalized keys from the current parser and
+  normalizer and final `normalized key -> DB column` mappings.
+- `TOT` is routed only to aggregate player-season tables and is never treated
+  as a real team or roster row.
+- Legacy totals, advanced, and roster ideas are documented as conceptual
+  references only; name-based identity, loose years, FK-to-roster identity,
+  numeric `CharField`s, missing idempotency, and mixed identity/stat entities
+  are rejected.
+- `F4E-002` is prepared to implement `src/nba_data/db/models/stats.py`, model
+  exports, and the next Alembic revision without redesigning the schema.
+
+## Phase 4E F4E-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 158 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 158
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+No SQLAlchemy stats models, Alembic migrations, repositories, loaders, backfill
+commands, database writes, live scraping, Basketball Reference contact, cache
+refresh, API/frontend/OVR/ranking/similarity/recommendations/ML work, branch
+creation, commit, push, or PR occurred during this checkpoint.

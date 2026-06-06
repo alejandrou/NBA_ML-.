@@ -37,26 +37,24 @@
 
 ## Current
 
-- Current phase: `phase-4d-full-offline-database-preparation`.
-- Current phase status: `done`.
-- No active implementation task.
-- No task is in `needs_review`.
+- Current phase: `phase-4e-official-wide-stats-persistence`.
+- Current phase status: `in_progress`.
+- `F4E-001`: Official wide stats schema plan (`needs_review`).
+- `F4E-002` through `F4E-006` remain `pending`.
 
 ## Next
 
-- Next safe action: prepare a Phase 4D to Phase 4E transition summary and wait
-  for explicit owner approval before promoting any Phase 4E task.
-- `F4E-001` through `F4E-006` remain `pending`.
+- Next safe action: review `F4E-001`.
+- After owner approval, promote `F4E-002` to implement the reviewed
+  SQLAlchemy stats models and Alembic migration.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, create a branch, commit,
-  push, open a PR, or implement F4E/F5/API/frontend/stats persistence/OVR/
-  ranking/similarity/recommendations/ML work without separate explicit owner
-  approval.
+  push, open a PR, or implement F5/API/frontend/OVR/ranking/similarity/
+  recommendations/ML work without separate explicit owner approval.
 
 ## Later
 
-- Proposed Phase 4E has been prepared as a future official wide stats
-  persistence phase. It is not active.
-- Phase 5-7 tasks remain `pending` until Phase 4D and any approved pre-API
-  stats work are reviewed and approved for closure and the owner explicitly
-  approves an API transition.
+- Phase 4E continues with repositories, loader, offline stats backfill, and
+  validation only after each prior F4E task is approved.
+- Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
+  owner explicitly approves a core-only API transition.

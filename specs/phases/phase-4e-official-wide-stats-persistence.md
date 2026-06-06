@@ -1,6 +1,6 @@
 # Phase 4E - Official Basketball Reference Wide Stats Persistence
 
-Status: proposed
+Status: in_progress
 Phase ID: `phase-4e-official-wide-stats-persistence`
 
 ## Goal
@@ -43,8 +43,9 @@ cached team-season HTML
 - `F4E-005`: Offline stats backfill command.
 - `F4E-006`: Official stats validation checks.
 
-All F4E tasks stay `pending` until F4E becomes the current phase and the owner
-approves promotion according to phase governance.
+`F4E-001` is the active Phase 4E design checkpoint and is ready for owner
+review after its documentation update. `F4E-002` through `F4E-006` remain
+`pending` until `F4E-001` is approved.
 
 ## Schema Decisions
 

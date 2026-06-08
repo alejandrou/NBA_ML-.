@@ -41,15 +41,15 @@
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-003`: Idempotent stats repositories (`needs_review`).
-- `F4E-004` through `F4E-006` remain `pending`.
+- `F4E-003`: Idempotent stats repositories (`done`).
+- `F4E-004`: Normalized rows to wide stats loader (`needs_review`).
+- `F4E-005` and `F4E-006` remain `pending`.
 
 ## Next
 
-- Next safe action: review `F4E-003`.
-- After owner approval, close `F4E-003` as `done` and promote `F4E-004` only
-  when the owner approves starting the normalized rows to wide stats loader
-  task.
+- Next safe action: review `F4E-004`.
+- After owner approval, close `F4E-004` as `done` and start `F4E-005` only
+  when the owner approves the offline stats backfill command task.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, create a branch, commit,
   push, open a PR, or implement F5/API/frontend/OVR/ranking/similarity/

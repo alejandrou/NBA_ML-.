@@ -1180,3 +1180,52 @@ leaves `F4E-004` through `F4E-006` as `pending`.
 - `uv run alembic check`: passed with no new upgrade operations detected.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   199 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-003 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-003` for closure. The idempotent stats
+repositories, repository exports, and tests are accepted. `F4E-003` is marked
+`done`; `F4E-004` was promoted through `ready`, `approved`, and `in_progress`
+by explicit owner approval before implementation.
+
+## Phase 4E F4E-004 Review Prep
+
+Status: needs_review
+
+`F4E-004` is ready for review. The implementation adds a normalized-row stats
+loader that routes already parsed, normalized, and validated rows into the
+official wide stats tables through `StatsRepository`, while leaving offline
+stats backfill orchestration for `F4E-005`.
+
+## Phase 4E F4E-004 Review Focus
+
+- `load_team_season_stats` accepts normalized rows plus lineage and returns a
+  JSON-safe per-row report with loaded, skipped, and failed counts.
+- The loader maps roster, all 8 team-stint stat tables, and all 8 aggregate
+  player-season stat tables using the reviewed normalized key to DB column
+  mappings.
+- Real-team rows resolve existing `core.player_team_seasons.id`; aggregate
+  `TOT` rows resolve existing `core.player_seasons.id`.
+- Missing core identities are reported as skipped rows without creating core
+  records.
+- Unknown/protected normalized values and duplicate destination grains fail
+  before stats writes.
+- The loader uses row-level savepoints but does not create sessions, call
+  `commit()` or `rollback()`, run scraping, refresh cache, or import parser,
+  normalizer, cache, acquisition, CLI, API/frontend, or generated metric
+  boundaries.
+
+## Phase 4E F4E-004 Checks
+
+- Focused Ruff check on the stats loader and tests: passed.
+- `uv run pytest tests/unit/test_team_season_stats_loader.py`: passed,
+  35 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.

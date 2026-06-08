@@ -44,16 +44,19 @@ plus the final closure notes in `progress/review.md`. The requested
   `docs/architecture/OFFICIAL_STATS_SCHEMA.md`.
 - `F4E-002`: Stats models and Alembic migration (`done`) by explicit owner
   approval of the reviewed SQLAlchemy models, Alembic migration, and tests.
-- `F4E-003`: Idempotent stats repositories (`needs_review`).
+- `F4E-003`: Idempotent stats repositories (`done`) by explicit owner
+  approval of the reviewed repositories, tests, and validation.
+- `F4E-004`: Normalized rows to wide stats loader (`needs_review`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
 repositories over those stats tables without owning transaction commits,
 creating core rows, loading normalized rows, or introducing backfill behavior.
+`F4E-004` adds the normalized-row loader over those repositories without
+wiring the offline stats backfill command.
 
 ## Pending Phase Tasks
 
-- `F4E-004`: Normalized rows to wide stats loader (`pending`).
 - `F4E-005`: Offline stats backfill command (`pending`).
 - `F4E-006`: Official stats validation checks (`pending`).
 
@@ -61,18 +64,17 @@ creating core rows, loading normalized rows, or introducing backfill behavior.
 
 - Do not run live scraping, contact Basketball Reference, refresh cache, or
   run acquisition commands.
-- Do not run stats backfill commands or write real stats data as part of
-  `F4E-003` review.
-- Do not implement loaders, validation commands, API endpoints, frontend pages,
+- Do not run stats backfill commands or write real stats backfill data as part
+  of `F4E-004`.
+- Do not implement validation commands, API endpoints, frontend pages,
   generated metrics, OVR, rankings, similarity, recommendations, or ML work.
 - Do not create a branch, commit, push, or open a PR without explicit owner
   approval.
 
 ## Next Safe Action
 
-Review `F4E-003`. After approval and validation, close it as `done` and promote
-`F4E-004` only when the owner approves beginning the normalized rows to wide
-stats loader task.
+Review `F4E-004`. After owner approval, close it as `done` and start
+`F4E-005` only with explicit approval.
 
 ## References
 
@@ -81,6 +83,7 @@ stats loader task.
 - `specs/features/F4E-001-official-wide-stats-schema-plan.md`
 - `specs/features/F4E-002-stats-models-and-alembic-migration.md`
 - `specs/features/F4E-003-idempotent-stats-repositories.md`
+- `specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md`

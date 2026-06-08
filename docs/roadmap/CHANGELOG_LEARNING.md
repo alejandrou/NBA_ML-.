@@ -2634,3 +2634,67 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   live scraping, cache refresh, Basketball Reference contact, data deletion,
   destructive migration, API/frontend/OVR/ranking/similarity/recommendations/
   ML work, branch creation, or PR occurred.
+
+## Checkpoint 64 - Phase 4E F4E-004 Normalized Rows To Wide Stats Loader
+
+### What Changed
+
+Closed the owner-approved `F4E-003` repository checkpoint, then implemented
+`F4E-004` as a standalone normalized-row stats loader. Added
+`load_team_season_stats` with JSON-safe row reports, explicit routing for the
+17 official wide stats table writes, existing-core-grain resolution, duplicate
+destination-grain rejection, and row-level savepoints.
+
+### Why
+
+Phase 4E needs a narrow bridge from validated normalized parser output into the
+typed `stats` tables before an offline stats backfill command can compose the
+pipeline. The loader must preserve the core/stats separation and avoid creating
+identity rows or owning transactions.
+
+### Concepts Learned
+
+- Loader tests can reuse attached SQLite `core` and `stats` schemas to exercise
+  the same portable missing-FK behavior as the repository tests.
+- Current normalized `TOT` rows may carry routing context inside `values`, so
+  the loader strips known context keys while still failing unknown stat keys.
+- Planning all candidate writes before executing them lets duplicate
+  destination grains fail without partial stats writes.
+- Row-level savepoints give entry-level failure reporting while leaving the
+  outer transaction under the caller's control.
+
+### Files to Read
+
+- `src/nba_data/scraping/loaders/team_season_stats.py`
+- `tests/unit/test_team_season_stats_loader.py`
+- `src/nba_data/scraping/loaders/__init__.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats loader tests: passed, 35 passed.
+- Focused Ruff check on the stats loader and tests: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `done` by explicit owner approval.
+- `F4E-004` is `needs_review`.
+- `F4E-005` and `F4E-006` remain `pending`.
+- No live scraping, cache refresh, Basketball Reference contact, stats
+  backfill, validation command, API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, data deletion, destructive migration, branch
+  creation, or PR occurred.

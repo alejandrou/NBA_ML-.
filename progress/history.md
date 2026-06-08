@@ -2346,3 +2346,42 @@ Task:
 - Did not run live scraping, contact Basketball Reference, refresh cache,
   delete data, run destructive migrations, remove Peewee or legacy code, create
   a branch, or open a PR.
+
+## Phase 4E F4E-004 Normalized Rows To Wide Stats Loader
+
+- Closed `F4E-003` as `done` by explicit owner approval of the reviewed stats
+  repositories, tests, and validation.
+- Promoted `F4E-004` through `ready`, `approved`, and `in_progress` by explicit
+  owner approval.
+- Added `src/nba_data/scraping/loaders/team_season_stats.py` with
+  `load_team_season_stats`, `TeamSeasonStatsLoadEntry`, and
+  `TeamSeasonStatsLoadReport`.
+- Exported the stats loader API from `src/nba_data/scraping/loaders/__init__.py`.
+- The loader maps normalized official `source_table` rows into the reviewed
+  wide stats tables through `StatsRepository`.
+- Real-team rows resolve existing `core.player_team_seasons.id`; aggregate
+  `TOT` rows resolve existing `core.player_seasons.id`.
+- Missing core identities are reported as skipped rows without creating core
+  records.
+- Unknown/protected normalized values and duplicate destination grains fail
+  before stats writes.
+- Added `tests/unit/test_team_season_stats_loader.py` covering routing,
+  idempotency, roster loading, type conversion, `TOT` aggregate separation,
+  missing identities, unsupported rows, duplicate input, report serialization,
+  no network/parser boundaries, caller rollback, and transaction ownership.
+- Ran focused Ruff on the stats loader and tests: passed.
+- Ran `uv run pytest tests/unit/test_team_season_stats_loader.py`: passed,
+  35 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic upgrade head`: passed.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.
+- Moved `F4E-004` to `needs_review`; `F4E-005` and `F4E-006` remain
+  `pending`.
+- Did not run live scraping, contact Basketball Reference, refresh cache, run
+  stats backfills, create core identities from the stats loader, implement
+  validation commands, API/frontend, generated metrics, OVR, rankings,
+  similarity, recommendations, or ML work.

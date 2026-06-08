@@ -1421,7 +1421,7 @@
       "id": "F4E-003",
       "title": "Add idempotent stats repositories",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4E-002"
       ],

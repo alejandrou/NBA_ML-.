@@ -2314,3 +2314,35 @@ Task:
 - Kept `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` as `pending`.
 - Next action is to commit and push the completed `F4E-002` checkpoint before
   starting `F4E-003`.
+
+## Phase 4E F4E-003 Idempotent Stats Repositories
+
+- Committed and pushed `F4E-002` before starting repository work.
+- Promoted `F4E-003` through `ready`, `approved`, and `in_progress` by explicit
+  owner approval.
+- Added `src/nba_data/db/repositories/stats.py` with `StatsRepository` and
+  explicit wrappers for all 17 official wide stats tables.
+- Added batch upsert input types that detect duplicate table/grain keys before
+  any stats write.
+- Repository upserts use select-then-insert/update behavior and caller-owned
+  transactions; they flush but do not commit or rollback.
+- Repository validation rejects unknown value columns, protected grain/lineage
+  columns, wrong model/grain routing, and missing `core` grain rows.
+- Added `tests/unit/test_stats_repositories.py`.
+- Focused Ruff check on the stats repository files and tests: passed.
+- Focused stats repository tests: passed, 31 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic upgrade head`: passed.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.
+- Moved `F4E-003` to `needs_review`; `F4E-004`, `F4E-005`, and `F4E-006`
+  remain `pending`.
+- Did not implement loaders, backfill commands, validation commands, CLI stats
+  commands, API/frontend, generated metrics, OVR, rankings, similarity,
+  recommendations, or ML work.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, remove Peewee or legacy code, create
+  a branch, or open a PR.

@@ -41,12 +41,14 @@
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-003` through `F4E-006` remain `pending`.
+- `F4E-003`: Idempotent stats repositories (`needs_review`).
+- `F4E-004` through `F4E-006` remain `pending`.
 
 ## Next
 
-- Next safe action: commit and push the completed `F4E-002` checkpoint.
-- After that push succeeds, promote `F4E-003` and start the stats repository
+- Next safe action: review `F4E-003`.
+- After owner approval, close `F4E-003` as `done` and promote `F4E-004` only
+  when the owner approves starting the normalized rows to wide stats loader
   task.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, create a branch, commit,

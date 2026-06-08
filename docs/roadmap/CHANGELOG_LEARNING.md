@@ -2573,3 +2573,64 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   cache refresh, Basketball Reference contact, data deletion, destructive
   migration, API/frontend/OVR/ranking/similarity/recommendations/ML work,
   branch, commit, push, or PR occurred.
+
+## Checkpoint 63 - Phase 4E F4E-003 Idempotent Stats Repositories
+
+### What Changed
+
+Committed and pushed the completed `F4E-002` checkpoint first, then implemented
+`F4E-003` as a repository-only checkpoint. Added idempotent stats upserts for
+the roster table, all team-stint stats tables, and all aggregate player-season
+stats tables.
+
+### Why
+
+Phase 4E needs a transaction-safe repository layer before a later task can map
+normalized rows into typed wide stats tables. Repositories should only write
+approved `stats` tables and should not own commits, create `core` identities,
+or load parser/normalizer rows directly.
+
+### Concepts Learned
+
+- SQLite attached schemas can create the `core` and `stats` tables for unit
+  tests, but explicit repository core-grain checks are needed for portable
+  missing-FK behavior.
+- A small model allow-list keeps generic upsert helpers from becoming an
+  accidental write path to non-stats tables.
+- Rejecting unknown columns at the repository boundary keeps F4E-004's mapping
+  contract honest instead of silently dropping unsupported normalized keys.
+
+### Files to Read
+
+- `src/nba_data/db/repositories/stats.py`
+- `tests/unit/test_stats_repositories.py`
+- `src/nba_data/db/repositories/__init__.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats repository tests: passed, 31 passed.
+- Focused Ruff check on stats repository files and tests: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `needs_review`.
+- `F4E-004`, `F4E-005`, and `F4E-006` remain `pending`.
+- No loaders, backfill commands, CLI stats commands, validation commands,
+  live scraping, cache refresh, Basketball Reference contact, data deletion,
+  destructive migration, API/frontend/OVR/ranking/similarity/recommendations/
+  ML work, branch creation, or PR occurred.

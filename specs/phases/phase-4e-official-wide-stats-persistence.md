@@ -45,8 +45,8 @@ cached team-season HTML
 
 `F4E-001` is done by explicit owner approval. `F4E-002` is done by explicit
 owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
-tests. `F4E-003` through `F4E-006` remain `pending` until the `F4E-002`
-checkpoint is committed and pushed.
+tests. `F4E-003` implements idempotent stats repositories and is ready for
+review. `F4E-004` through `F4E-006` remain `pending`.
 
 ## Schema Decisions
 

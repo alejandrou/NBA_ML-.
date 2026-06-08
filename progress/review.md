@@ -1145,3 +1145,38 @@ models, Alembic revision `0003_stats_wide_tables`, model exports, Alembic
 metadata wiring, and stats model tests are accepted. `F4E-002` is marked
 `done`; `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` remain `pending` until
 the `F4E-002` checkpoint is committed and pushed.
+
+## Phase 4E F4E-003 Review Prep
+
+Status: needs_review
+
+`F4E-003` is ready for review. The implementation adds idempotent SQLAlchemy
+repositories for all official wide stats tables introduced by `F4E-002` and
+leaves `F4E-004` through `F4E-006` as `pending`.
+
+## Phase 4E F4E-003 Review Focus
+
+- `StatsRepository` exposes explicit wrappers for `stats.player_team_season_roster`,
+  all 8 team-stint stats tables, and all 8 aggregate player-season stats tables.
+- Team-stint upserts use `player_team_season_id`; aggregate upserts use
+  `player_season_id`.
+- Repeated upserts update the same row and preserve `created_at` while updating
+  stats values, lineage, and `updated_at`.
+- The repository rejects unknown columns, protected PK/FK/lineage/timestamp
+  columns inside `values`, duplicate batch grains, wrong table/grain routing,
+  and missing core grains before stats writes.
+- The repository does not create `core` rows, open sessions, call `commit()` or
+  `rollback()`, import network/scraping/parser/normalizer/cache/acquisition
+  boundaries, implement loaders, or run backfills.
+
+## Phase 4E F4E-003 Checks
+
+- Focused Ruff check on stats repositories and tests: passed.
+- `uv run pytest tests/unit/test_stats_repositories.py`: passed, 31 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.

@@ -46,9 +46,10 @@ cached team-season HTML
 `F4E-001` is done by explicit owner approval. `F4E-002` is done by explicit
 owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
 tests. `F4E-003` is done by explicit owner approval of the reviewed stats
-repositories, tests, and validation. `F4E-004` implements the normalized rows
-to wide stats loader and is ready for review. `F4E-005` and `F4E-006` remain
-`pending`.
+repositories, tests, and validation. `F4E-004` is done by explicit owner
+approval of the reviewed normalized-row stats loader, tests, and validation.
+`F4E-005` implements the offline stats backfill command and is ready for
+review. `F4E-006` remains `pending`.
 
 ## Schema Decisions
 

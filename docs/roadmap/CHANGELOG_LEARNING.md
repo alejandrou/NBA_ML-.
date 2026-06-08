@@ -2698,3 +2698,71 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   backfill, validation command, API/frontend/OVR/ranking/similarity/
   recommendations/ML work, data deletion, destructive migration, branch
   creation, or PR occurred.
+
+## Checkpoint 65 - Phase 4E F4E-005 Offline Stats Backfill Command
+
+### What Changed
+
+Closed the owner-approved `F4E-004` loader checkpoint, then implemented
+`F4E-005` as a guarded cache-only offline stats backfill command. Added
+`run_offline_stats_backfill`, JSON-safe stats backfill report dataclasses, the
+`nba-data backfill stats` CLI command, and focused unit tests.
+
+### Why
+
+Phase 4E needs a repeatable way to turn the reviewed cached team-season HTML
+inventory into official wide `stats` rows without rerunning core loading,
+scraping live pages, refreshing cache, or creating identity records.
+
+### Concepts Learned
+
+- The cached HTML inventory remains the safe selection boundary for stats
+  backfill orchestration.
+- Explicit-path offline processor sources preserve the reviewed cache artifact
+  chosen by inventory.
+- Stats backfill should assume Phase 4D core data already exists and should
+  report missing core grains through the existing stats loader instead of
+  creating core identities.
+- Source-level savepoints let one team-season stats load fail without leaving
+  partial writes or stopping later cache-only sources.
+- CLI write commands can stay owner-gated while still supporting smoke-test
+  filters such as team, season range, and limit.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_offline_stats_backfill.py`
+- `specs/features/F4E-005-offline-stats-backfill-command.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the stats backfill module, CLI, and new tests: passed.
+- `uv run pytest tests/unit/test_offline_stats_backfill.py`: passed,
+  16 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 250 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  250 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `done`.
+- `F4E-004` is `done` by explicit owner approval.
+- `F4E-005` is `needs_review`.
+- `F4E-006` remains `pending`.
+- No live scraping, cache refresh, Basketball Reference contact, real stats
+  backfill execution, acquisition, validation command implementation,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, data deletion,
+  destructive migration, branch creation, or PR occurred.

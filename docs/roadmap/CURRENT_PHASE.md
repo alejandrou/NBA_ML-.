@@ -46,26 +46,29 @@ plus the final closure notes in `progress/review.md`. The requested
   approval of the reviewed SQLAlchemy models, Alembic migration, and tests.
 - `F4E-003`: Idempotent stats repositories (`done`) by explicit owner
   approval of the reviewed repositories, tests, and validation.
-- `F4E-004`: Normalized rows to wide stats loader (`needs_review`).
+- `F4E-004`: Normalized rows to wide stats loader (`done`) by explicit owner
+  approval of the reviewed loader, tests, and validation.
+- `F4E-005`: Offline stats backfill command (`needs_review`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
 repositories over those stats tables without owning transaction commits,
 creating core rows, loading normalized rows, or introducing backfill behavior.
 `F4E-004` adds the normalized-row loader over those repositories without
-wiring the offline stats backfill command.
+owning transaction commits, creating core rows, or running offline stats
+backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
+ready for review.
 
 ## Pending Phase Tasks
 
-- `F4E-005`: Offline stats backfill command (`pending`).
 - `F4E-006`: Official stats validation checks (`pending`).
 
 ## Guardrails
 
 - Do not run live scraping, contact Basketball Reference, refresh cache, or
   run acquisition commands.
-- Do not run stats backfill commands or write real stats backfill data as part
-  of `F4E-004`.
+- Do not run the real stats backfill command or write real stats backfill data
+  as part of review preparation.
 - Do not implement validation commands, API endpoints, frontend pages,
   generated metrics, OVR, rankings, similarity, recommendations, or ML work.
 - Do not create a branch, commit, push, or open a PR without explicit owner
@@ -73,8 +76,8 @@ wiring the offline stats backfill command.
 
 ## Next Safe Action
 
-Review `F4E-004`. After owner approval, close it as `done` and start
-`F4E-005` only with explicit approval.
+Review `F4E-005`. Keep `F4E-006` pending until the owner approves the official
+stats validation checks task.
 
 ## References
 
@@ -84,6 +87,7 @@ Review `F4E-004`. After owner approval, close it as `done` and start
 - `specs/features/F4E-002-stats-models-and-alembic-migration.md`
 - `specs/features/F4E-003-idempotent-stats-repositories.md`
 - `specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md`
+- `specs/features/F4E-005-offline-stats-backfill-command.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md`

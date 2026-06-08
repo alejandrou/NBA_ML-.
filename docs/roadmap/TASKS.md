@@ -36,28 +36,29 @@
 - `F4D-004`: Document API-ready database readiness workflow.
 - `F4E-001`: Plan official wide stats schema.
 - `F4E-002`: Stats models and Alembic migration.
+- `F4E-003`: Idempotent stats repositories.
+- `F4E-004`: Normalized rows to wide stats loader.
 
 ## Current
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-003`: Idempotent stats repositories (`done`).
-- `F4E-004`: Normalized rows to wide stats loader (`needs_review`).
-- `F4E-005` and `F4E-006` remain `pending`.
+- `F4E-005`: Offline stats backfill command (`needs_review`).
+- `F4E-006` remains `pending`.
 
 ## Next
 
-- Next safe action: review `F4E-004`.
-- After owner approval, close `F4E-004` as `done` and start `F4E-005` only
-  when the owner approves the offline stats backfill command task.
+- Next safe action: review `F4E-005`.
+- After owner approval, close `F4E-005` as `done` and start `F4E-006` only
+  when the owner approves the official stats validation checks task.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
-  Reference again, refresh or overwrite cache hits, create a branch, commit,
-  push, open a PR, or implement F5/API/frontend/OVR/ranking/similarity/
-  recommendations/ML work without separate explicit owner approval.
+  Reference again, refresh or overwrite cache hits, run the real stats
+  backfill command, open a PR, or implement F5/API/frontend/OVR/ranking/
+  similarity/recommendations/ML work without separate explicit owner approval.
 
 ## Later
 
-- Phase 4E continues with repositories, loader, offline stats backfill, and
-  validation only after each prior F4E task is approved.
+- Phase 4E continues with official stats validation only after `F4E-005` is
+  reviewed and approved.
 - Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
   owner explicitly approves a core-only API transition.

@@ -1229,3 +1229,54 @@ stats backfill orchestration for `F4E-005`.
 - `uv run alembic check`: passed with no new upgrade operations detected.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   234 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-004 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-004` for closure. The normalized-row stats
+loader, tests, and validation are accepted. `F4E-004` is marked `done`;
+`F4E-005` was promoted through `ready`, `approved`, and `in_progress` by
+explicit owner approval before implementation.
+
+## Phase 4E F4E-005 Review Prep
+
+Status: needs_review
+
+`F4E-005` is ready for review. The implementation adds a guarded cache-only
+offline stats backfill command that routes valid cached team-season inventory
+entries through the existing offline processor and then loads validated
+normalized rows through the `F4E-004` wide stats loader.
+
+## Phase 4E F4E-005 Review Focus
+
+- `run_offline_stats_backfill` builds the cached HTML inventory and selects
+  only valid entries.
+- Selected sources are sorted deterministically, filtered by optional `team`,
+  `start_year`, `end_year`, and positive `limit`, and processed as explicit
+  cached paths.
+- Validated processor entries call `load_team_season_stats` with source URL,
+  cache path, and parser-version lineage.
+- Processor failures do not call the stats loader and are reported with source
+  context.
+- Source-level savepoints protect each team-season stats load while preserving
+  caller-owned outer transactions.
+- The orchestrator does not call the core loader, create core rows, run live
+  scraping, refresh cache, run acquisition, delete data, call `commit()` or
+  `rollback()`, or import network client boundaries.
+- `nba-data backfill stats` refuses to run without
+  `--execute-approved-stats-backfill`, prints JSON, and writes `--output` only
+  after successful guarded execution.
+
+## Phase 4E F4E-005 Checks
+
+- Focused Ruff check on the stats backfill module, CLI, and new tests: passed.
+- `uv run pytest tests/unit/test_offline_stats_backfill.py`: passed,
+  16 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 250 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  250 passed and 6 Peewee deprecation warnings.

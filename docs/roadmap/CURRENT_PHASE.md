@@ -39,15 +39,19 @@ plus the final closure notes in `progress/review.md`. The requested
 
 ## Active Checkpoint
 
-- `F4E-001`: Official wide stats schema plan (`needs_review`).
+- `F4E-001`: Official wide stats schema plan (`done`) by explicit owner
+  approval of the reviewed contract in
+  `docs/architecture/OFFICIAL_STATS_SCHEMA.md`.
+- `F4E-002`: Stats models and Alembic migration (`done`) by explicit owner
+  approval of the reviewed SQLAlchemy models, Alembic migration, and tests.
 
-`F4E-001` is documentation-only. It finalizes the reviewed `stats` schema plan
-for F4E-002 and does not implement models, migrations, repositories, loaders,
-backfills, or database writes.
+`F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
+revision `0003_stats_wide_tables`. It does not implement repositories,
+loaders, backfills, validators, API, frontend, generated metrics, OVR,
+rankings, similarity, recommendations, or ML work.
 
 ## Pending Phase Tasks
 
-- `F4E-002`: Stats models and Alembic migration (`pending`).
 - `F4E-003`: Idempotent stats repositories (`pending`).
 - `F4E-004`: Normalized rows to wide stats loader (`pending`).
 - `F4E-005`: Offline stats backfill command (`pending`).
@@ -57,10 +61,8 @@ backfills, or database writes.
 
 - Do not run live scraping, contact Basketball Reference, refresh cache, or
   run acquisition commands.
-- Do not run stats backfill commands or write to the database as part of
-  F4E-001.
-- Do not add SQLAlchemy stats models or Alembic migrations until `F4E-002` is
-  approved.
+- Do not run stats backfill commands or write stats data as part of F4E-002
+  review.
 - Do not implement repositories, loaders, validation commands, API endpoints,
   frontend pages, generated metrics, OVR, rankings, similarity,
   recommendations, or ML work.
@@ -69,14 +71,15 @@ backfills, or database writes.
 
 ## Next Safe Action
 
-Review `F4E-001`. After owner approval, promote `F4E-002` to implement the
-reviewed `stats` models and Alembic migration.
+Commit and push the completed `F4E-002` checkpoint. After that push succeeds,
+promote `F4E-003` to start the idempotent stats repository task.
 
 ## References
 
 - `docs/roadmap/PHASE_GOVERNANCE.md`
 - `specs/phases/phase-4e-official-wide-stats-persistence.md`
 - `specs/features/F4E-001-official-wide-stats-schema-plan.md`
+- `specs/features/F4E-002-stats-models-and-alembic-migration.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md`

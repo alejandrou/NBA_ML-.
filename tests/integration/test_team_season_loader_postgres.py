@@ -36,10 +36,11 @@ def test_postgres_team_season_loader_rerun_is_idempotent() -> None:
         engine.dispose()
         pytest.skip(f"PostgreSQL schema is not migrated: {exc}")
 
-    if current_revision != "0002_core_team_player_season":
+    compatible_revisions = {"0002_core_team_player_season", "0003_stats_wide_tables"}
+    if current_revision not in compatible_revisions:
         connection.close()
         engine.dispose()
-        pytest.skip(f"PostgreSQL schema is at {current_revision!r}, not F4-002 test head")
+        pytest.skip(f"PostgreSQL schema is at {current_revision!r}, not a core-loader test head")
 
     connection.rollback()
     transaction = connection.begin()

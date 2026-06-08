@@ -1333,7 +1333,7 @@
       "id": "F4E-001",
       "title": "Plan official wide stats schema",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4D-004"
       ],
@@ -1378,7 +1378,7 @@
       "id": "F4E-002",
       "title": "Add stats models and Alembic migration",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-001"
       ],

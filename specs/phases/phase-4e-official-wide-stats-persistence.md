@@ -43,9 +43,10 @@ cached team-season HTML
 - `F4E-005`: Offline stats backfill command.
 - `F4E-006`: Official stats validation checks.
 
-`F4E-001` is the active Phase 4E design checkpoint and is ready for owner
-review after its documentation update. `F4E-002` through `F4E-006` remain
-`pending` until `F4E-001` is approved.
+`F4E-001` is done by explicit owner approval. `F4E-002` is done by explicit
+owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
+tests. `F4E-003` through `F4E-006` remain `pending` until the `F4E-002`
+checkpoint is committed and pushed.
 
 ## Schema Decisions
 

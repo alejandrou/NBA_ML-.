@@ -2267,3 +2267,50 @@ Task:
   delete data, run destructive migrations, implement F4E/F5/API/frontend/stats
   persistence/OVR/ranking/similarity/recommendations/ML work, create a branch,
   commit, push, or open a PR.
+
+## Phase 4E F4E-002 Stats Models And Migration
+
+- Closed `F4E-001` as `done` by explicit owner approval of the reviewed
+  official stats schema contract.
+- Promoted and completed `F4E-002` through implementation, leaving it in
+  `needs_review`.
+- Added `src/nba_data/db/models/stats.py` with the 17 reviewed official wide
+  stats tables under schema `stats`.
+- Exported all stats models from `src/nba_data/db/models/__init__.py`.
+- Updated `alembic/env.py` so Alembic metadata includes the `stats` schema.
+- Added Alembic revision `0003_stats_wide_tables` after
+  `0002_core_team_player_season`.
+- Added `tests/unit/test_stats_models.py` for metadata registration, schemas,
+  FKs, unique constraints, lineage, nullability, type choices, model exports,
+  and absence of JSONB.
+- Updated the PostgreSQL core-loader integration test to accept the additive
+  `0003` head as compatible.
+- Ran `uv run pytest tests/unit/test_stats_models.py`: passed, 9 passed.
+- Ran focused Ruff on the touched stats files: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- Ran `uv run alembic upgrade head`: passed, upgrading to
+  `0003_stats_wide_tables`.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- Ran `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+- Kept `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` as `pending`.
+- Did not implement repositories, loaders, backfill commands, validation
+  commands, CLI stats commands, API/frontend, generated metrics, OVR, rankings,
+  similarity, recommendations, or ML work.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, remove Peewee or legacy code, create a branch, commit, push, or
+  open a PR.
+
+## Phase 4E F4E-002 Review Closure
+
+- Owner explicitly approved the reviewed `F4E-002` SQLAlchemy stats models,
+  Alembic migration, and tests.
+- Marked `F4E-002` as `done`.
+- Kept `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` as `pending`.
+- Next action is to commit and push the completed `F4E-002` checkpoint before
+  starting `F4E-003`.

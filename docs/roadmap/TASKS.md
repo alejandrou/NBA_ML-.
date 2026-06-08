@@ -34,19 +34,20 @@
 - `F4D-002`: Add full offline backfill command.
 - `F4D-003`: Add post-load data quality validation checks.
 - `F4D-004`: Document API-ready database readiness workflow.
+- `F4E-001`: Plan official wide stats schema.
+- `F4E-002`: Stats models and Alembic migration.
 
 ## Current
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-001`: Official wide stats schema plan (`needs_review`).
-- `F4E-002` through `F4E-006` remain `pending`.
+- `F4E-003` through `F4E-006` remain `pending`.
 
 ## Next
 
-- Next safe action: review `F4E-001`.
-- After owner approval, promote `F4E-002` to implement the reviewed
-  SQLAlchemy stats models and Alembic migration.
+- Next safe action: commit and push the completed `F4E-002` checkpoint.
+- After that push succeeds, promote `F4E-003` and start the stats repository
+  task.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, create a branch, commit,
   push, open a PR, or implement F5/API/frontend/OVR/ranking/similarity/

@@ -1,12 +1,12 @@
 # Current Work
 
-Status: phase_4e_f4e_001_needs_review
+Status: phase_4e_f4e_002_done_pending_commit
 
 ## Active Task
 
-- `F4E-001`: Official wide stats schema plan.
-- Status: `needs_review`.
-- This checkpoint is documentation-only.
+- `F4E-002`: Stats models and Alembic migration.
+- Status: `done` by explicit owner approval.
+- `F4E-001` is `done` by explicit owner approval of the reviewed schema plan.
 
 ## Current Phase
 
@@ -14,64 +14,46 @@ Status: phase_4e_f4e_001_needs_review
 - Phase status: `in_progress`.
 - Phase 4E remains pre-API.
 
-## Phase 4D Baseline
-
-Phase 4D is closed as `core relational database readiness`. The owner confirmed
-these PostgreSQL counts:
-
-```text
-core.seasons                26
-core.teams                  37
-core.team_aliases           775
-core.team_seasons           775
-core.players                2551
-core.player_seasons         12676
-core.player_team_seasons    14344
-```
-
-The Phase 4D closure source is `docs/validation/OFFLINE_DATABASE_PREPARATION.md`
-and the final closure notes in `progress/review.md`. The requested
-`docs/validation/PHASE_4D_CORE_DATABASE_CLOSURE.md` file is absent.
-
 ## Latest Checkpoint
 
-- Activated Phase 4E as the current phase after owner approval.
-- Finalized `docs/architecture/OFFICIAL_STATS_SCHEMA.md` as the reviewed schema
-  contract for official Basketball Reference wide stats persistence.
-- Documented all 17 additive `stats` tables:
+- Added `src/nba_data/db/models/stats.py` with the 17 reviewed `stats` tables:
   `stats.player_team_season_roster`, 8 team-stint stats tables, and 8
   aggregate player-season stats tables.
-- Documented FK grains, unique constraints, lineage columns, nullable stat
-  columns, SQL type recommendations, and `normalized key -> DB column`
-  mappings for all nine supported source families.
-- Documented `TOT` routing: roster never loads `TOT`, real-team stats use
-  `core.player_team_seasons.id`, and aggregate `TOT` stats use
-  `core.player_seasons.id`.
-- Updated the F4E-001 and F4E-002 specs so the next task can implement models
-  and migration without redesigning the schema.
-- Updated the legacy schema review to preserve useful concepts while rejecting
-  legacy identity and typing defects.
+- Exported all stats models from `src/nba_data/db/models/__init__.py`.
+- Updated `alembic/env.py` so Alembic metadata includes `stats`.
+- Added Alembic revision `0003_stats_wide_tables` after
+  `0002_core_team_player_season`.
+- The migration creates schema `stats` and all 17 additive tables with
+  deterministic FK and unique constraint names.
+- Added `tests/unit/test_stats_models.py` covering metadata registration,
+  schemas, FKs, unique constraints, lineage columns, nullability, key types,
+  and absence of JSONB.
+- Updated the existing PostgreSQL integration test so the additive `0003` head
+  remains compatible with the core loader test.
 
 ## Latest Validation
 
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 158 passed, 1 skipped, and 6 Peewee deprecation
-  warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 158
-  passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- `docker compose up -d postgres`: passed; local PostgreSQL became ready.
+- `uv run alembic upgrade head`: passed, upgrading
+  `0002_core_team_player_season -> 0003_stats_wide_tables`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
 
 ## Guardrails Observed
 
-- No SQLAlchemy stats models were added.
-- No Alembic migration was created.
-- No repositories, loaders, backfill commands, API endpoints, frontend pages,
-  generated metrics, OVR, rankings, similarity, recommendations, or ML work
-  were introduced.
-- No database writes, live scraping, Basketball Reference contact, cache
-  refresh, branch, commit, push, or PR occurred.
+- No repositories, loaders, backfill commands, CLI stats commands, API
+  endpoints, frontend pages, generated metrics, OVR, rankings, similarity,
+  recommendations, or ML work were introduced.
+- No live scraping, Basketball Reference contact, cache refresh, data deletion,
+  destructive migration, Peewee removal, branch, commit, push, or PR occurred.
 
 ## Next Safe Action
 
-Review `F4E-001`. After approval, promote `F4E-002` to implement the reviewed
-`stats` SQLAlchemy models and Alembic migration.
+Commit and push the completed `F4E-002` checkpoint. After that push succeeds,
+promote `F4E-003` and start the idempotent stats repository task.

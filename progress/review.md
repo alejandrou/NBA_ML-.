@@ -1088,3 +1088,60 @@ No SQLAlchemy stats models, Alembic migrations, repositories, loaders, backfill
 commands, database writes, live scraping, Basketball Reference contact, cache
 refresh, API/frontend/OVR/ranking/similarity/recommendations/ML work, branch
 creation, commit, push, or PR occurred during this checkpoint.
+
+## Phase 4E F4E-002 Review Prep
+
+Status: needs_review
+
+`F4E-002` is ready for review. The implementation closes `F4E-001` as `done`
+by explicit owner approval, adds the reviewed SQLAlchemy `stats` models, creates
+Alembic revision `0003_stats_wide_tables`, and leaves `F4E-003` through
+`F4E-006` as `pending`.
+
+## Phase 4E F4E-002 Review Focus
+
+- `src/nba_data/db/models/stats.py` exposes exactly 17 official wide stats
+  tables under schema `stats`.
+- Roster and team-stint tables use non-null
+  `player_team_season_id -> core.player_team_seasons.id` with deterministic FK
+  and unique constraint names.
+- Aggregate player-season tables use non-null
+  `player_season_id -> core.player_seasons.id` with deterministic FK and
+  unique constraint names.
+- Every stats table has non-null lineage columns: `source_url`, `cache_path`,
+  `parser_version`, `created_at`, and `updated_at`.
+- Official stat columns are nullable by default, typed according to
+  `docs/architecture/OFFICIAL_STATS_SCHEMA.md`, and no JSONB stat storage is
+  introduced.
+- `alembic/env.py` includes the `stats` schema in metadata comparison.
+- No repositories, loaders, backfill commands, validators, CLI stats commands,
+  API/frontend, generated metrics, OVR, ranking, similarity, recommendations,
+  or ML work were introduced.
+
+## Phase 4E F4E-002 Checks
+
+- `uv run pytest tests/unit/test_stats_models.py`: passed, 9 passed.
+- Focused Ruff check on stats models, migration, Alembic env, and tests:
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- `uv run alembic upgrade head`: passed, upgrading
+  `0002_core_team_player_season -> 0003_stats_wide_tables`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed after accepting the additive `0003` head as core-loader
+  compatible.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-002 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-002` for closure. The SQLAlchemy stats
+models, Alembic revision `0003_stats_wide_tables`, model exports, Alembic
+metadata wiring, and stats model tests are accepted. `F4E-002` is marked
+`done`; `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` remain `pending` until
+the `F4E-002` checkpoint is committed and pushed.

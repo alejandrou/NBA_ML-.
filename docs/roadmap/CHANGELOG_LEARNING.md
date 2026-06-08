@@ -2506,3 +2506,70 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   backfill commands, database writes, live scraping, Basketball Reference
   contact, cache refresh, API/frontend/OVR/ranking/similarity/
   recommendations/ML work, branch, commit, push, or PR occurred.
+
+## Checkpoint 62 - Phase 4E F4E-002 Stats Models And Migration
+
+### What Changed
+
+Closed `F4E-001` as `done` by explicit owner approval and implemented
+`F4E-002` as an additive schema checkpoint. Added SQLAlchemy models for the 17
+reviewed `stats` tables, exported them from the model package, wired Alembic
+metadata to include schema `stats`, and added migration
+`0003_stats_wide_tables`.
+
+### Why
+
+Phase 4E needs official Basketball Reference stats in typed wide relational
+tables before repositories, loaders, backfills, validation checks, API work, or
+generated metrics can safely build on the data.
+
+### Concepts Learned
+
+- The reviewed wide stats contract can be represented with one explicit ORM
+  class per table while still using small mixins for repeated grain and lineage
+  columns.
+- The unique FK grain constraint is enough for table-grain lookup, so the
+  migration does not add duplicate FK indexes.
+- Alembic schema filtering must include `stats`; otherwise autogenerate cannot
+  compare the new stats metadata.
+- Additive schema heads should remain compatible with existing core-loader
+  integration tests.
+
+### Files to Read
+
+- `src/nba_data/db/models/stats.py`
+- `alembic/versions/0003_stats_wide_tables.py`
+- `tests/unit/test_stats_models.py`
+- `alembic/env.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats model tests: passed, 9 passed.
+- Focused Ruff check on touched stats files: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- `uv run alembic upgrade head`: passed, upgrading to
+  `0003_stats_wide_tables`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed after accepting `0003_stats_wide_tables` as compatible.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done` by explicit owner approval.
+- `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` remain `pending`.
+- No stats repositories, loaders, backfill commands, validators, live scraping,
+  cache refresh, Basketball Reference contact, data deletion, destructive
+  migration, API/frontend/OVR/ranking/similarity/recommendations/ML work,
+  branch, commit, push, or PR occurred.

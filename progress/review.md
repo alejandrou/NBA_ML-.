@@ -1280,3 +1280,47 @@ normalized rows through the `F4E-004` wide stats loader.
 - `uv run alembic check`: passed with no new upgrade operations detected.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   250 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-005 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-005` for closure. The guarded cache-only
+stats backfill command, CLI wiring, and tests are accepted. `F4E-005` is marked
+`done`; `F4E-006` was activated for the official stats validation checkpoint.
+
+## Phase 4E F4E-006 Review Prep
+
+Status: needs_review
+
+`F4E-006` is ready for review. The implementation adds a read-only validator
+for all 17 official `stats` tables, checks separation from generated metrics,
+and exposes a JSON CLI command without running a backfill or writing data.
+
+## Phase 4E F4E-006 Review Focus
+
+- `validate_official_stats` reports row counts for every official `stats`
+  table and returns JSON-safe issues and summary data.
+- Validation detects duplicate logical rows, orphan or invalid FK grains, and
+  incorrect `TOT` placement between team-stint and aggregate tables.
+- Validation flags obvious impossible numeric values, `gs > g`, and all-stat-
+  columns-null rows while allowing legitimately nullable official fields.
+- Validation inspects the live `stats` schema for banned generated-output names
+  such as OVR, ranking, similarity, recommendation, prediction, and ML terms.
+- Optional stats backfill report comparison checks persisted-row totals and
+  nonzero processing/load/quarantine failures.
+- `nba-data validate official-stats` prints JSON and exits `1` on validation
+  failures without running backfills or mutating the database.
+
+## Phase 4E F4E-006 Checks
+
+- Focused Ruff check on the official stats validator, CLI, and new tests:
+  passed.
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 259 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  259 passed, 1 skipped, and 6 Peewee deprecation warnings.

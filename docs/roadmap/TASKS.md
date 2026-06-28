@@ -43,14 +43,13 @@
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-005`: Offline stats backfill command (`needs_review`).
-- `F4E-006` remains `pending`.
+- `F4E-005`: Offline stats backfill command (`done`).
+- `F4E-006`: Official stats validation checks (`needs_review`).
 
 ## Next
 
-- Next safe action: review `F4E-005`.
-- After owner approval, close `F4E-005` as `done` and start `F4E-006` only
-  when the owner approves the official stats validation checks task.
+- Next safe action: review `F4E-006`.
+- Keep Phase 5 pending until Phase 4E closes.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, run the real stats
   backfill command, open a PR, or implement F5/API/frontend/OVR/ranking/
@@ -58,7 +57,7 @@
 
 ## Later
 
-- Phase 4E continues with official stats validation only after `F4E-005` is
-  reviewed and approved.
+- Phase 4E continues with official stats validation review and any requested
+  follow-up fixes before closure.
 - Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
   owner explicitly approves a core-only API transition.

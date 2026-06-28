@@ -11,8 +11,8 @@ Persist official Basketball Reference player statistics in typed relational
 `stats` tables from cached team-season HTML. Keep identity and relationships in
 `core` and future generated metrics in `features`.
 
-Phase 4E is pre-API. `F4E-005` is the active task in review, and `F4E-006`
-remains pending.
+Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval, and
+`F4E-006` is the active task in review.
 
 ## Current task state
 
@@ -20,8 +20,8 @@ remains pending.
 - `F4E-002`: done
 - `F4E-003`: done
 - `F4E-004`: done
-- `F4E-005`: needs_review
-- `F4E-006`: pending
+- `F4E-005`: done
+- `F4E-006`: needs_review
 
 Source of truth:
 
@@ -47,8 +47,7 @@ Source of truth:
 
 ## In scope
 
-- Cache-only offline stats backfill orchestration.
-- Stats loader and repository review work.
+- Read-only official stats validation and review work.
 - Phase documentation, progress updates, and validation notes for 4E.
 
 ## Out of scope
@@ -72,9 +71,10 @@ Source of truth:
 - `src/nba_data/scraping/offline_processor.py`
 - `specs/phases/phase-4e-official-wide-stats-persistence.md`
 - `specs/features/F4E-005-offline-stats-backfill-command.md`
-- `src/nba_data/scraping/offline_stats_backfill.py`
+- `specs/features/F4E-006-official-stats-validation-checks.md`
+- `src/nba_data/validation/official_stats.py`
 - `src/nba_data/cli/main.py`
-- `tests/unit/test_offline_stats_backfill.py`
+- `tests/unit/test_official_stats_validation.py`
 
 ## Key specs
 
@@ -99,7 +99,7 @@ Source of truth:
 
 ## Next phase gate
 
-`F4E-005` must be approved and closed before `F4E-006` starts. Phase 5 stays
+`F4E-006` is the last Phase 4E checkpoint before phase closure. Phase 5 stays
 pending until Phase 4E is complete.
 
 ## Update policy

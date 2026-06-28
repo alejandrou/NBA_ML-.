@@ -1496,7 +1496,7 @@
       "id": "F4E-005",
       "title": "Add offline stats backfill command",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4E-004"
       ],
@@ -1535,7 +1535,7 @@
       "id": "F4E-006",
       "title": "Add official stats validation checks",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4E-005"
       ],

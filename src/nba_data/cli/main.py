@@ -28,6 +28,9 @@ from nba_data.scraping.offline_stats_backfill import (
     DEFAULT_STATS_PARSER_VERSION,
     run_offline_stats_backfill,
 )
+from nba_data.validation.official_stats import (
+    validate_official_stats as run_official_stats_validation,
+)
 from nba_data.validation.offline_database import (
     validate_offline_database as run_offline_database_validation,
 )
@@ -64,6 +67,14 @@ _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION = typer.Option(
     dir_okay=False,
     readable=True,
     help="Path to the Phase 4D offline backfill JSON report.",
+)
+_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
+    None,
+    "--stats-backfill-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional path to the Phase 4E stats backfill JSON report.",
 )
 
 
@@ -274,6 +285,36 @@ def validate_offline_database(
         session_factory = create_session_factory(engine)
         with session_factory() as session:
             report = run_offline_database_validation(session, backfill_data)
+    finally:
+        engine.dispose()
+
+    console.print_json(data=report.to_dict())
+    if not report.passed:
+        raise typer.Exit(code=1)
+
+
+@validation_app.command("official-stats")
+def validate_official_stats(
+    stats_backfill_report: Path | None = _OFFICIAL_STATS_BACKFILL_REPORT_OPTION,
+) -> None:
+    """Validate the local Phase 4E official stats state."""
+
+    backfill_data: dict[str, object] | None = None
+    if stats_backfill_report is not None:
+        try:
+            loaded = json.loads(stats_backfill_report.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise typer.BadParameter(f"Invalid stats backfill report JSON: {exc}") from exc
+        if not isinstance(loaded, dict):
+            raise typer.BadParameter("Stats backfill report JSON must be an object.")
+        backfill_data = loaded
+
+    settings = get_settings()
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            report = run_official_stats_validation(session, backfill_data)
     finally:
         engine.dispose()
 

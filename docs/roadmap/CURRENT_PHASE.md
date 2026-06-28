@@ -48,7 +48,9 @@ plus the final closure notes in `progress/review.md`. The requested
   approval of the reviewed repositories, tests, and validation.
 - `F4E-004`: Normalized rows to wide stats loader (`done`) by explicit owner
   approval of the reviewed loader, tests, and validation.
-- `F4E-005`: Offline stats backfill command (`needs_review`).
+- `F4E-005`: Offline stats backfill command (`done`) by explicit owner
+  approval of the reviewed guarded command, tests, and validation.
+- `F4E-006`: Official stats validation checks (`needs_review`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -57,11 +59,8 @@ creating core rows, loading normalized rows, or introducing backfill behavior.
 `F4E-004` adds the normalized-row loader over those repositories without
 owning transaction commits, creating core rows, or running offline stats
 backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
-ready for review.
-
-## Pending Phase Tasks
-
-- `F4E-006`: Official stats validation checks (`pending`).
+closed by explicit owner approval. `F4E-006` adds read-only validation over
+all official `stats` tables and is now the active review checkpoint.
 
 ## Guardrails
 
@@ -69,15 +68,14 @@ ready for review.
   run acquisition commands.
 - Do not run the real stats backfill command or write real stats backfill data
   as part of review preparation.
-- Do not implement validation commands, API endpoints, frontend pages,
-  generated metrics, OVR, rankings, similarity, recommendations, or ML work.
+- Do not implement API endpoints, frontend pages, generated metrics, OVR,
+  rankings, similarity, recommendations, or ML work.
 - Do not create a branch, commit, push, or open a PR without explicit owner
   approval.
 
 ## Next Safe Action
 
-Review `F4E-005`. Keep `F4E-006` pending until the owner approves the official
-stats validation checks task.
+Review `F4E-006`. Keep Phase 5 pending until Phase 4E closes.
 
 ## References
 
@@ -88,6 +86,7 @@ stats validation checks task.
 - `specs/features/F4E-003-idempotent-stats-repositories.md`
 - `specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md`
 - `specs/features/F4E-005-offline-stats-backfill-command.md`
+- `specs/features/F4E-006-official-stats-validation-checks.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md`

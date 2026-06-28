@@ -2847,3 +2847,72 @@ present.
 ### Review Questions
 
 - Should more phase-specific task cards be added when a spec starts to grow?
+
+## Checkpoint 68 - Phase 4E F4E-006 Official Stats Validation Checks
+
+### What Changed
+
+Closed `F4E-005` as `done` by explicit owner approval and implemented
+`F4E-006` as a read-only validation checkpoint. Added
+`src/nba_data/validation/official_stats.py`, exported the validator from
+`src/nba_data/validation/__init__.py`, wired `nba-data validate official-stats`
+into the CLI, and added `tests/unit/test_official_stats_validation.py`.
+
+Updated the Phase 4E task state, roadmap, review notes, current progress, and
+Codex phase context so `F4E-006` is now the active `needs_review` checkpoint.
+
+### Why
+
+Phase 4E needs a final verification layer proving the persisted official
+`stats` tables are coherent, respect `TOT` separation, stay free of generated
+metrics, and match the guarded stats backfill report when one is provided.
+
+### Concepts Learned
+
+- The safest Phase 4E validator is read-only: inspect actual `stats` schema
+  objects, query persisted row counts, and compare against `core` grains and
+  optional saved backfill metadata.
+- SQLite attached `core` and `stats` schemas are sufficient for portable unit
+  tests that simulate duplicates, orphan grains, invalid core chains, `TOT`
+  misuse, and schema pollution without relying on PostgreSQL constraints.
+- The validation boundary should treat all-stat-columns-null rows as likely
+  parse/load failures while still allowing individual official nullable fields.
+- Generated-output contamination can be detected cheaply by scanning actual
+  `stats` table and column names for banned feature-engineering vocabulary.
+
+### Files to Read
+
+- `src/nba_data/validation/official_stats.py`
+- `src/nba_data/cli/main.py`
+- `src/nba_data/validation/__init__.py`
+- `tests/unit/test_official_stats_validation.py`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the official stats validator, CLI, and new tests:
+  passed.
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 259 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  259 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-005` is `done` by explicit owner approval.
+- `F4E-006` is `needs_review`.
+- Phase 4E remains `in_progress`; Phase 5 remains `pending`.
+- No live scraping, Basketball Reference contact, cache refresh, acquisition,
+  real stats backfill execution, data deletion, destructive migration,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
+  or PR occurred.

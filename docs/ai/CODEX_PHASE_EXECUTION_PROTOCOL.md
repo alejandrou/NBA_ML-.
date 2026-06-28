@@ -15,22 +15,24 @@ instructions.
 4. Confirm the current phase and the current task state.
 5. Check whether the phase context file already exists.
 6. Read the current task spec and any directly relevant phase spec.
-7. Read only the files needed for the requested scope.
-8. Implement only the requested task scope.
-9. Validate the change with the lightest commands that prove the task.
-10. Update the task state, progress notes, and learning changelog when
-    required.
-11. Commit and push only if the prompt explicitly requests it.
-12. Respond with a short summary of the outcome.
+7. Use `docs/ai/REPO_MAP.md` and `docs/ai/ARCHITECTURE_INVARIANTS.md` before
+   exploring the repository.
+8. Read only the files needed for the requested scope.
+9. Implement only the requested task scope.
+10. Validate the change with the lightest commands that prove the task.
+11. Update the task state, progress notes, and learning changelog when
+   required.
+12. Commit and push only if the prompt explicitly requests it.
+13. Respond with a short summary of the outcome.
 
 ## Phase Context Rule
 
 At the beginning of each new phase branch, create a phase context file:
 
-`docs/ai/PHASE_<PHASE_ID>_CODEX_CONTEXT.md`
+`docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md`
 
 Future task prompts for that phase must reference it instead of repeating long
-context.
+context. Example: `docs/ai/PHASE_4E_CODEX_CONTEXT.md`.
 
 ## Fallback If Phase Context Does Not Exist
 
@@ -54,6 +56,8 @@ Do not copy long historical context.
 
 ## Context Rules
 
+- Keep the context budget small. Read the global protocol, current phase
+  context, and exact spec before opening anything else.
 - Do not open the whole repository unless necessary.
 - Use `rg`, `git grep`, or targeted searches before opening large files.
 - Read additional files only if needed.
@@ -62,6 +66,8 @@ Do not copy long historical context.
 - Do not repeat phase history if it already exists in progress or roadmap
   docs.
 - Keep phase context compact.
+- Use `docs/ai/tasks/README.md` for narrow task-specific cards instead of
+  expanding the prompt.
 
 ## Scope Rules
 
@@ -74,6 +80,11 @@ Do not copy long historical context.
 - Do not perform destructive database operations unless explicitly requested.
 - Do not add temporary files, database dumps, local reports, raw data,
   `.env`, or cache artifacts to git.
+- Do not refactor unrelated code while making the requested change.
+- Use a minimal diff that matches the spec and nothing more.
+- Do not run dangerous commands unless the owner explicitly requests them.
+- Do not paste full logs in the final response if the checks passed.
+- Keep the final response short.
 
 ## Validation Rules
 

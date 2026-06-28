@@ -2807,3 +2807,43 @@ Inspect the markdown files and confirm the links are present.
 
 - Should each new phase start by creating its own compact Codex context file
   from the shared template?
+
+## Checkpoint 67 - Codex Context Optimization Expansion
+
+### What Changed
+
+Added `docs/ai/REPO_MAP.md`, `docs/ai/ARCHITECTURE_INVARIANTS.md`, and
+`docs/ai/tasks/README.md`. Expanded the Codex execution protocol, usage
+optimization notes, prompt templates, workflow references, and phase context
+links to favor smaller prompts, fewer file reads, shorter output, and task
+cards when specs are still too large.
+
+Normalized the harness shell scripts to LF to avoid Bash line-ending issues.
+
+### Why
+
+Future Codex sessions should rely on repository memory instead of repeatedly
+carrying long task context in the prompt.
+
+### Concepts Learned
+
+- Repo maps and invariants can replace exploratory reads and repeated rules.
+- Compact task cards keep large specs manageable without duplicating them.
+- Short prompts and short final responses reduce unnecessary context growth.
+
+### Files to Read
+
+- `docs/ai/REPO_MAP.md`
+- `docs/ai/ARCHITECTURE_INVARIANTS.md`
+- `docs/ai/tasks/README.md`
+- `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
+- `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
+
+### How to Test
+
+Inspect the docs and confirm the updated links and prompt templates are
+present.
+
+### Review Questions
+
+- Should more phase-specific task cards be added when a spec starts to grow?

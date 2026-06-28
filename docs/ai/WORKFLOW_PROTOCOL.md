@@ -30,13 +30,20 @@ For Codex tasks, prefer reusable repository context over long prompts.
 
 Use:
 
+- `docs/ai/REPO_MAP.md`
+- `docs/ai/ARCHITECTURE_INVARIANTS.md`
 - `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
 - `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
-- `docs/ai/PHASE_<ID>_CODEX_CONTEXT.md`
+- `docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md`
 - `docs/ai/PROMPT_TEMPLATES.md`
+- `docs/ai/tasks/README.md` for narrow task cards
 
 At the start of every new phase branch, create a compact phase context file
-using `docs/ai/PHASE_CONTEXT_TEMPLATE.md`.
+using `docs/ai/PHASE_CONTEXT_TEMPLATE.md` and name it
+`docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md`.
+
+Use `docs/ai/REPO_MAP.md` to find the right area quickly and
+`docs/ai/ARCHITECTURE_INVARIANTS.md` to avoid breaking stable rules.
 
 ## Task Selection
 

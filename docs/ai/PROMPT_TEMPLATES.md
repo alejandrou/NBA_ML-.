@@ -1,16 +1,13 @@
 # Prompt Templates
 
-## Template 1 - Generic Implementation Task
+## Template 1 - Ultrashort Implementation
 
 ```text
 Actua como agente implementador.
 
 Sigue:
 - docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
-- docs/ai/PHASE_<ID>_CODEX_CONTEXT.md
-
-Owner approval:
-- Mark <PREVIOUS_TASK_ID> as done if explicitly approved.
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
 
 Task:
 Implement <TASK_ID> according to:
@@ -18,27 +15,23 @@ Implement <TASK_ID> according to:
 
 Scope:
 - <short scope>
-- No <explicit exclusions>
+- No out-of-scope work
 
 Expected files:
 - <file 1>
 - <file 2>
-- <file 3>
 
 Final state:
-- <PREVIOUS_TASK_ID>: done
 - <TASK_ID>: needs_review
-- next tasks: pending
 
 Validation:
 Follow docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md.
 
 Commit and push:
 <yes/no>
-<commit command if yes>
 ```
 
-## Template 2 - Start New Phase Branch
+## Template 2 - Documentation Only
 
 ```text
 Actua como agente documentador.
@@ -48,62 +41,23 @@ Sigue:
 - docs/ai/CODEX_USAGE_OPTIMIZATION.md
 
 Task:
-Start context setup for the new phase:
+Update docs only:
+- <files>
 
-<PHASE_ID> - <PHASE_NAME>
-
-Create:
-- docs/ai/PHASE_<ID>_CODEX_CONTEXT.md
-
-Use:
-- docs/roadmap/CURRENT_PHASE.md
-- tasks/feature-list.json
-- docs/roadmap/TASKS.md
-- progress/current.md
-- progress/review.md
-- specs/phases/<PHASE_SPEC>.md
-- relevant architecture docs
-
-Do not implement code.
-Do not change DB.
-Do not start feature work.
+Do not change code, DB, or task state.
 
 Final state:
-- phase context exists and is concise.
+- documentation updated
 ```
 
-## Template 3 - Owner-Approved Closure and Next Task
-
-```text
-Actua como agente implementador.
-
-Sigue:
-- docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
-- docs/ai/PHASE_<ID>_CODEX_CONTEXT.md
-
-Owner approval:
-I, as project owner, explicitly approve closing <PREVIOUS_TASK_ID> as done.
-
-Task:
-Implement <TASK_ID> according to:
-- specs/features/<TASK_SPEC>.md
-
-Final state:
-- <PREVIOUS_TASK_ID>: done
-- <TASK_ID>: needs_review
-- later tasks: pending
-
-Commit and push after validation.
-```
-
-## Template 4 - Review-Only Task
+## Template 3 - Review Only
 
 ```text
 Actua como agente revisor.
 
 Sigue:
 - docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
-- docs/ai/PHASE_<ID>_CODEX_CONTEXT.md
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
 
 Task:
 Review <TASK_ID> implementation.
@@ -112,9 +66,8 @@ Check:
 - scope
 - tests
 - docs
+- validation
 - task state
-- validation results
-- no out-of-scope changes
 
 Do not implement unless a small fix is required.
 Do not commit unless explicitly requested.
@@ -122,20 +75,42 @@ Do not commit unless explicitly requested.
 Output:
 - pass/fail
 - issues
-- recommended next step
+- next step
 ```
 
-## Template 5 - Compact Task Prompt
+## Template 4 - Fix After Review
 
 ```text
 Actua como agente implementador.
 
 Sigue:
 - docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
-- docs/ai/PHASE_<ID>_CODEX_CONTEXT.md
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
 
-Implement <TASK_ID> using:
+Task:
+Fix review issues for <TASK_ID>.
+
+Use:
+- review notes
 - specs/features/<TASK_SPEC>.md
+
+Do not expand scope.
+
+Final state:
+- <TASK_ID>: needs_review
+```
+
+## Template 5 - Task Card Prompt
+
+```text
+Actua como agente implementador.
+
+Sigue:
+- docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
+- docs/ai/tasks/<TASK_CARD>.md
+
+Implement <TASK_ID> using the task card and the exact feature spec.
 
 Read additional files only if needed.
 
@@ -144,4 +119,56 @@ Final state:
 
 Validate.
 Short final response.
+```
+
+## Template 6 - New Phase
+
+```text
+Actua como agente documentador.
+
+Sigue:
+- docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
+- docs/ai/CODEX_USAGE_OPTIMIZATION.md
+
+Set up the new phase context for:
+- <PHASE_ID> - <PHASE_NAME>
+
+Create:
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
+
+Use only the phase spec, current phase, task list, and progress docs.
+Do not implement code, DB changes, or feature work.
+```
+
+## Template 7 - Commit And Push
+
+```text
+Actua como agente implementador.
+
+Sigue:
+- docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
+
+Implement <TASK_ID> from:
+- specs/features/<TASK_SPEC>.md
+
+After validation:
+- commit with <COMMIT_MESSAGE>
+- push to the current branch
+```
+
+## Template 8 - No Commit Or Push
+
+```text
+Actua como agente implementador.
+
+Sigue:
+- docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md
+- docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md
+
+Implement <TASK_ID> from:
+- specs/features/<TASK_SPEC>.md
+
+Do not commit or push.
+Return validation status only.
 ```

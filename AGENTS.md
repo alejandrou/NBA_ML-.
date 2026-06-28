@@ -91,6 +91,9 @@ must use `src/nba_data/scraping/cache.py` unless explicitly disabled.
 - `.agents/skills/`: repo-scoped reusable Codex skills.
 - `.agents/roles/`: role instructions for leader, implementer, reviewer, and researcher.
 - `docs/ai/`: rules, workflow, review protocol, and Codex notes.
+- `docs/ai/REPO_MAP.md`: short repo map for targeted reads.
+- `docs/ai/ARCHITECTURE_INVARIANTS.md`: stable architecture and operation rules.
+- `docs/ai/tasks/`: compact AI task cards for narrow tasks.
 - `docs/architecture/`: target system design.
 - `docs/domain/`: NBA domain rules.
 - `docs/roadmap/`: current phase, task board, decisions, and learning log.
@@ -149,3 +152,6 @@ non-critical, use the project default, document the assumption in
 `docs/roadmap/NEXT_DECISIONS.md`, and continue. Ask the owner only for actions
 that can delete data, run live scraping, contact Basketball Reference, incur
 cost, create branches or PRs, or introduce a major breaking change.
+
+For narrow Codex tasks, start with `docs/ai/REPO_MAP.md` and
+`docs/ai/ARCHITECTURE_INVARIANTS.md` instead of broad repository exploration.

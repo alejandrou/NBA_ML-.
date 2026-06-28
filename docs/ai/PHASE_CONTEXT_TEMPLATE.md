@@ -1,4 +1,4 @@
-# Phase <ID> Codex Context
+# Phase <CURRENT_PHASE_SHORT_ID> Codex Context
 
 ## Phase
 

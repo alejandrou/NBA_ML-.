@@ -25,6 +25,18 @@ The repository should be the memory, not the prompt.
 16. Open a new working session when moving to a major new phase.
 17. Create a new phase context doc at the start of each phase branch.
 18. Do not duplicate full specs inside context docs.
+19. Use `docs/ai/REPO_MAP.md` before exploratory reading.
+20. Use `docs/ai/ARCHITECTURE_INVARIANTS.md` before any scope-sensitive change.
+21. Use `docs/ai/tasks/README.md` when one spec is still too large for a
+    short prompt.
+22. Keep `progress/current.md` operational and concise; move long history to
+    archive files when the repo convention requires it.
+23. Separate implementation and review into different sessions when possible.
+24. Use ultrashort prompts and limit assistant output.
+25. Do not paste complete logs when validation passes.
+26. Prefer cheaper models for markdown-only documentation or review tasks.
+27. Prefer stronger models for database, migration, loader, backfill, API, or
+    architecture decisions.
 
 ## What Belongs Where
 
@@ -32,7 +44,10 @@ The repository should be the memory, not the prompt.
 |---|---|---|
 | Global workflow rules | `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md` | Rarely changes |
 | Usage strategy | `docs/ai/CODEX_USAGE_OPTIMIZATION.md` | Rarely changes |
-| Phase context | `docs/ai/PHASE_<ID>_CODEX_CONTEXT.md` | Once per phase, update as needed |
+| Phase context | `docs/ai/PHASE_<CURRENT_PHASE_SHORT_ID>_CODEX_CONTEXT.md` | Once per phase, update as needed |
+| Repo map | `docs/ai/REPO_MAP.md` | Rarely changes |
+| Architecture invariants | `docs/ai/ARCHITECTURE_INVARIANTS.md` | Rarely changes |
+| Task card | `docs/ai/tasks/<TASK>.md` | Per narrow task |
 | Task contract | `specs/features/<TASK>.md` | Per task |
 | Task state | `tasks/feature-list.json` | Per task update |
 | Current phase | `docs/roadmap/CURRENT_PHASE.md` | Per phase |
@@ -50,6 +65,10 @@ The repository should be the memory, not the prompt.
 - Do not add temp files
 - Validation command list
 - Generic commit rules
+- Repo map
+- Architecture invariants
+- Task-card prompts
+- Long progress history
 
 These belong in the global execution protocol instead.
 
@@ -62,6 +81,8 @@ These belong in the global execution protocol instead.
 - Architecture decisions
 - Relevant key files
 - Extra validation commands
+- Output budget
+- Review/implementation split
 
 ## What Should Be Adapted Per Task
 
@@ -72,3 +93,4 @@ These belong in the global execution protocol instead.
 - Expected files
 - Commit message
 - Whether push is allowed
+- Whether a task card is needed

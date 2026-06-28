@@ -76,3 +76,8 @@ stats validation checks task.
 
 - Added reusable Codex execution and context documentation so future prompts
   can reference repository memory instead of repeating long phase context.
+- Added `docs/ai/REPO_MAP.md`, `docs/ai/ARCHITECTURE_INVARIANTS.md`, and
+  `docs/ai/tasks/README.md` to keep future prompts short and targeted.
+- Updated the Codex protocol, usage optimization notes, prompt templates, and
+  workflow references to favor compact prompts and minimal file reads.
+- Normalized the harness shell scripts to LF to avoid Bash line-ending issues.

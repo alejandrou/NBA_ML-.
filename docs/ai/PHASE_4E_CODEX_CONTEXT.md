@@ -30,6 +30,9 @@ Source of truth:
 - `docs/roadmap/TASKS.md`
 - `progress/current.md`
 - `progress/review.md`
+- `docs/ai/REPO_MAP.md`
+- `docs/ai/ARCHITECTURE_INVARIANTS.md`
+- `docs/ai/tasks/README.md`
 
 ## Architecture decisions
 

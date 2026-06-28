@@ -2766,3 +2766,44 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   backfill execution, acquisition, validation command implementation,
   API/frontend/OVR/ranking/similarity/recommendations/ML work, data deletion,
   destructive migration, branch creation, or PR occurred.
+
+## Checkpoint 66 - Codex Context Strategy Documentation
+
+### What Changed
+
+Added reusable Codex execution and context documentation:
+`docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`,
+`docs/ai/CODEX_USAGE_OPTIMIZATION.md`,
+`docs/ai/PHASE_CONTEXT_TEMPLATE.md`,
+`docs/ai/PHASE_4E_CODEX_CONTEXT.md`, and
+`docs/ai/PROMPT_TEMPLATES.md`. Linked the strategy from
+`docs/ai/WORKFLOW_PROTOCOL.md` and recorded the change in progress memory.
+
+### Why
+
+Future Codex prompts should use repository memory instead of repeating the
+full workflow and phase history in every task prompt.
+
+### Concepts Learned
+
+- A compact phase context file can replace repeated prompt history.
+- Global workflow rules belong in one reusable protocol.
+- Task prompts stay shorter when phase and task state live in docs.
+
+### Files to Read
+
+- `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
+- `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
+- `docs/ai/PHASE_CONTEXT_TEMPLATE.md`
+- `docs/ai/PHASE_4E_CODEX_CONTEXT.md`
+- `docs/ai/PROMPT_TEMPLATES.md`
+- `docs/ai/WORKFLOW_PROTOCOL.md`
+
+### How to Test
+
+Inspect the markdown files and confirm the links are present.
+
+### Review Questions
+
+- Should each new phase start by creating its own compact Codex context file
+  from the shared template?

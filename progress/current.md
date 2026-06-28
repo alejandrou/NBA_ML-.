@@ -71,3 +71,8 @@ Status: phase_4e_f4e_005_needs_review
 
 Review `F4E-005`. Keep `F4E-006` pending until the owner approves the official
 stats validation checks task.
+
+## Documentation Note
+
+- Added reusable Codex execution and context documentation so future prompts
+  can reference repository memory instead of repeating long phase context.

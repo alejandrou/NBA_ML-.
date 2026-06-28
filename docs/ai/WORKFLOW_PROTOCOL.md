@@ -24,6 +24,20 @@ All agents must follow this protocol.
 If these sources disagree, do not implement feature work. Report the conflict
 and propose the smallest state fix.
 
+## Codex Context Strategy
+
+For Codex tasks, prefer reusable repository context over long prompts.
+
+Use:
+
+- `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
+- `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
+- `docs/ai/PHASE_<ID>_CODEX_CONTEXT.md`
+- `docs/ai/PROMPT_TEMPLATES.md`
+
+At the start of every new phase branch, create a compact phase context file
+using `docs/ai/PHASE_CONTEXT_TEMPLATE.md`.
+
 ## Task Selection
 
 Follow `docs/roadmap/PHASE_GOVERNANCE.md` for all task selection.

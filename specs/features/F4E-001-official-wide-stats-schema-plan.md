@@ -39,15 +39,15 @@ Not allowed:
 - Inspect normalized keys emitted by the current parser/normalizer for every
   supported `source_table`: `roster`, `totals`, `per_game`, `per_minute`,
   `per_poss`, `advanced`, `shooting`, `adj_shooting`, and `pbp`.
-- Define wide typed target tables for real team stints and separate aggregate
-  `TOT` target tables.
+- Define wide typed target tables for real team stints and separate
+  player-page full-season target tables.
 - Define exactly 17 additive `stats` tables:
   `stats.player_team_season_roster`, 8 team-stint stats tables, and 8
-  player-season aggregate stats tables.
+  player-season stats tables.
 - Use `core.player_team_seasons.id` as the FK grain for roster and real-team
   stats.
-- Use `core.player_seasons.id` as the FK grain for aggregate player-season
-  stats, including official `TOT` rows.
+- Use `core.player_seasons.id` as the FK grain for player-page full-season
+  stats.
 - Keep `stats.player_team_season_roster` team-stint only.
 - Require surrogate primary keys, non-null FK grain columns, lineage columns,
   and unique FK constraints on every wide table.
@@ -94,8 +94,8 @@ Final normalized-key to DB-column mappings are documented in
   `shooting`, `adj_shooting`, and `pbp`.
 - The design records observed normalized keys and final
   `normalized key -> DB column` mappings.
-- The design states that `TOT` is persisted only through player-season
-  aggregate tables, not team tables.
+- The design states that `2TM`, `3TM`, and `4TM` are source markers, not
+  teams, and that synthetic codes do not load to team-stint tables.
 - The design rejects `JSONB` as primary stat storage.
 - `F4E-001` is left in `needs_review`, not `done`.
 - `F4E-002` through `F4E-006` remain `pending`.

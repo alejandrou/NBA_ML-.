@@ -1,18 +1,15 @@
 # Current Work
 
-Status: phase_4e_f4e_006_needs_review
+Status: phase_4e_f4e_007_ready
 
 ## Active Task
 
-- `F4E-006`: Official stats validation checks.
-- Status: `needs_review`.
-- `F4E-001` is `done` by explicit owner approval of the reviewed schema plan.
-- `F4E-002` is `done` by explicit owner approval of the reviewed models,
-  Alembic migration, and tests.
-- `F4E-003` is `done` by explicit owner approval of the reviewed repositories,
-  tests, and validation.
-- `F4E-004` is `done` by explicit owner approval of the reviewed normalized-row
-  stats loader, tests, and validation.
+- No task is currently `in_progress`.
+- `F4E-006`: Official stats validation checks is `changes_requested`.
+- `F4E-007`: Player-page regular-season aggregate stats backfill is `ready`.
+- `F4E-008`: Postseason stats schema and player-page backfill is `pending`.
+- `F4E-009`: Official stats final validation and database closure is
+  `pending`.
 
 ## Current Phase
 
@@ -22,28 +19,23 @@ Status: phase_4e_f4e_006_needs_review
 
 ## Latest Checkpoint
 
-- Closed `F4E-005` as `done` by explicit owner approval.
-- Promoted `F4E-006` through approved work into `needs_review` per the owner
-  plan for this checkpoint.
-- Added `src/nba_data/validation/official_stats.py` with read-only validation
-  over all 17 official `stats` tables plus JSON-safe issue/report dataclasses.
-- Added `nba-data validate official-stats` with optional
-  `--stats-backfill-report` support, JSON output, and exit code `1` on
-  validation failures.
-- Added `tests/unit/test_official_stats_validation.py` covering clean pass,
-  counts, duplicates, FK/orphan issues, incorrect `TOT` placement, aggregate
-  misuse, numeric bounds, generated-metric schema detection, backfill mismatch,
-  and CLI behavior.
+- Documented the owner-approved source plan update for official stats:
+  team-season pages populate `stats.player_team_season_*`, and player pages
+  populate `stats.player_season_*`.
+- Replaced current full-season source guidance with `2TM`, `3TM`, and `4TM` as
+  player-page `source_team_code` metadata markers, not teams.
+- Documented that `TOT`, `2TM`, `3TM`, and `4TM` must not appear in
+  `core.teams`, `core.team_seasons`, or team-stint stats tables.
+- Added future planning for player-page regular-season full-season stats,
+  separate postseason stats tables, and final official stats validation.
+- Marked `F4E-006` as `changes_requested` because validator/design guidance
+  still needs synthetic-code and Basketball Reference numeric-range updates.
 
 ## Latest Validation
 
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/init.sh`: passed before
-  starting `F4E-006`.
-- Focused Ruff check on the official stats validator, CLI, and new tests:
-  passed.
-- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
-  10 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
+- Targeted stale current guidance search: passed for active docs/specs/task
+  state.
 - `uv run ruff check .`: passed.
 - `uv run pytest`: passed, 259 passed, 1 skipped, and 6 Peewee deprecation
   warnings.
@@ -52,23 +44,13 @@ Status: phase_4e_f4e_006_needs_review
 
 ## Guardrails Observed
 
-- The validator is read-only and does not run the stats backfill command,
-  create `core` rows, write `stats` rows, own transaction commits or
-  rollbacks, run live scraping, refresh cache, or run acquisition.
-- No live scraping, Basketball Reference contact, cache refresh, acquisition,
-  API/frontend/generated metric work, destructive migration, data deletion,
-  Peewee removal, branch creation, or PR occurred.
+- No runtime code, tests, SQLAlchemy models, Alembic migrations, parsers,
+  loaders, DB writes, live scraping, Basketball Reference contact, cache
+  refresh, API/frontend/generated metric work, destructive migration, data
+  deletion, Peewee removal, branch creation, commit, push, or PR occurred.
+- Untracked `NBA.zip` was left untouched.
 
 ## Next Safe Action
 
-Review `F4E-006`. Keep Phase 5 pending until Phase 4E closes.
-
-## Documentation Note
-
-- Added reusable Codex execution and context documentation so future prompts
-  can reference repository memory instead of repeating long phase context.
-- Added `docs/ai/REPO_MAP.md`, `docs/ai/ARCHITECTURE_INVARIANTS.md`, and
-  `docs/ai/tasks/README.md` to keep future prompts short and targeted.
-- Updated the Codex protocol, usage optimization notes, prompt templates, and
-  workflow references to favor compact prompts and minimal file reads.
-- Normalized the harness shell scripts to LF to avoid Bash line-ending issues.
+Approve and start `F4E-007` when ready. Keep Phase 5 pending until Phase 4E
+closes through `F4E-009`.

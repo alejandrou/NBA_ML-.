@@ -40,6 +40,7 @@ only and does not remove or modify legacy code.
 - Do not mix identity, season, team membership, and official stats in one
   entity.
 - Do not treat `TOT` as a real team.
+- Do not treat `2TM`, `3TM`, or `4TM` as real teams.
 - Do not copy the legacy limitation of only covering roster, totals, and
   advanced; Phase 4E covers all nine currently supported source families.
 
@@ -51,8 +52,9 @@ only and does not remove or modify legacy code.
 - Store official scraped stats under schema `stats`.
 - Store future generated metrics under schema `features`.
 - Use `core.player_team_seasons.id` for real team-stint stats.
-- Use `core.player_seasons.id` for official aggregate player-season stats,
-  including `TOT`.
+- Use `core.player_seasons.id` for official player-page full-season stats.
+- Store player-page `2TM`, `3TM`, and `4TM` as source metadata only, not
+  teams.
 - Preserve official columns as wide typed relational columns instead of primary
   `JSONB`.
 - Keep all stat rows idempotent through a unique constraint at their reviewed

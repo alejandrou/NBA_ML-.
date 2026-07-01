@@ -21,7 +21,8 @@
 - Players and teams should use Basketball Reference identifiers when available.
 - Team aliases capture name and abbreviation changes.
 - Roster stints represent player-team-season membership.
-- `TOT` is a player-season aggregate, not a team.
+- `TOT`, `2TM`, `3TM`, and `4TM` are not teams.
+- `2TM`, `3TM`, and `4TM` may appear as official player-page source markers.
 - Historical seasons may have unavailable metrics.
 
 ## C. Validation

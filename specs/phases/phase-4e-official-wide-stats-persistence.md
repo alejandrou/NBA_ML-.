@@ -6,7 +6,8 @@ Phase ID: `phase-4e-official-wide-stats-persistence`
 ## Goal
 
 Prepare and then implement a relational `stats` schema for official Basketball
-Reference player statistics from cached NBA team-season pages.
+Reference player statistics from cached NBA team-season pages and future cached
+player pages.
 
 The phase keeps identity and membership in `core`, official scraped statistics
 in `stats`, and future app-generated metrics in `features`.
@@ -14,7 +15,7 @@ in `stats`, and future app-generated metrics in `features`.
 The target flow is:
 
 ```text
-cached team-season HTML
+cached team-season HTML and future cached player-page HTML
 -> parse
 -> normalize
 -> validate
@@ -42,20 +43,30 @@ cached team-season HTML
 - `F4E-004`: Normalized rows to wide stats loader.
 - `F4E-005`: Offline stats backfill command.
 - `F4E-006`: Official stats validation checks.
+- `F4E-007`: Player-page regular-season aggregate stats backfill.
+- `F4E-008`: Postseason stats schema and player-page backfill.
+- `F4E-009`: Official stats final validation and database closure.
 
 `F4E-001` is done by explicit owner approval. `F4E-002` is done by explicit
 owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
 tests. `F4E-003` is done by explicit owner approval of the reviewed stats
 repositories, tests, and validation. `F4E-004` is done by explicit owner
 approval of the reviewed normalized-row stats loader, tests, and validation.
-`F4E-005` implements the offline stats backfill command and is ready for
-review. `F4E-006` remains `pending`.
+`F4E-005` is done by explicit owner approval. `F4E-006` has
+`changes_requested` because validator/design guidance still contains outdated
+`TOT` and numeric-range assumptions. `F4E-007` is ready. `F4E-008` and
+`F4E-009` remain pending.
 
 ## Schema Decisions
 
-- Use separate tables for real team stints and `TOT` aggregates.
+- Use separate tables for real team stints and full player seasons.
+- Team-season pages populate `stats.player_team_season_*`.
+- Player pages populate `stats.player_season_*`.
 - Real-team stat tables FK to `core.player_team_seasons.id`.
-- Aggregate `TOT` stat tables FK to `core.player_seasons.id`.
+- Full player-season stat tables FK to `core.player_seasons.id`.
+- Player-page `2TM`, `3TM`, and `4TM` rows are source markers, not teams.
+- Plan to add `source_team_code` metadata to player-season stat tables; it is
+  not a FK.
 - `stats.player_team_season_roster` is team-stint only and FKs to
   `core.player_team_seasons.id`.
 - Team-stint wide tables:
@@ -63,7 +74,7 @@ review. `F4E-006` remains `pending`.
   `player_team_season_per_minute`, `player_team_season_per_poss`,
   `player_team_season_advanced`, `player_team_season_shooting`,
   `player_team_season_adj_shooting`, and `player_team_season_pbp`.
-- Aggregate wide tables:
+- Full player-season wide tables:
   `player_season_totals`, `player_season_per_game`,
   `player_season_per_minute`, `player_season_per_poss`,
   `player_season_advanced`, `player_season_shooting`,
@@ -81,6 +92,11 @@ review. `F4E-006` remains `pending`.
 - FK and unique grain columns are non-null.
 - Each wide table has a surrogate primary key plus a unique FK constraint at
   its grain.
+- Postseason stats are future separate table families under `stats`; do not
+  mix postseason rows into regular-season tables.
+- Do not use Game Highs as a source for official season stats.
+- Do not generate player-season stats by summing team-stint rows, averaging
+  percentages, or deriving advanced metrics.
 
 ## Allowed Work
 
@@ -90,13 +106,16 @@ review. `F4E-006` remains `pending`.
 - Add idempotent stats repositories and loaders only after the schema plan is
   accepted.
 - Load official stats only from already parsed, normalized, and validated rows.
-- Add validation checks for counts, duplicates, FK integrity, `TOT` separation,
-  nullability, and numeric ranges.
+- Add validation checks for counts, duplicates, FK integrity, synthetic-code
+  separation, nullability, and Basketball Reference numeric ranges.
 
 ## Disallowed Work
 
 - Live scraping, cache refresh, or Basketball Reference contact.
-- Treating `TOT` as a real team.
+- Treating `TOT`, `2TM`, `3TM`, or `4TM` as real teams.
+- Loading synthetic team codes into `stats.player_team_season_*`.
+- Using Game Highs as a source for official season stats.
+- Generating full player-season stats from team-stint rows.
 - Using `player_name` as a stable key.
 - Storing official stats primarily as `JSONB`.
 - Mixing generated metrics, OVR, rankings, similarity, recommendations, or ML

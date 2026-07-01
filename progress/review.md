@@ -1324,3 +1324,25 @@ and exposes a JSON CLI command without running a backfill or writing data.
   warnings.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   259 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4E Official Stats Source Plan Update
+
+Status: changes_requested
+
+The owner confirmed `F4E-006` should be marked `changes_requested` because the
+current validator/design guidance still contains outdated `TOT` and numeric
+range assumptions.
+
+The planning update documents that team-season pages populate
+`stats.player_team_season_*`, player pages populate `stats.player_season_*`,
+and player-page `2TM`, `3TM`, and `4TM` rows are source markers rather than
+teams. It also documents separate future postseason stats table families and
+keeps Game Highs out of scope.
+
+Next review focus:
+
+- `F4E-007` should implement player-page regular-season full-season stats from
+  cached HTML only.
+- `F4E-008` should add separate postseason table families.
+- `F4E-009` should fix the official stats validator's synthetic-code and
+  Basketball Reference numeric-range checks before Phase 4E closure.

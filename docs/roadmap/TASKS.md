@@ -38,18 +38,21 @@
 - `F4E-002`: Stats models and Alembic migration.
 - `F4E-003`: Idempotent stats repositories.
 - `F4E-004`: Normalized rows to wide stats loader.
+- `F4E-005`: Offline stats backfill command.
 
 ## Current
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
 - Current phase status: `in_progress`.
-- `F4E-005`: Offline stats backfill command (`done`).
-- `F4E-006`: Official stats validation checks (`needs_review`).
+- `F4E-006`: Official stats validation checks (`changes_requested`).
+- `F4E-007`: Player-page regular-season aggregate stats backfill (`ready`).
+- `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
+- `F4E-009`: Official stats final validation and database closure (`pending`).
 
 ## Next
 
-- Next safe action: review `F4E-006`.
-- Keep Phase 5 pending until Phase 4E closes.
+- Next safe action: approve and start `F4E-007` when ready.
+- Keep Phase 5 pending until Phase 4E closes through `F4E-009`.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, run the real stats
   backfill command, open a PR, or implement F5/API/frontend/OVR/ranking/
@@ -57,7 +60,7 @@
 
 ## Later
 
-- Phase 4E continues with official stats validation review and any requested
-  follow-up fixes before closure.
+- Phase 4E continues with player-page regular-season aggregate stats,
+  postseason stats, and final validation/database closure before Phase 5.
 - Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
   owner explicitly approves a core-only API transition.

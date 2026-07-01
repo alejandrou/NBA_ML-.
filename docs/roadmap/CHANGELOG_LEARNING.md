@@ -2916,3 +2916,50 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   real stats backfill execution, data deletion, destructive migration,
   API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
   or PR occurred.
+
+## Checkpoint 69 - Phase 4E Official Stats Source Plan Update
+
+### What Changed
+
+Updated active Phase 4E planning docs, architecture docs, task state, and
+progress memory for the owner-approved player-page source plan. Added
+`docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` and feature specs for
+`F4E-007`, `F4E-008`, and `F4E-009`.
+
+### Why
+
+The previous Phase 4E guidance still described full player-season stats as
+`TOT` aggregates. The approved architecture uses player-page `2TM`, `3TM`, and
+`4TM` rows as official full-season source markers, while team-season pages stay
+the source for team-stint stats.
+
+### Concepts Learned
+
+- `2TM`, `3TM`, and `4TM` are source metadata markers, not teams.
+- `TOT`, `2TM`, `3TM`, and `4TM` must never become `core` teams or team-season
+  rows.
+- Full player-season stats should come from official player-page rows, not from
+  generated sums of team stints.
+- Postseason stats need separate future table families.
+- Basketball Reference numeric ranges need validator-specific handling:
+  ordinary percentages, advanced percentages, PBP position percentages, and
+  adjusted shooting index columns use different scales.
+
+### Files to Read
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
+- `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
+- `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
+- `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Review Questions
+
+- Which player-page cache/acquisition manifest should be approved before
+  `F4E-007` needs real player-page HTML beyond fixtures?

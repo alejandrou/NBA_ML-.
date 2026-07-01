@@ -13,6 +13,11 @@ These rules are stable unless the owner explicitly approves a change.
   outside the central rate-limited client.
 - Keep raw scraped data separate from generated metrics.
 - Do not treat `TOT` as a real team.
+- Do not insert `TOT`, `2TM`, `3TM`, or `4TM` into `core.teams` or
+  `core.team_seasons`.
+- Do not load synthetic team codes into `stats.player_team_season_*`.
+- Do not store generated or derived stats in `stats`.
+- Keep regular-season and postseason stats in separate stat table families.
 - Do not use `player_name` as a stable primary key.
 - Do not add API, frontend, OVR, ranking, similarity, or ML work outside an
   approved phase.

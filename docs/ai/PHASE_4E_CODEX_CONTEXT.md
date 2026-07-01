@@ -11,8 +11,8 @@ Persist official Basketball Reference player statistics in typed relational
 `stats` tables from cached team-season HTML. Keep identity and relationships in
 `core` and future generated metrics in `features`.
 
-Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval, and
-`F4E-006` is the active task in review.
+Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval,
+`F4E-006` has `changes_requested`, and `F4E-007` is the next ready task.
 
 ## Current task state
 
@@ -21,7 +21,10 @@ Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval, and
 - `F4E-003`: done
 - `F4E-004`: done
 - `F4E-005`: done
-- `F4E-006`: needs_review
+- `F4E-006`: changes_requested
+- `F4E-007`: ready
+- `F4E-008`: pending
+- `F4E-009`: pending
 
 Source of truth:
 
@@ -39,15 +42,23 @@ Source of truth:
 - `core` owns identity and relationships.
 - `stats` owns official scraped stats.
 - `features` is reserved for generated metrics.
+- Team-season pages populate `stats.player_team_season_*`.
+- Player pages populate `stats.player_season_*`.
 - Real team stint stats FK to `core.player_team_seasons.id`.
-- `TOT` aggregate stats FK to `core.player_seasons.id`.
+- Full player-season stats FK to `core.player_seasons.id`.
+- `2TM`, `3TM`, and `4TM` are player-page `source_team_code` metadata, not
+  teams.
+- `TOT` is not a real team and is not the source for supported Phase 4E season
+  stats.
 - `stats.player_team_season_roster` is team-stint only.
 - Official stat columns are typed and nullable by default.
 - `player_name` is not a stable key.
+- Regular-season and postseason stats are separate table families.
 
 ## In scope
 
-- Read-only official stats validation and review work.
+- Documentation and task planning for player-page regular-season aggregate
+  stats, postseason stats, and final validation closure.
 - Phase documentation, progress updates, and validation notes for 4E.
 
 ## Out of scope
@@ -63,6 +74,7 @@ Source of truth:
 - `docs/roadmap/CURRENT_PHASE.md`
 - `docs/roadmap/TASKS.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `src/nba_data/db/models/stats.py`
 - `alembic/versions/0003_stats_wide_tables.py`
@@ -72,6 +84,9 @@ Source of truth:
 - `specs/phases/phase-4e-official-wide-stats-persistence.md`
 - `specs/features/F4E-005-offline-stats-backfill-command.md`
 - `specs/features/F4E-006-official-stats-validation-checks.md`
+- `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
+- `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
+- `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
 - `src/nba_data/validation/official_stats.py`
 - `src/nba_data/cli/main.py`
 - `tests/unit/test_official_stats_validation.py`
@@ -99,8 +114,9 @@ Source of truth:
 
 ## Next phase gate
 
-`F4E-006` is the last Phase 4E checkpoint before phase closure. Phase 5 stays
-pending until Phase 4E is complete.
+`F4E-007` is the next recommended task. Phase 4E closure requires the later
+`F4E-009` final validation/database closure task. Phase 5 stays pending until
+Phase 4E is complete.
 
 ## Update policy
 

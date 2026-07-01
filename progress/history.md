@@ -2385,3 +2385,23 @@ Task:
   stats backfills, create core identities from the stats loader, implement
   validation commands, API/frontend, generated metrics, OVR, rankings,
   similarity, recommendations, or ML work.
+
+## Phase 4E Official Stats Source Plan Update
+
+- Documented the owner-approved replacement for outdated `TOT aggregate`
+  guidance in active Phase 4E docs.
+- Recorded that team-season pages populate `stats.player_team_season_*` and
+  player pages populate `stats.player_season_*`.
+- Recorded `2TM`, `3TM`, and `4TM` as official player-page source markers, not
+  teams.
+- Documented that `TOT`, `2TM`, `3TM`, and `4TM` must not be inserted into
+  `core.teams`, `core.team_seasons`, or team-stint stats tables.
+- Added `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`.
+- Added feature specs for `F4E-007`, `F4E-008`, and `F4E-009`.
+- Marked `F4E-006` as `changes_requested`, `F4E-007` as `ready`, and
+  `F4E-008`/`F4E-009` as `pending`.
+- Did not modify runtime code, tests, SQLAlchemy models, Alembic migrations,
+  parsers, loaders, or database data.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, implement API/frontend/generated
+  metrics, create a branch, commit, push, or open a PR.

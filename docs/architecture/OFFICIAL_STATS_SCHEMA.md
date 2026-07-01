@@ -44,10 +44,13 @@ roster, totals, per_game, per_minute, per_poss, advanced, shooting,
 adj_shooting, pbp
 ```
 
-The sample did not emit `TOT` rows from current cached team-season pages.
-The normalizer still supports `TOT` when a row contains `team_abbreviation`,
-`team_id`, `team`, or `tm` equal to `TOT`; the schema below provides aggregate
-tables for those official rows if they are emitted by supported input.
+The inspected cached team-season pages populate team-stint stats only. They are
+not the source of full player-season stats.
+
+Future player-page parsing will populate `stats.player_season_*` from official
+Basketball Reference player pages. Player-page rows use `source_team_code`
+metadata such as `BOS`, `HOU`, `2TM`, `3TM`, or `4TM`; synthetic multi-team
+codes are source markers only and must not become `core` teams.
 
 ## Global Contract
 
@@ -68,7 +71,7 @@ Team-stint stats:
 - `stats.player_team_season_adj_shooting`
 - `stats.player_team_season_pbp`
 
-Aggregate player-season stats:
+Full player-season stats:
 
 - `stats.player_season_totals`
 - `stats.player_season_per_game`
@@ -86,7 +89,7 @@ Every team-stint table, including roster, has:
 - FK `player_team_season_id -> core.player_team_seasons.id`
 - unique constraint on `player_team_season_id`
 
-Every aggregate table has:
+Every current player-season table has:
 
 - `id Integer primary key`
 - `player_season_id Integer not null`
@@ -106,6 +109,11 @@ Every table has the same lineage columns:
 The unique constraint backing index is the grain lookup index. Do not add a
 duplicate non-unique FK index unless a later review finds a real query need.
 
+`F4E-007` should add `source_team_code` to `stats.player_season_*` tables as
+metadata only. It is not a foreign key and may contain either a real
+Basketball Reference team code for single-team seasons or a synthetic
+multi-team source marker such as `2TM`, `3TM`, or `4TM`.
+
 ## Typing Rules
 
 - Counts use `Integer`.
@@ -124,17 +132,23 @@ Missing known official columns are stored as `NULL`. Unknown normalized keys
 not listed in this document are not silently stored; the F4E-004 loader must
 report or quarantine them until the schema is reviewed.
 
-## TOT Rules
+## Source Team Code Rules
 
-`TOT` is not a real team.
+`TOT`, `2TM`, `3TM`, and `4TM` are not real teams.
 
-- Roster rows never load as `TOT`.
-- Rows with `team_context="team"` load only into `player_team_season_*` tables.
-- Rows with `team_abbreviation="TOT"`, `team_context="aggregate"`, and
-  `stat_scope="player_season_aggregate"` load only into `player_season_*`
+- Team-season pages load real team rows only into `player_team_season_*`
   tables.
-- Do not synthesize aggregate stats from team stints. Persist aggregate stats
-  only when normalized official input emits an aggregate row.
+- Player pages load full player-season rows into `player_season_*` tables.
+- Player-page `2TM`, `3TM`, and `4TM` rows load only into `player_season_*`
+  tables as official full-season rows.
+- `TOT` must not be persisted as a real team or as the source for supported
+  official season stats. Ignore `TOT` if it appears only in unsupported tables
+  such as Game Highs.
+- Do not use Game Highs, Last 5 Games, game logs, splits, All-Star, college,
+  salary, contract, or similarity-score tables as official season-stat sources
+  in Phase 4E.
+- Do not synthesize full-season stats from team stints. Persist full-season
+  stats only from official player-page rows.
 - Stats loaders must not create missing `core` identities. Missing
   `core.player_team_seasons.id` or `core.player_seasons.id` is a loader failure
   or quarantine condition.
@@ -144,7 +158,7 @@ report or quarantine them until the schema is reviewed.
 Target table:
 
 - Team-stint: `stats.player_team_season_roster`
-- Aggregate: none
+- Player-season: none
 
 Grain:
 
@@ -179,12 +193,12 @@ identity.
 Target tables:
 
 - Team-stint: `stats.player_team_season_totals`
-- Aggregate: `stats.player_season_totals`
+- Player-season: `stats.player_season_totals`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -222,7 +236,7 @@ Columns and mapping:
 | `tpl_dbl` | `tpl_dbl` | `Integer` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_totals`.
 
 Legacy reference: legacy `models/player/player_stats.py` corresponds
@@ -235,12 +249,12 @@ percentages, and non-idempotent inserts.
 Target tables:
 
 - Team-stint: `stats.player_team_season_per_game`
-- Aggregate: `stats.player_season_per_game`
+- Player-season: `stats.player_season_per_game`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -278,7 +292,7 @@ Columns and mapping:
 | `pts_per_g` | `pts_per_game` | `Numeric(10, 4)` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_per_game`.
 
 Legacy reference: legacy did not have a dedicated per-game table. F4E stores
@@ -290,12 +304,12 @@ with totals.
 Target tables:
 
 - Team-stint: `stats.player_team_season_per_minute`
-- Aggregate: `stats.player_season_per_minute`
+- Player-season: `stats.player_season_per_minute`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -333,7 +347,7 @@ Columns and mapping:
 | `pts_per_minute_36` | `pts_per_36` | `Numeric(10, 4)` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_per_minute`.
 
 Legacy reference: legacy did not have a dedicated per-minute table. F4E stores
@@ -345,12 +359,12 @@ them from totals during load.
 Target tables:
 
 - Team-stint: `stats.player_team_season_per_poss`
-- Aggregate: `stats.player_season_per_poss`
+- Player-season: `stats.player_season_per_poss`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -389,7 +403,7 @@ Columns and mapping:
 | `def_rtg` | `drtg` | `Numeric(10, 4)` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_per_poss`.
 
 Legacy reference: legacy did not have a dedicated per-possession table. F4E
@@ -401,12 +415,12 @@ defensive ratings as official stats, not generated features.
 Target tables:
 
 - Team-stint: `stats.player_team_season_advanced`
-- Aggregate: `stats.player_season_advanced`
+- Player-season: `stats.player_season_advanced`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -442,7 +456,7 @@ Columns and mapping:
 | `vorp` | `vorp` | `Numeric(10, 4)` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_advanced`.
 
 Legacy reference: legacy `models/player/player_advanced.py` corresponds
@@ -455,12 +469,12 @@ official stats separate from future generated ratings.
 Target tables:
 
 - Team-stint: `stats.player_team_season_shooting`
-- Aggregate: `stats.player_season_shooting`
+- Player-season: `stats.player_season_shooting`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -498,7 +512,7 @@ Columns and mapping:
 | `fg3a_heave` | `heaves_att` | `Integer` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_shooting`.
 
 Legacy reference: legacy did not have a dedicated shooting table. F4E stores
@@ -510,12 +524,12 @@ features in this schema.
 Target tables:
 
 - Team-stint: `stats.player_team_season_adj_shooting`
-- Aggregate: `stats.player_season_adj_shooting`
+- Player-season: `stats.player_season_adj_shooting`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -549,7 +563,7 @@ Columns and mapping:
 | `ts_pts_added` | `ts_pts_added` | `Numeric(10, 4)` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_adj_shooting`.
 
 Legacy reference: legacy did not have a dedicated adjusted-shooting table.
@@ -561,12 +575,12 @@ custom shooting adjustments out of `stats`.
 Target tables:
 
 - Team-stint: `stats.player_team_season_pbp`
-- Aggregate: `stats.player_season_pbp`
+- Player-season: `stats.player_season_pbp`
 
 Grain:
 
 - Team-stint FK: `player_team_season_id -> core.player_team_seasons.id`
-- Aggregate FK: `player_season_id -> core.player_seasons.id`
+- Player-season FK: `player_season_id -> core.player_seasons.id`
 - Unique constraint: the table's FK grain
 
 Columns and mapping:
@@ -598,12 +612,76 @@ Columns and mapping:
 | `astd_pts` | `assisted_points` | `Integer` |
 | `awards` | `awards` | `String(200)` |
 
-Missing columns are stored as `NULL`. `TOT` rows load only into
+Missing columns are stored as `NULL`. Player-page full-season rows load into
 `stats.player_season_pbp`.
 
 Legacy reference: legacy did not have a dedicated play-by-play-derived season
 stats table. F4E stores only the official Basketball Reference season-level PBP
 columns and does not introduce game logs or boxscores.
+
+## Player-Page Source Mapping
+
+`docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` is the compact source mapping
+for future player-page work. It maps Basketball Reference player-page table IDs
+to regular-season `stats.player_season_*` tables, the corresponding
+team-season table family, and future postseason tables.
+
+Regular-season player-page table IDs planned for `F4E-007`:
+
+- `per_game_stats`
+- `totals_stats`
+- `per_minute_stats`
+- `per_poss`
+- `advanced`
+- `shooting`
+- `adj_shooting`
+- `pbp_stats`
+
+Postseason player-page table IDs planned for `F4E-008`:
+
+- `per_game_stats_post`
+- `totals_stats_post`
+- `per_minute_stats_post`
+- `per_poss_post`
+- `advanced_post`
+- `shooting_post`
+- `adj_shooting_post`
+- `pbp_stats_post`
+
+## Future Postseason Stats
+
+Postseason stats are a separate future `stats` table family. They must not be
+mixed into regular-season `player_season_*` or `player_team_season_*` tables.
+
+Planned postseason player-season tables:
+
+- `stats.player_postseason_totals`
+- `stats.player_postseason_per_game`
+- `stats.player_postseason_per_minute`
+- `stats.player_postseason_per_poss`
+- `stats.player_postseason_advanced`
+- `stats.player_postseason_shooting`
+- `stats.player_postseason_adj_shooting`
+- `stats.player_postseason_pbp`
+
+Planned postseason team-stint tables:
+
+- `stats.player_team_postseason_totals`
+- `stats.player_team_postseason_per_game`
+- `stats.player_team_postseason_per_minute`
+- `stats.player_team_postseason_per_poss`
+- `stats.player_team_postseason_advanced`
+- `stats.player_team_postseason_shooting`
+- `stats.player_team_postseason_adj_shooting`
+- `stats.player_team_postseason_pbp`
+
+Default FK plan:
+
+- `stats.player_postseason_*` FKs to `core.player_seasons.id`.
+- `stats.player_team_postseason_*` FKs to `core.player_team_seasons.id`.
+
+Do not create new `core` postseason tables unless a later reviewed design
+proves the existing season and team-stint grains are insufficient.
 
 ## Downstream Task Contracts
 
@@ -622,7 +700,7 @@ F4E-004 loader:
 
 - starts from parsed, normalized, and validated rows;
 - resolves team-stint rows to `core.player_team_seasons.id`;
-- resolves aggregate `TOT` rows to `core.player_seasons.id`;
+- resolves player-page full-season rows to `core.player_seasons.id`;
 - routes every supported `source_table`;
 - reports skipped/quarantined rows for missing FKs or unsupported keys.
 
@@ -645,9 +723,9 @@ F4E-006 validation checks:
 - table counts;
 - duplicate rows;
 - orphan FKs;
-- correct `TOT` separation;
+- synthetic source-code separation;
 - principal stat population;
 - coverage by season and team;
-- reasonable numeric ranges;
+- Basketball Reference numeric ranges;
 - idempotency;
 - absence of generated metrics in `stats`.

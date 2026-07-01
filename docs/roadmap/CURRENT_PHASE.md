@@ -50,7 +50,12 @@ plus the final closure notes in `progress/review.md`. The requested
   approval of the reviewed loader, tests, and validation.
 - `F4E-005`: Offline stats backfill command (`done`) by explicit owner
   approval of the reviewed guarded command, tests, and validation.
-- `F4E-006`: Official stats validation checks (`needs_review`).
+- `F4E-006`: Official stats validation checks (`changes_requested`) because
+  validator/design guidance still contains outdated `TOT` and numeric-range
+  assumptions.
+- `F4E-007`: Player-page regular-season aggregate stats backfill (`ready`).
+- `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
+- `F4E-009`: Official stats final validation and database closure (`pending`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -59,8 +64,10 @@ creating core rows, loading normalized rows, or introducing backfill behavior.
 `F4E-004` adds the normalized-row loader over those repositories without
 owning transaction commits, creating core rows, or running offline stats
 backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
-closed by explicit owner approval. `F4E-006` adds read-only validation over
-all official `stats` tables and is now the active review checkpoint.
+closed by explicit owner approval. `F4E-006` added read-only validation over
+the initial official `stats` tables, but review now requests updates for
+synthetic source-code handling and Basketball Reference numeric ranges before
+Phase 4E can close. `F4E-007` is the next safe implementation task.
 
 ## Guardrails
 
@@ -75,7 +82,8 @@ all official `stats` tables and is now the active review checkpoint.
 
 ## Next Safe Action
 
-Review `F4E-006`. Keep Phase 5 pending until Phase 4E closes.
+Start `F4E-007` only after normal approval/promotion. Keep Phase 5 pending
+until Phase 4E closes through `F4E-009`.
 
 ## References
 
@@ -87,7 +95,11 @@ Review `F4E-006`. Keep Phase 5 pending until Phase 4E closes.
 - `specs/features/F4E-004-normalized-rows-to-wide-stats-loader.md`
 - `specs/features/F4E-005-offline-stats-backfill-command.md`
 - `specs/features/F4E-006-official-stats-validation-checks.md`
+- `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
+- `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
+- `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md`
 - `tasks/feature-list.json`

@@ -54,7 +54,8 @@ codes are source markers only and must not become `core` teams.
 
 ## Global Contract
 
-Phase 4E creates exactly 17 additive tables under schema `stats`.
+`F4E-002` created the initial 17 additive regular-season tables under schema
+`stats`.
 
 Roster:
 
@@ -114,6 +115,9 @@ metadata only. It is not a foreign key and may contain either a real
 Basketball Reference team code for single-team seasons or a synthetic
 multi-team source marker such as `2TM`, `3TM`, or `4TM`.
 
+`F4E-008` may extend the schema with separate postseason `stats` tables. Do
+not imply those postseason tables already exist until that task is implemented.
+
 ## Typing Rules
 
 - Counts use `Integer`.
@@ -139,8 +143,15 @@ report or quarantine them until the schema is reviewed.
 - Team-season pages load real team rows only into `player_team_season_*`
   tables.
 - Player pages load full player-season rows into `player_season_*` tables.
+- For each player-season and supported stat table, load exactly one full-season
+  row into `player_season_*`.
 - Player-page `2TM`, `3TM`, and `4TM` rows load only into `player_season_*`
-  tables as official full-season rows.
+  tables as official full-season rows when present.
+- If no `2TM`, `3TM`, or `4TM` row exists, the single real-team player-page
+  row is the official full-season row.
+- For traded seasons, do not load the player-page real-team stint rows into
+  `player_season_*`; those real-team stint rows belong only to
+  `player_team_season_*`.
 - `TOT` must not be persisted as a real team or as the source for supported
   official season stats. Ignore `TOT` if it appears only in unsupported tables
   such as Game Highs.

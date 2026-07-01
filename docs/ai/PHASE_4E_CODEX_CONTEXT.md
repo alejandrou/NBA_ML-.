@@ -48,8 +48,18 @@ Source of truth:
 - Full player-season stats FK to `core.player_seasons.id`.
 - `2TM`, `3TM`, and `4TM` are player-page `source_team_code` metadata, not
   teams.
+- For each player-season and supported table, `stats.player_season_*` loads
+  exactly one full-season row.
+- If a `2TM`, `3TM`, or `4TM` row exists, use that row for
+  `stats.player_season_*`.
+- If no synthetic multi-team row exists, use the single real-team row.
+- For traded seasons, ignore player-page real-team stint rows for
+  `stats.player_season_*`; those belong only to `stats.player_team_season_*`.
 - `TOT` is not a real team and is not the source for supported Phase 4E season
   stats.
+- Synthetic team codes must not be inserted into `core.teams`,
+  `core.team_seasons`, `core.player_team_seasons`, or
+  `stats.player_team_season_*`.
 - `stats.player_team_season_roster` is team-stint only.
 - Official stat columns are typed and nullable by default.
 - `player_name` is not a stable key.
@@ -114,9 +124,9 @@ Source of truth:
 
 ## Next phase gate
 
-`F4E-007` is the next recommended task. Phase 4E closure requires the later
-`F4E-009` final validation/database closure task. Phase 5 stays pending until
-Phase 4E is complete.
+`F4E-007` is the next recommended task. Final validation and database closure
+remain blocked on the later `F4E-009` task after `F4E-006`, `F4E-007`, and
+`F4E-008` are complete. Phase 5 stays pending until Phase 4E is complete.
 
 ## Update policy
 

@@ -30,6 +30,14 @@ Status: phase_4e_f4e_007_ready
   separate postseason stats tables, and final official stats validation.
 - Marked `F4E-006` as `changes_requested` because validator/design guidance
   still needs synthetic-code and Basketball Reference numeric-range updates.
+- Fixed the task-board dependency gap so `F4E-007` depends on `F4E-005`, not
+  unresolved `F4E-006` review closure.
+- Documented the exact `F4E-007` player-page row selection rule: use one
+  full-season row per player-season table, prefer `2TM`/`3TM`/`4TM` when
+  present, otherwise use the single real-team row.
+- Clarified that final validation and database closure stay blocked until
+  `F4E-009`, which now owns the closure dependency on `F4E-006`, `F4E-007`,
+  and `F4E-008`.
 
 ## Latest Validation
 
@@ -52,5 +60,6 @@ Status: phase_4e_f4e_007_ready
 
 ## Next Safe Action
 
-Approve and start `F4E-007` when ready. Keep Phase 5 pending until Phase 4E
-closes through `F4E-009`.
+Approve and start `F4E-007` when ready. Final validation and database closure
+remain blocked until `F4E-009`. Keep Phase 5 pending until Phase 4E closes
+through `F4E-009`.

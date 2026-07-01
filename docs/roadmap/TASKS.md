@@ -52,6 +52,8 @@
 ## Next
 
 - Next safe action: approve and start `F4E-007` when ready.
+- Final validation and database closure stay blocked until `F4E-009` after
+  `F4E-006`, `F4E-007`, and `F4E-008`.
 - Keep Phase 5 pending until Phase 4E closes through `F4E-009`.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, run the real stats

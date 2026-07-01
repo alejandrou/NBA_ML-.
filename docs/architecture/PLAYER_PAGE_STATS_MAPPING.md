@@ -23,6 +23,26 @@ loaders, models, migrations, or backfills.
 examples include `BOS`, `HOU`, `BRK`, `2TM`, `3TM`, and `4TM`. Synthetic codes
 must not create `core` team rows or team-stint stats rows.
 
+For each player-season and supported regular-season stat table, load exactly
+one full-season row into `stats.player_season_*`.
+
+- If a `2TM`, `3TM`, or `4TM` row exists, use that synthetic multi-team row.
+- If no synthetic multi-team row exists, use the single real-team row.
+- For traded seasons, ignore player-page real-team stint rows for
+  `stats.player_season_*`; those belong only to `stats.player_team_season_*`.
+- Never insert `TOT`, `2TM`, `3TM`, or `4TM` into `core.teams`,
+  `core.team_seasons`, `core.player_team_seasons`, or
+  `stats.player_team_season_*`.
+
+Examples:
+
+- James Harden 2020-21:
+  `2TM` -> `stats.player_season_*`
+  `HOU` and `BRK` -> team-stint stats only
+- Jaylen Brown 2023-24:
+  `BOS` -> `stats.player_season_*` because there is no synthetic multi-team
+  row.
+
 ## Postseason
 
 | Player-page postseason table ID | Player postseason table | Team postseason table |
@@ -53,3 +73,5 @@ Do not persist these player-page areas as official Phase 4E season stats:
 - Contracts
 - Similarity scores
 
+`TOT` is out of scope as a supported persisted player-page source row in Phase
+4E.

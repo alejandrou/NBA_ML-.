@@ -55,7 +55,8 @@ plus the final closure notes in `progress/review.md`. The requested
   assumptions.
 - `F4E-007`: Player-page regular-season aggregate stats backfill (`ready`).
 - `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
-- `F4E-009`: Official stats final validation and database closure (`pending`).
+- `F4E-009`: Official stats final validation and database closure (`pending`)
+  and dependent on `F4E-006`, `F4E-007`, and `F4E-008`.
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -65,9 +66,11 @@ creating core rows, loading normalized rows, or introducing backfill behavior.
 owning transaction commits, creating core rows, or running offline stats
 backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
 closed by explicit owner approval. `F4E-006` added read-only validation over
-the initial official `stats` tables, but review now requests updates for
-synthetic source-code handling and Basketball Reference numeric ranges before
-Phase 4E can close. `F4E-007` is the next safe implementation task.
+the initial official regular-season `stats` tables, but review now requests
+updates for synthetic source-code handling and Basketball Reference numeric
+ranges before Phase 4E can close. `F4E-007` is not blocked by those unresolved
+final-validator gaps and remains the next safe implementation task. `F4E-009`
+owns the final validation and database-closure dependency on `F4E-006`.
 
 ## Guardrails
 
@@ -82,8 +85,9 @@ Phase 4E can close. `F4E-007` is the next safe implementation task.
 
 ## Next Safe Action
 
-Start `F4E-007` only after normal approval/promotion. Keep Phase 5 pending
-until Phase 4E closes through `F4E-009`.
+Start `F4E-007` only after normal approval/promotion. Final validation and
+database closure remain blocked until `F4E-009`. Keep Phase 5 pending until
+Phase 4E closes through `F4E-009`.
 
 ## References
 

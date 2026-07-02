@@ -110,7 +110,7 @@ Every table has the same lineage columns:
 The unique constraint backing index is the grain lookup index. Do not add a
 duplicate non-unique FK index unless a later review finds a real query need.
 
-`F4E-007` should add `source_team_code` to `stats.player_season_*` tables as
+`F4E-007` adds `source_team_code` to `stats.player_season_*` tables as
 metadata only. It is not a foreign key and may contain either a real
 Basketball Reference team code for single-team seasons or a synthetic
 multi-team source marker such as `2TM`, `3TM`, or `4TM`.

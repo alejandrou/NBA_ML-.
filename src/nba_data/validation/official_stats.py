@@ -13,6 +13,7 @@ _NON_DATA_COLUMNS = {
     "id",
     "player_team_season_id",
     "player_season_id",
+    "source_team_code",
     "source_url",
     "cache_path",
     "parser_version",

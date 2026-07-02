@@ -1346,3 +1346,48 @@ Next review focus:
 - `F4E-008` should add separate postseason table families.
 - `F4E-009` should fix the official stats validator's synthetic-code and
   Basketball Reference numeric-range checks before Phase 4E closure.
+
+## Phase 4E F4E-007 Review Prep
+
+Status: needs_review
+
+`F4E-007` is ready for review. The cache-only player-page parser, selector,
+loader, migration, CLI path, and validation all passed after local PostgreSQL
+was brought up and Alembic head migration completed successfully.
+
+## Phase 4E F4E-007 Review Focus
+
+- `source_team_code` is present only on `stats.player_season_*` regular-season
+  tables and remains metadata, not a foreign key.
+- Player-page regular-season parsing supports `totals_stats`,
+  `per_game_stats`, `per_minute_stats`, `per_poss`, `advanced`, `shooting`,
+  `adj_shooting`, and `pbp_stats` from cached HTML only.
+- Row selection loads exactly one full-season row per player, season, and
+  supported table: prefer `2TM`/`3TM`/`4TM`, otherwise use the single real-team
+  row, and never treat `TOT` or synthetic codes as teams.
+- Player-page aggregate loading resolves by
+  `core.players.basketball_reference_player_id` and `core.player_seasons.id`,
+  is idempotent, and never creates fake teams or team-stint rows.
+- `nba-data backfill player-stats` is cache-only by default, requires an
+  explicit execution flag, and reports player pages processed, tables parsed,
+  rows selected, rows skipped, rows loaded or updated, and unresolved
+  players/seasons.
+
+## Phase 4E F4E-007 Checks
+
+- Focused Ruff check on the new player-page parser, normalizer, loader,
+  backfill, CLI, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 58 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 277 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `docker compose up -d postgres`: passed.
+- `uv run alembic upgrade head`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  278 passed and 6 Peewee deprecation warnings.

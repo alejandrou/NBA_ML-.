@@ -56,6 +56,7 @@ class _TeamStintGrainMixin(_PrimaryKeyMixin):
 
 class _PlayerSeasonGrainMixin(_PrimaryKeyMixin):
     player_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_team_code: Mapped[str | None] = mapped_column(String(10))
 
 
 class _LineageMixin:

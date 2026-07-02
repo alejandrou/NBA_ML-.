@@ -53,7 +53,7 @@ plus the final closure notes in `progress/review.md`. The requested
 - `F4E-006`: Official stats validation checks (`changes_requested`) because
   validator/design guidance still contains outdated `TOT` and numeric-range
   assumptions.
-- `F4E-007`: Player-page regular-season aggregate stats backfill (`ready`).
+- `F4E-007`: Player-page regular-season aggregate stats backfill (`needs_review`).
 - `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
 - `F4E-009`: Official stats final validation and database closure (`pending`)
   and dependent on `F4E-006`, `F4E-007`, and `F4E-008`.
@@ -68,9 +68,10 @@ backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
 closed by explicit owner approval. `F4E-006` added read-only validation over
 the initial official regular-season `stats` tables, but review now requests
 updates for synthetic source-code handling and Basketball Reference numeric
-ranges before Phase 4E can close. `F4E-007` is not blocked by those unresolved
-final-validator gaps and remains the next safe implementation task. `F4E-009`
-owns the final validation and database-closure dependency on `F4E-006`.
+ranges before Phase 4E can close. `F4E-007` now has the cache-only player-page
+parser, selector, loader, migration, CLI path, and validation completed, and
+is ready for review. `F4E-009` owns the final validation and database-closure
+dependency on `F4E-006`.
 
 ## Guardrails
 
@@ -85,9 +86,9 @@ owns the final validation and database-closure dependency on `F4E-006`.
 
 ## Next Safe Action
 
-Start `F4E-007` only after normal approval/promotion. Final validation and
-database closure remain blocked until `F4E-009`. Keep Phase 5 pending until
-Phase 4E closes through `F4E-009`.
+Review `F4E-007`, then proceed to `F4E-008`. Final validation and database
+closure remain blocked until `F4E-009`. Keep Phase 5 pending until Phase 4E
+closes through `F4E-009`.
 
 ## References
 

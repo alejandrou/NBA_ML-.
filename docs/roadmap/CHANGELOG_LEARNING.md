@@ -2963,3 +2963,79 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 
 - Which player-page cache/acquisition manifest should be approved before
   `F4E-007` needs real player-page HTML beyond fixtures?
+
+## Checkpoint 70 - Phase 4E F4E-007 Player-Page Regular-Season Aggregate Stats Backfill
+
+### What Changed
+
+Implemented the cache-only `F4E-007` player-page path. Added
+`source_team_code` to all regular-season `stats.player_season_*` tables
+through Alembic and SQLAlchemy model updates, added the pure player-page
+regular-season parser and normalizer, added the idempotent aggregate loader,
+wired the guarded `nba-data backfill player-stats` CLI command, and added new
+fixture-based tests for Harden-style multi-team selection, Brown-style single-
+team selection, loader idempotency, and cache-only backfill behavior.
+
+Updated the active phase/task docs and review notes, then moved `F4E-007` to
+`needs_review` after PostgreSQL-backed Alembic validation passed.
+
+### Why
+
+Phase 4E needs official full-season player stats to come from Basketball
+Reference player pages rather than generated sums of team-stint rows. The new
+path preserves that separation while keeping all processing offline and
+idempotent.
+
+### Concepts Learned
+
+- A dedicated player-page selector is required because the supported full-
+  season source row is a domain rule, not a generic parser rule.
+- `source_team_code` belongs on `stats.player_season_*` as lineage metadata,
+  and it should be stored directly in the upsert payload rather than modeled as
+  a `core` identity relationship.
+- The existing stats repository and column-mapping contracts can be reused for
+  player-page aggregate loading with a narrow loader adapter instead of a broad
+  repository rewrite.
+- Cache discovery for player pages can safely infer
+  `basketball_reference_player_id` and source URL from `HtmlCache` filenames
+  without introducing live acquisition.
+- Alembic revision identifiers must stay within the effective
+  `alembic_version.version_num` length used by the live database.
+
+### Files to Read
+
+- `src/nba_data/scraping/parsers/player_page.py`
+- `src/nba_data/scraping/normalizers/player_page.py`
+- `src/nba_data/scraping/loaders/player_page_stats.py`
+- `src/nba_data/scraping/offline_player_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `alembic/versions/0004_player_season_source_team_code.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the new player-page modules, CLI, and tests: passed.
+- Focused pytest on the new player-page and stats model/repository tests:
+  passed, 58 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 277 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `uv run alembic upgrade head`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  278 passed and 6 Peewee deprecation warnings.
+- `docker compose up -d postgres`: passed.
+
+### Outcome
+
+- `F4E-007` is `needs_review`.
+- The player-page parser, selector, loader, migration, CLI, and tests are in
+  place offline.
+- No live scraping, Basketball Reference contact, cache refresh, acquisition,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
+  or PR occurred.

@@ -19,6 +19,9 @@ loaders, models, migrations, or backfills.
 | `adj_shooting` | `stats.player_season_adj_shooting` | Team-season pages populate `stats.player_team_season_adj_shooting`. |
 | `pbp_stats` | `stats.player_season_pbp` | Team-season pages populate `stats.player_team_season_pbp`. |
 
+`F4E-007` implements the regular-season mapping below through a cache-only
+player-page parser, selector, loader, and guarded backfill command.
+
 `source_team_code` on `stats.player_season_*` is metadata only. Valid source
 examples include `BOS`, `HOU`, `BRK`, `2TM`, `3TM`, and `4TM`. Synthetic codes
 must not create `core` team rows or team-stint stats rows.

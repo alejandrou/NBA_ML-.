@@ -1575,7 +1575,7 @@
       "id": "F4E-007",
       "title": "Add player-page regular-season aggregate stats backfill",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "ready",
+      "status": "needs_review",
       "depends_on": [
         "F4E-005"
       ],

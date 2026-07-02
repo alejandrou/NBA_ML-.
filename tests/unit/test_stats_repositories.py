@@ -85,7 +85,7 @@ TEAM_STINT_WRAPPERS = (
 )
 
 PLAYER_SEASON_WRAPPERS = (
-    ("upsert_player_season_totals", PlayerSeasonTotals, {"g": 82}),
+    ("upsert_player_season_totals", PlayerSeasonTotals, {"g": 82, "source_team_code": "2TM"}),
     ("upsert_player_season_per_game", PlayerSeasonPerGame, {"pts_per_game": Decimal("25.1")}),
     ("upsert_player_season_per_minute", PlayerSeasonPerMinute, {"pts_per_36": Decimal("27.7")}),
     ("upsert_player_season_per_poss", PlayerSeasonPerPoss, {"pts_per_poss": Decimal("36.4")}),

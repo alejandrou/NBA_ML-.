@@ -110,6 +110,7 @@ def test_player_season_tables_use_player_season_grain() -> None:
         table = Base.metadata.tables[f"stats.{table_name}"]
 
         assert table.c.player_season_id.nullable is False
+        assert "source_team_code" in table.c
         assert "player_team_season_id" not in table.c
         assert f"uq_stats_{table_name}_player_season_id" in _constraint_names(
             table, UniqueConstraint
@@ -125,6 +126,7 @@ def test_roster_has_only_team_stint_grain() -> None:
 
     assert "player_team_season_id" in roster.c
     assert "player_season_id" not in roster.c
+    assert "source_team_code" not in roster.c
 
 
 def test_lineage_columns_are_present_and_non_nullable() -> None:
@@ -148,6 +150,7 @@ def test_key_column_types_match_stats_contract() -> None:
     roster = Base.metadata.tables["stats.player_team_season_roster"]
     totals = Base.metadata.tables["stats.player_team_season_totals"]
     advanced = Base.metadata.tables["stats.player_team_season_advanced"]
+    player_totals = Base.metadata.tables["stats.player_season_totals"]
 
     assert isinstance(roster.c.weight.type, Integer)
     assert isinstance(roster.c.birth_date.type, Date)
@@ -162,6 +165,8 @@ def test_key_column_types_match_stats_contract() -> None:
     assert isinstance(advanced.c.per.type, Numeric)
     assert advanced.c.per.type.precision == 10
     assert advanced.c.per.type.scale == 4
+    assert isinstance(player_totals.c.source_team_code.type, String)
+    assert player_totals.c.source_team_code.type.length == 10
 
     for table in _stats_tables():
         assert isinstance(table.c.source_url.type, Text)

@@ -1620,7 +1620,7 @@
       "id": "F4E-008",
       "title": "Add postseason stats schema and player-page backfill",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4E-007"
       ],

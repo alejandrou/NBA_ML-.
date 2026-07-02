@@ -20,28 +20,32 @@ from nba_data.db.base import Base
 
 
 def _team_stint_table_args(table_name: str) -> tuple[object, object, dict[str, str]]:
+    constraint_suffix = (
+        "pts_id" if table_name.startswith("player_team_postseason_") else "player_team_season_id"
+    )
     return (
         ForeignKeyConstraint(
             ["player_team_season_id"],
             ["core.player_team_seasons.id"],
-            name=f"fk_stats_{table_name}_player_team_season_id",
+            name=f"fk_stats_{table_name}_{constraint_suffix}",
         ),
         UniqueConstraint(
             "player_team_season_id",
-            name=f"uq_stats_{table_name}_player_team_season_id",
+            name=f"uq_stats_{table_name}_{constraint_suffix}",
         ),
         {"schema": "stats"},
     )
 
 
 def _player_season_table_args(table_name: str) -> tuple[object, object, dict[str, str]]:
+    constraint_suffix = "ps_id" if table_name.startswith("player_postseason_") else "player_season_id"
     return (
         ForeignKeyConstraint(
             ["player_season_id"],
             ["core.player_seasons.id"],
-            name=f"fk_stats_{table_name}_player_season_id",
+            name=f"fk_stats_{table_name}_{constraint_suffix}",
         ),
-        UniqueConstraint("player_season_id", name=f"uq_stats_{table_name}_player_season_id"),
+        UniqueConstraint("player_season_id", name=f"uq_stats_{table_name}_{constraint_suffix}"),
         {"schema": "stats"},
     )
 
@@ -56,6 +60,9 @@ class _TeamStintGrainMixin(_PrimaryKeyMixin):
 
 class _PlayerSeasonGrainMixin(_PrimaryKeyMixin):
     player_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class _PlayerSeasonMetadataGrainMixin(_PlayerSeasonGrainMixin):
     source_team_code: Mapped[str | None] = mapped_column(String(10))
 
 
@@ -432,7 +439,7 @@ class PlayerTeamSeasonPbp(
 
 
 class PlayerSeasonTotals(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _TotalsColumnsMixin,
     _LineageMixin,
     Base,
@@ -442,7 +449,7 @@ class PlayerSeasonTotals(
 
 
 class PlayerSeasonPerGame(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _PerGameColumnsMixin,
     _LineageMixin,
     Base,
@@ -452,7 +459,7 @@ class PlayerSeasonPerGame(
 
 
 class PlayerSeasonPerMinute(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _PerMinuteColumnsMixin,
     _LineageMixin,
     Base,
@@ -462,7 +469,7 @@ class PlayerSeasonPerMinute(
 
 
 class PlayerSeasonPerPoss(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _PerPossColumnsMixin,
     _LineageMixin,
     Base,
@@ -472,7 +479,7 @@ class PlayerSeasonPerPoss(
 
 
 class PlayerSeasonAdvanced(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _AdvancedColumnsMixin,
     _LineageMixin,
     Base,
@@ -482,7 +489,7 @@ class PlayerSeasonAdvanced(
 
 
 class PlayerSeasonShooting(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _ShootingColumnsMixin,
     _LineageMixin,
     Base,
@@ -492,7 +499,7 @@ class PlayerSeasonShooting(
 
 
 class PlayerSeasonAdjShooting(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _AdjustedShootingColumnsMixin,
     _LineageMixin,
     Base,
@@ -502,13 +509,173 @@ class PlayerSeasonAdjShooting(
 
 
 class PlayerSeasonPbp(
-    _PlayerSeasonGrainMixin,
+    _PlayerSeasonMetadataGrainMixin,
     _PbpColumnsMixin,
     _LineageMixin,
     Base,
 ):
     __tablename__ = "player_season_pbp"
     __table_args__ = _player_season_table_args("player_season_pbp")
+
+
+class PlayerPostseasonTotals(
+    _PlayerSeasonMetadataGrainMixin,
+    _TotalsColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_totals"
+    __table_args__ = _player_season_table_args("player_postseason_totals")
+
+
+class PlayerPostseasonPerGame(
+    _PlayerSeasonMetadataGrainMixin,
+    _PerGameColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_per_game"
+    __table_args__ = _player_season_table_args("player_postseason_per_game")
+
+
+class PlayerPostseasonPerMinute(
+    _PlayerSeasonMetadataGrainMixin,
+    _PerMinuteColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_per_minute"
+    __table_args__ = _player_season_table_args("player_postseason_per_minute")
+
+
+class PlayerPostseasonPerPoss(
+    _PlayerSeasonMetadataGrainMixin,
+    _PerPossColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_per_poss"
+    __table_args__ = _player_season_table_args("player_postseason_per_poss")
+
+
+class PlayerPostseasonAdvanced(
+    _PlayerSeasonMetadataGrainMixin,
+    _AdvancedColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_advanced"
+    __table_args__ = _player_season_table_args("player_postseason_advanced")
+
+
+class PlayerPostseasonShooting(
+    _PlayerSeasonMetadataGrainMixin,
+    _ShootingColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_shooting"
+    __table_args__ = _player_season_table_args("player_postseason_shooting")
+
+
+class PlayerPostseasonAdjShooting(
+    _PlayerSeasonMetadataGrainMixin,
+    _AdjustedShootingColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_adj_shooting"
+    __table_args__ = _player_season_table_args("player_postseason_adj_shooting")
+
+
+class PlayerPostseasonPbp(
+    _PlayerSeasonMetadataGrainMixin,
+    _PbpColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_postseason_pbp"
+    __table_args__ = _player_season_table_args("player_postseason_pbp")
+
+
+class PlayerTeamPostseasonTotals(
+    _TeamStintGrainMixin,
+    _TotalsColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_totals"
+    __table_args__ = _team_stint_table_args("player_team_postseason_totals")
+
+
+class PlayerTeamPostseasonPerGame(
+    _TeamStintGrainMixin,
+    _PerGameColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_per_game"
+    __table_args__ = _team_stint_table_args("player_team_postseason_per_game")
+
+
+class PlayerTeamPostseasonPerMinute(
+    _TeamStintGrainMixin,
+    _PerMinuteColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_per_minute"
+    __table_args__ = _team_stint_table_args("player_team_postseason_per_minute")
+
+
+class PlayerTeamPostseasonPerPoss(
+    _TeamStintGrainMixin,
+    _PerPossColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_per_poss"
+    __table_args__ = _team_stint_table_args("player_team_postseason_per_poss")
+
+
+class PlayerTeamPostseasonAdvanced(
+    _TeamStintGrainMixin,
+    _AdvancedColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_advanced"
+    __table_args__ = _team_stint_table_args("player_team_postseason_advanced")
+
+
+class PlayerTeamPostseasonShooting(
+    _TeamStintGrainMixin,
+    _ShootingColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_shooting"
+    __table_args__ = _team_stint_table_args("player_team_postseason_shooting")
+
+
+class PlayerTeamPostseasonAdjShooting(
+    _TeamStintGrainMixin,
+    _AdjustedShootingColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_adj_shooting"
+    __table_args__ = _team_stint_table_args("player_team_postseason_adj_shooting")
+
+
+class PlayerTeamPostseasonPbp(
+    _TeamStintGrainMixin,
+    _PbpColumnsMixin,
+    _LineageMixin,
+    Base,
+):
+    __tablename__ = "player_team_postseason_pbp"
+    __table_args__ = _team_stint_table_args("player_team_postseason_pbp")
 
 
 __all__ = [
@@ -520,6 +687,22 @@ __all__ = [
     "PlayerSeasonPerPoss",
     "PlayerSeasonShooting",
     "PlayerSeasonTotals",
+    "PlayerPostseasonAdjShooting",
+    "PlayerPostseasonAdvanced",
+    "PlayerPostseasonPbp",
+    "PlayerPostseasonPerGame",
+    "PlayerPostseasonPerMinute",
+    "PlayerPostseasonPerPoss",
+    "PlayerPostseasonShooting",
+    "PlayerPostseasonTotals",
+    "PlayerTeamPostseasonAdjShooting",
+    "PlayerTeamPostseasonAdvanced",
+    "PlayerTeamPostseasonPbp",
+    "PlayerTeamPostseasonPerGame",
+    "PlayerTeamPostseasonPerMinute",
+    "PlayerTeamPostseasonPerPoss",
+    "PlayerTeamPostseasonShooting",
+    "PlayerTeamPostseasonTotals",
     "PlayerTeamSeasonAdjShooting",
     "PlayerTeamSeasonAdvanced",
     "PlayerTeamSeasonPbp",

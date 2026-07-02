@@ -13,6 +13,14 @@ from sqlalchemy.orm import Session
 
 from nba_data.db.models import (
     Player,
+    PlayerPostseasonAdjShooting,
+    PlayerPostseasonAdvanced,
+    PlayerPostseasonPbp,
+    PlayerPostseasonPerGame,
+    PlayerPostseasonPerMinute,
+    PlayerPostseasonPerPoss,
+    PlayerPostseasonShooting,
+    PlayerPostseasonTotals,
     PlayerSeason,
     PlayerSeasonAdjShooting,
     PlayerSeasonAdvanced,
@@ -22,6 +30,14 @@ from nba_data.db.models import (
     PlayerSeasonPerPoss,
     PlayerSeasonShooting,
     PlayerSeasonTotals,
+    PlayerTeamPostseasonAdjShooting,
+    PlayerTeamPostseasonAdvanced,
+    PlayerTeamPostseasonPbp,
+    PlayerTeamPostseasonPerGame,
+    PlayerTeamPostseasonPerMinute,
+    PlayerTeamPostseasonPerPoss,
+    PlayerTeamPostseasonShooting,
+    PlayerTeamPostseasonTotals,
     PlayerTeamSeason,
     PlayerTeamSeasonAdjShooting,
     PlayerTeamSeasonAdvanced,
@@ -551,6 +567,128 @@ PLAYER_SEASON_ROUTES = MappingProxyType(
     }
 )
 
+POSTSEASON_PLAYER_SEASON_ROUTES = MappingProxyType(
+    {
+        "totals": _StatsRoute(
+            method_name="upsert_player_postseason_totals",
+            model=PlayerPostseasonTotals,
+            destination_table="stats.player_postseason_totals",
+            columns=TOTALS_COLUMNS,
+            aggregate=True,
+        ),
+        "per_game": _StatsRoute(
+            method_name="upsert_player_postseason_per_game",
+            model=PlayerPostseasonPerGame,
+            destination_table="stats.player_postseason_per_game",
+            columns=PER_GAME_COLUMNS,
+            aggregate=True,
+        ),
+        "per_minute": _StatsRoute(
+            method_name="upsert_player_postseason_per_minute",
+            model=PlayerPostseasonPerMinute,
+            destination_table="stats.player_postseason_per_minute",
+            columns=PER_MINUTE_COLUMNS,
+            aggregate=True,
+        ),
+        "per_poss": _StatsRoute(
+            method_name="upsert_player_postseason_per_poss",
+            model=PlayerPostseasonPerPoss,
+            destination_table="stats.player_postseason_per_poss",
+            columns=PER_POSS_COLUMNS,
+            aggregate=True,
+        ),
+        "advanced": _StatsRoute(
+            method_name="upsert_player_postseason_advanced",
+            model=PlayerPostseasonAdvanced,
+            destination_table="stats.player_postseason_advanced",
+            columns=ADVANCED_COLUMNS,
+            aggregate=True,
+        ),
+        "shooting": _StatsRoute(
+            method_name="upsert_player_postseason_shooting",
+            model=PlayerPostseasonShooting,
+            destination_table="stats.player_postseason_shooting",
+            columns=SHOOTING_COLUMNS,
+            aggregate=True,
+        ),
+        "adj_shooting": _StatsRoute(
+            method_name="upsert_player_postseason_adj_shooting",
+            model=PlayerPostseasonAdjShooting,
+            destination_table="stats.player_postseason_adj_shooting",
+            columns=ADJ_SHOOTING_COLUMNS,
+            aggregate=True,
+        ),
+        "pbp": _StatsRoute(
+            method_name="upsert_player_postseason_pbp",
+            model=PlayerPostseasonPbp,
+            destination_table="stats.player_postseason_pbp",
+            columns=PBP_COLUMNS,
+            aggregate=True,
+        ),
+    }
+)
+
+POSTSEASON_TEAM_STINT_ROUTES = MappingProxyType(
+    {
+        "totals": _StatsRoute(
+            method_name="upsert_player_team_postseason_totals",
+            model=PlayerTeamPostseasonTotals,
+            destination_table="stats.player_team_postseason_totals",
+            columns=TOTALS_COLUMNS,
+            aggregate=False,
+        ),
+        "per_game": _StatsRoute(
+            method_name="upsert_player_team_postseason_per_game",
+            model=PlayerTeamPostseasonPerGame,
+            destination_table="stats.player_team_postseason_per_game",
+            columns=PER_GAME_COLUMNS,
+            aggregate=False,
+        ),
+        "per_minute": _StatsRoute(
+            method_name="upsert_player_team_postseason_per_minute",
+            model=PlayerTeamPostseasonPerMinute,
+            destination_table="stats.player_team_postseason_per_minute",
+            columns=PER_MINUTE_COLUMNS,
+            aggregate=False,
+        ),
+        "per_poss": _StatsRoute(
+            method_name="upsert_player_team_postseason_per_poss",
+            model=PlayerTeamPostseasonPerPoss,
+            destination_table="stats.player_team_postseason_per_poss",
+            columns=PER_POSS_COLUMNS,
+            aggregate=False,
+        ),
+        "advanced": _StatsRoute(
+            method_name="upsert_player_team_postseason_advanced",
+            model=PlayerTeamPostseasonAdvanced,
+            destination_table="stats.player_team_postseason_advanced",
+            columns=ADVANCED_COLUMNS,
+            aggregate=False,
+        ),
+        "shooting": _StatsRoute(
+            method_name="upsert_player_team_postseason_shooting",
+            model=PlayerTeamPostseasonShooting,
+            destination_table="stats.player_team_postseason_shooting",
+            columns=SHOOTING_COLUMNS,
+            aggregate=False,
+        ),
+        "adj_shooting": _StatsRoute(
+            method_name="upsert_player_team_postseason_adj_shooting",
+            model=PlayerTeamPostseasonAdjShooting,
+            destination_table="stats.player_team_postseason_adj_shooting",
+            columns=ADJ_SHOOTING_COLUMNS,
+            aggregate=False,
+        ),
+        "pbp": _StatsRoute(
+            method_name="upsert_player_team_postseason_pbp",
+            model=PlayerTeamPostseasonPbp,
+            destination_table="stats.player_team_postseason_pbp",
+            columns=PBP_COLUMNS,
+            aggregate=False,
+        ),
+    }
+)
+
 
 def load_team_season_stats(
     session: Session,
@@ -986,6 +1124,9 @@ def _optional_string(value: object) -> str | None:
 
 
 __all__ = [
+    "PLAYER_SEASON_ROUTES",
+    "POSTSEASON_PLAYER_SEASON_ROUTES",
+    "POSTSEASON_TEAM_STINT_ROUTES",
     "TeamSeasonStatsLoadEntry",
     "TeamSeasonStatsLoadReport",
     "load_team_season_stats",

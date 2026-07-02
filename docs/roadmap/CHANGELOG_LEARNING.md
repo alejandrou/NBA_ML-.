@@ -3039,3 +3039,41 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 - No live scraping, Basketball Reference contact, cache refresh, acquisition,
   API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
   or PR occurred.
+
+## 2026-07-02 - F4E-008 postseason stats schema and player-page backfill
+
+### Files Read
+
+- `src/nba_data/db/models/stats.py`
+- `src/nba_data/db/repositories/stats.py`
+- `src/nba_data/scraping/parsers/player_page.py`
+- `src/nba_data/scraping/normalizers/player_page.py`
+- `src/nba_data/scraping/loaders/player_page_stats.py`
+- `src/nba_data/scraping/offline_player_postseason_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `alembic/versions/0005_postseason_stats_tables.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused `uv run ruff check` on the postseason models, repositories, parser,
+  normalizer, loader, backfill, CLI, migration, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_postseason_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 78 passed.
+
+### Outcome
+
+- `F4E-008` is `needs_review`.
+- Separate aggregate postseason and team-stint postseason stats tables now
+  exist through SQLAlchemy models and Alembic.
+- Player-page postseason parsing, selection, loading, and guarded cache-only
+  backfill are in place offline.

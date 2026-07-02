@@ -1391,3 +1391,41 @@ was brought up and Alembic head migration completed successfully.
 - `uv run alembic upgrade head`: passed.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
   278 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-008 Review Prep
+
+Status: needs_review
+
+`F4E-008` is ready for review. The implementation adds 16 separate postseason
+stats tables, extends player-page parsing/loading for playoff rows only, keeps
+regular season and postseason isolated, and adds the guarded cache-only
+`nba-data backfill player-postseason-stats` path.
+
+## Phase 4E F4E-008 Review Focus
+
+- `stats.player_postseason_*` FKs to `core.player_seasons.id` and include
+  `source_team_code` metadata only.
+- `stats.player_team_postseason_*` FKs to `core.player_team_seasons.id` and
+  never store `TOT`, `2TM`, `3TM`, or `4TM`.
+- Player-page postseason parsing supports `totals_stats_post`,
+  `per_game_stats_post`, `per_minute_stats_post`, `per_poss_post`,
+  `advanced_post`, `shooting_post`, `adj_shooting_post`, and
+  `pbp_stats_post`.
+- Postseason normalization loads exactly one aggregate row per player-season
+  table and loads each real team row into the matching team-stint postseason
+  table.
+- Harden-style `BRK` and Brown-style `BOS` playoff cases are fixture-tested.
+- The new backfill command is cache-only, requires an explicit write guard,
+  and reports aggregate loads, team-stint loads, skipped rows, unresolved
+  grains, and unsupported `TOT` rows.
+
+## Phase 4E F4E-008 Checks
+
+- Focused `uv run ruff check` on the postseason models, repositories, parser,
+  normalizer, loader, backfill, CLI, migration, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_postseason_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 78 passed.

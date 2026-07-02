@@ -30,6 +30,7 @@ class PlayerPageNormalizationResult:
     tables_parsed: int
     rows_selected: int
     rows_skipped: int
+    unsupported_rows: int = 0
 
 
 def normalize_player_page_regular_season(
@@ -40,13 +41,217 @@ def normalize_player_page_regular_season(
     start_year: int | None = None,
     end_year: int | None = None,
 ) -> PlayerPageNormalizationResult:
-    """Normalize selected full-season player-page rows without loading or generating stats."""
+    """Normalize selected full-season regular-season player-page rows."""
+
+    return _normalize_player_page_aggregate_only(
+        parsed,
+        basketball_reference_player_id=basketball_reference_player_id,
+        league=league,
+        start_year=start_year,
+        end_year=end_year,
+        stat_scope="player_season_aggregate",
+    )
+
+
+def normalize_player_page_postseason(
+    parsed: Mapping[str, list[dict[str, str]]],
+    *,
+    basketball_reference_player_id: str,
+    league: str = "NBA",
+    start_year: int | None = None,
+    end_year: int | None = None,
+) -> PlayerPageNormalizationResult:
+    """Normalize supported postseason aggregate and team-stint player-page rows."""
 
     player_id = _required_player_id(basketball_reference_player_id)
     selected_rows: list[dict[str, Any]] = []
     selection_entries: list[PlayerPageSelectionEntry] = []
     tables_parsed = 0
     rows_skipped = 0
+    unsupported_rows = 0
+
+    for source_table, parsed_rows in parsed.items():
+        if parsed_rows:
+            tables_parsed += 1
+
+        grouped_rows: dict[int, list[dict[str, str]]] = defaultdict(list)
+        for parsed_row in parsed_rows:
+            season_year = _season_end_year(parsed_row)
+            team_code = _team_code(parsed_row)
+            if season_year is None:
+                rows_skipped += 1
+                unsupported_rows += 1
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=None,
+                        source_team_code=None,
+                        status="skipped",
+                        reason="invalid_season_row",
+                        row_count=1,
+                    )
+                )
+                continue
+            if team_code is None:
+                rows_skipped += 1
+                unsupported_rows += 1
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=None,
+                        status="skipped",
+                        reason="missing_team_code",
+                        row_count=1,
+                    )
+                )
+                continue
+            grouped_rows[season_year].append(parsed_row)
+
+        for season_year in sorted(grouped_rows):
+            season_rows = grouped_rows[season_year]
+            if start_year is not None and season_year < start_year:
+                skipped_count = len(season_rows)
+                rows_skipped += skipped_count
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=None,
+                        status="skipped",
+                        reason="before_start_year",
+                        row_count=skipped_count,
+                    )
+                )
+                continue
+            if end_year is not None and season_year > end_year:
+                skipped_count = len(season_rows)
+                rows_skipped += skipped_count
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=None,
+                        status="skipped",
+                        reason="after_end_year",
+                        row_count=skipped_count,
+                    )
+                )
+                continue
+
+            synthetic_rows = [row for row in season_rows if _team_code(row) in MULTI_TEAM_CODES]
+            tot_rows = [row for row in season_rows if _team_code(row) in IGNORED_TEAM_CODES]
+            real_team_rows = [
+                row
+                for row in season_rows
+                if _team_code(row) not in MULTI_TEAM_CODES | IGNORED_TEAM_CODES
+            ]
+
+            if tot_rows:
+                rows_skipped += len(tot_rows)
+                unsupported_rows += len(tot_rows)
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code="TOT",
+                        status="skipped",
+                        reason="ignored_tot_rows",
+                        row_count=len(tot_rows),
+                    )
+                )
+
+            aggregate_row, reason = _select_full_season_row(season_rows)
+            if aggregate_row is None:
+                rows_skipped += len(real_team_rows)
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=None,
+                        status="skipped",
+                        reason=reason,
+                        row_count=len(season_rows),
+                    )
+                )
+            else:
+                aggregate_team_code = _team_code(aggregate_row)
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=aggregate_team_code,
+                        status="selected",
+                        reason=reason,
+                        row_count=len(season_rows),
+                    )
+                )
+                selected_rows.append(
+                    _build_row(
+                        row=aggregate_row,
+                        league=league,
+                        season_year=season_year,
+                        source_table=source_table,
+                        stat_scope="player_postseason_aggregate",
+                        player_id=player_id,
+                        source_team_code=aggregate_team_code,
+                        team_abbreviation=None,
+                    )
+                )
+
+            for real_team_row in real_team_rows:
+                team_code = _team_code(real_team_row)
+                selection_entries.append(
+                    PlayerPageSelectionEntry(
+                        source_table=source_table,
+                        season_year=season_year,
+                        source_team_code=team_code,
+                        status="selected",
+                        reason="selected_real_team_postseason_row",
+                        row_count=1,
+                    )
+                )
+                selected_rows.append(
+                    _build_row(
+                        row=real_team_row,
+                        league=league,
+                        season_year=season_year,
+                        source_table=source_table,
+                        stat_scope="player_team_postseason",
+                        player_id=player_id,
+                        source_team_code=None,
+                        team_abbreviation=team_code,
+                    )
+                )
+
+            if synthetic_rows and aggregate_row is not None and _team_code(aggregate_row) in MULTI_TEAM_CODES:
+                rows_skipped += max(len(synthetic_rows) - 1, 0)
+
+    return PlayerPageNormalizationResult(
+        selected_rows=tuple(selected_rows),
+        selection_entries=tuple(selection_entries),
+        tables_parsed=tables_parsed,
+        rows_selected=len(selected_rows),
+        rows_skipped=rows_skipped,
+        unsupported_rows=unsupported_rows,
+    )
+
+
+def _normalize_player_page_aggregate_only(
+    parsed: Mapping[str, list[dict[str, str]]],
+    *,
+    basketball_reference_player_id: str,
+    league: str,
+    start_year: int | None,
+    end_year: int | None,
+    stat_scope: str,
+) -> PlayerPageNormalizationResult:
+    player_id = _required_player_id(basketball_reference_player_id)
+    selected_rows: list[dict[str, Any]] = []
+    selection_entries: list[PlayerPageSelectionEntry] = []
+    tables_parsed = 0
+    rows_skipped = 0
+    unsupported_rows = 0
 
     for source_table, parsed_rows in parsed.items():
         if parsed_rows:
@@ -63,6 +268,7 @@ def normalize_player_page_regular_season(
             grouped_rows[season_year].append(parsed_row)
 
         rows_skipped += invalid_rows
+        unsupported_rows += invalid_rows
         if invalid_rows:
             selection_entries.append(
                 PlayerPageSelectionEntry(
@@ -134,18 +340,16 @@ def normalize_player_page_regular_season(
                 )
             )
             selected_rows.append(
-                {
-                    "league": league,
-                    "season_year": season_year,
-                    "source_table": source_table,
-                    "stat_scope": "player_season_aggregate",
-                    "player_name": _player_name(selected_row),
-                    "basketball_reference_player_id": player_id,
-                    "stable_player_key": player_id,
-                    "identifier_status": "present",
-                    "source_team_code": source_team_code,
-                    "values": _normalized_values(selected_row),
-                }
+                _build_row(
+                    row=selected_row,
+                    league=league,
+                    season_year=season_year,
+                    source_table=source_table,
+                    stat_scope=stat_scope,
+                    player_id=player_id,
+                    source_team_code=source_team_code,
+                    team_abbreviation=None,
+                )
             )
 
     return PlayerPageNormalizationResult(
@@ -154,6 +358,7 @@ def normalize_player_page_regular_season(
         tables_parsed=tables_parsed,
         rows_selected=len(selected_rows),
         rows_skipped=rows_skipped,
+        unsupported_rows=unsupported_rows,
     )
 
 
@@ -178,6 +383,32 @@ def _select_full_season_row(
     if not real_team_rows:
         return None, "no_supported_team_row"
     return None, "ambiguous_multiple_real_team_rows"
+
+
+def _build_row(
+    *,
+    row: Mapping[str, str],
+    league: str,
+    season_year: int,
+    source_table: str,
+    stat_scope: str,
+    player_id: str,
+    source_team_code: str | None,
+    team_abbreviation: str | None,
+) -> dict[str, Any]:
+    return {
+        "league": league,
+        "season_year": season_year,
+        "source_table": source_table,
+        "stat_scope": stat_scope,
+        "player_name": _player_name(row),
+        "basketball_reference_player_id": player_id,
+        "stable_player_key": player_id,
+        "identifier_status": "present",
+        "source_team_code": source_team_code,
+        "team_abbreviation": team_abbreviation,
+        "values": _normalized_values(row),
+    }
 
 
 def _season_end_year(row: Mapping[str, str]) -> int | None:
@@ -240,5 +471,6 @@ __all__ = [
     "MULTI_TEAM_CODES",
     "PlayerPageNormalizationResult",
     "PlayerPageSelectionEntry",
+    "normalize_player_page_postseason",
     "normalize_player_page_regular_season",
 ]

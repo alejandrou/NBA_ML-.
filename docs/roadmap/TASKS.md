@@ -46,12 +46,12 @@
 - Current phase status: `in_progress`.
 - `F4E-006`: Official stats validation checks (`changes_requested`).
 - `F4E-007`: Player-page regular-season aggregate stats backfill (`needs_review`).
-- `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
+- `F4E-008`: Postseason stats schema and player-page backfill (`needs_review`).
 - `F4E-009`: Official stats final validation and database closure (`pending`).
 
 ## Next
 
-- Next safe action: review `F4E-007` and, if accepted, start `F4E-008`.
+- Next safe action: review `F4E-007` and `F4E-008`, then start `F4E-009`.
 - Final validation and database closure stay blocked until `F4E-009` after
   `F4E-006`, `F4E-007`, and `F4E-008`.
 - Keep Phase 5 pending until Phase 4E closes through `F4E-009`.

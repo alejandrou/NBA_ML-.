@@ -59,8 +59,20 @@ Examples:
 | `adj_shooting_post` | `stats.player_postseason_adj_shooting` | `stats.player_team_postseason_adj_shooting` |
 | `pbp_stats_post` | `stats.player_postseason_pbp` | `stats.player_team_postseason_pbp` |
 
-Postseason tables are future separate `stats` families and must not be mixed
-into regular-season tables.
+`F4E-008` implements the postseason mapping below through a cache-only
+player-page parser, selector, loader, and guarded backfill command.
+
+For each player-season and supported postseason stat table, load exactly one
+aggregate row into `stats.player_postseason_*`.
+
+- If a `2TM`, `3TM`, or `4TM` row exists, use that synthetic multi-team row
+  for `stats.player_postseason_*`.
+- If no synthetic multi-team row exists, use the single real-team row for
+  `stats.player_postseason_*`.
+- Load each real team row into `stats.player_team_postseason_*`.
+- Never insert `TOT`, `2TM`, `3TM`, or `4TM` into `core.teams`,
+  `core.team_seasons`, `core.player_team_seasons`, or
+  `stats.player_team_postseason_*`.
 
 ## Out Of Scope
 

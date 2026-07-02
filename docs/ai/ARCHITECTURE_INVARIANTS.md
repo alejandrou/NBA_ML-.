@@ -17,8 +17,11 @@ These rules are stable unless the owner explicitly approves a change.
   `core.team_seasons`.
 - Do not insert synthetic team codes into `core.player_team_seasons`.
 - Do not load synthetic team codes into `stats.player_team_season_*`.
+- Do not load synthetic team codes into `stats.player_team_postseason_*`.
 - `source_team_code` on `stats.player_season_*` is metadata only and must not
   be modeled as a foreign key.
+- `source_team_code` on `stats.player_postseason_*` is metadata only and must
+  not be modeled as a foreign key.
 - Do not store generated or derived stats in `stats`.
 - Keep regular-season and postseason stats in separate stat table families.
 - Do not use `player_name` as a stable primary key.

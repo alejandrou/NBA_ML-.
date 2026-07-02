@@ -54,7 +54,7 @@ plus the final closure notes in `progress/review.md`. The requested
   validator/design guidance still contains outdated `TOT` and numeric-range
   assumptions.
 - `F4E-007`: Player-page regular-season aggregate stats backfill (`needs_review`).
-- `F4E-008`: Postseason stats schema and player-page backfill (`pending`).
+- `F4E-008`: Postseason stats schema and player-page backfill (`needs_review`).
 - `F4E-009`: Official stats final validation and database closure (`pending`)
   and dependent on `F4E-006`, `F4E-007`, and `F4E-008`.
 
@@ -86,9 +86,9 @@ dependency on `F4E-006`.
 
 ## Next Safe Action
 
-Review `F4E-007`, then proceed to `F4E-008`. Final validation and database
-closure remain blocked until `F4E-009`. Keep Phase 5 pending until Phase 4E
-closes through `F4E-009`.
+Review `F4E-007` and `F4E-008`, then proceed to `F4E-009`. Final validation
+and database closure remain blocked until `F4E-009`. Keep Phase 5 pending
+until Phase 4E closes through `F4E-009`.
 
 ## References
 

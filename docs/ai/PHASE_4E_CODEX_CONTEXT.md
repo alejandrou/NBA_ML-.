@@ -12,8 +12,8 @@ Persist official Basketball Reference player statistics in typed relational
 `core` and future generated metrics in `features`.
 
 Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval,
-`F4E-006` has `changes_requested`, and `F4E-007` is the active in-progress
-task.
+`F4E-006` has `changes_requested`, and `F4E-007` plus `F4E-008` are ready for
+review.
 
 ## Current task state
 
@@ -24,7 +24,7 @@ task.
 - `F4E-005`: done
 - `F4E-006`: changes_requested
 - `F4E-007`: needs_review
-- `F4E-008`: pending
+- `F4E-008`: needs_review
 - `F4E-009`: pending
 
 Source of truth:
@@ -70,6 +70,8 @@ Source of truth:
 
 - Cache-only player-page regular-season aggregate stats parsing, selection,
   loading, migration, tests, and CLI wiring for `F4E-007`.
+- Separate postseason stats schema, player-page postseason parsing, loading,
+  migration, tests, and CLI wiring for `F4E-008`.
 - Phase documentation, progress updates, and validation notes for 4E.
 
 ## Out of scope
@@ -125,9 +127,8 @@ Source of truth:
 
 ## Next phase gate
 
-`F4E-007` is the next recommended task. Final validation and database closure
-remain blocked on the later `F4E-009` task after `F4E-006`, `F4E-007`, and
-`F4E-008` are complete. Phase 5 stays pending until Phase 4E is complete.
+Review `F4E-007` and `F4E-008`, then use `F4E-009` for final validation and
+database closure. Phase 5 stays pending until Phase 4E is complete.
 
 ## Update policy
 

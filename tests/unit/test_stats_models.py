@@ -36,9 +36,33 @@ PLAYER_SEASON_TABLES = (
     "player_season_pbp",
 )
 
+PLAYER_POSTSEASON_TABLES = (
+    "player_postseason_totals",
+    "player_postseason_per_game",
+    "player_postseason_per_minute",
+    "player_postseason_per_poss",
+    "player_postseason_advanced",
+    "player_postseason_shooting",
+    "player_postseason_adj_shooting",
+    "player_postseason_pbp",
+)
+
+PLAYER_TEAM_POSTSEASON_TABLES = (
+    "player_team_postseason_totals",
+    "player_team_postseason_per_game",
+    "player_team_postseason_per_minute",
+    "player_team_postseason_per_poss",
+    "player_team_postseason_advanced",
+    "player_team_postseason_shooting",
+    "player_team_postseason_adj_shooting",
+    "player_team_postseason_pbp",
+)
+
 EXPECTED_STATS_TABLE_KEYS = {
     *(f"stats.{table_name}" for table_name in TEAM_STINT_TABLES),
     *(f"stats.{table_name}" for table_name in PLAYER_SEASON_TABLES),
+    *(f"stats.{table_name}" for table_name in PLAYER_POSTSEASON_TABLES),
+    *(f"stats.{table_name}" for table_name in PLAYER_TEAM_POSTSEASON_TABLES),
 }
 
 EXPECTED_MODEL_NAMES = (
@@ -59,15 +83,25 @@ EXPECTED_MODEL_NAMES = (
     "PlayerSeasonShooting",
     "PlayerSeasonAdjShooting",
     "PlayerSeasonPbp",
+    "PlayerPostseasonTotals",
+    "PlayerPostseasonPerGame",
+    "PlayerPostseasonPerMinute",
+    "PlayerPostseasonPerPoss",
+    "PlayerPostseasonAdvanced",
+    "PlayerPostseasonShooting",
+    "PlayerPostseasonAdjShooting",
+    "PlayerPostseasonPbp",
+    "PlayerTeamPostseasonTotals",
+    "PlayerTeamPostseasonPerGame",
+    "PlayerTeamPostseasonPerMinute",
+    "PlayerTeamPostseasonPerPoss",
+    "PlayerTeamPostseasonAdvanced",
+    "PlayerTeamPostseasonShooting",
+    "PlayerTeamPostseasonAdjShooting",
+    "PlayerTeamPostseasonPbp",
 )
 
-LINEAGE_COLUMNS = {
-    "source_url",
-    "cache_path",
-    "parser_version",
-    "created_at",
-    "updated_at",
-}
+LINEAGE_COLUMNS = {"source_url", "cache_path", "parser_version", "created_at", "updated_at"}
 
 
 def test_stats_tables_are_registered_in_stats_schema() -> None:
@@ -84,41 +118,31 @@ def test_stats_tables_are_registered_in_stats_schema() -> None:
 
 def test_no_stats_table_uses_jsonb() -> None:
     for table in _stats_tables():
-        jsonb_columns = [
-            column.name for column in table.c if isinstance(column.type, JSONB)
-        ]
-        assert jsonb_columns == []
+        assert [column.name for column in table.c if isinstance(column.type, JSONB)] == []
 
 
 def test_team_stint_tables_use_player_team_season_grain() -> None:
-    for table_name in TEAM_STINT_TABLES:
+    for table_name in (*TEAM_STINT_TABLES, *PLAYER_TEAM_POSTSEASON_TABLES):
         table = Base.metadata.tables[f"stats.{table_name}"]
 
         assert table.c.player_team_season_id.nullable is False
         assert "player_season_id" not in table.c
-        assert f"uq_stats_{table_name}_player_team_season_id" in _constraint_names(
-            table, UniqueConstraint
-        )
-        assert f"fk_stats_{table_name}_player_team_season_id" in _constraint_names(
-            table, ForeignKeyConstraint
-        )
+        assert _team_stint_constraint_name("uq_stats", table_name) in _constraint_names(table, UniqueConstraint)
+        assert _team_stint_constraint_name("fk_stats", table_name) in _constraint_names(table, ForeignKeyConstraint)
         assert _foreign_key_targets(table) == {"core.player_team_seasons.id"}
+        assert "source_team_code" not in table.c
 
 
 def test_player_season_tables_use_player_season_grain() -> None:
-    for table_name in PLAYER_SEASON_TABLES:
+    for table_name in (*PLAYER_SEASON_TABLES, *PLAYER_POSTSEASON_TABLES):
         table = Base.metadata.tables[f"stats.{table_name}"]
 
         assert table.c.player_season_id.nullable is False
-        assert "source_team_code" in table.c
         assert "player_team_season_id" not in table.c
-        assert f"uq_stats_{table_name}_player_season_id" in _constraint_names(
-            table, UniqueConstraint
-        )
-        assert f"fk_stats_{table_name}_player_season_id" in _constraint_names(
-            table, ForeignKeyConstraint
-        )
+        assert _player_season_constraint_name("uq_stats", table_name) in _constraint_names(table, UniqueConstraint)
+        assert _player_season_constraint_name("fk_stats", table_name) in _constraint_names(table, ForeignKeyConstraint)
         assert _foreign_key_targets(table) == {"core.player_seasons.id"}
+        assert "source_team_code" in table.c
 
 
 def test_roster_has_only_team_stint_grain() -> None:
@@ -132,7 +156,6 @@ def test_roster_has_only_team_stint_grain() -> None:
 def test_lineage_columns_are_present_and_non_nullable() -> None:
     for table in _stats_tables():
         assert LINEAGE_COLUMNS.issubset(table.c.keys())
-
         for column_name in LINEAGE_COLUMNS:
             assert table.c[column_name].nullable is False
 
@@ -151,6 +174,7 @@ def test_key_column_types_match_stats_contract() -> None:
     totals = Base.metadata.tables["stats.player_team_season_totals"]
     advanced = Base.metadata.tables["stats.player_team_season_advanced"]
     player_totals = Base.metadata.tables["stats.player_season_totals"]
+    postseason_totals = Base.metadata.tables["stats.player_postseason_totals"]
 
     assert isinstance(roster.c.weight.type, Integer)
     assert isinstance(roster.c.birth_date.type, Date)
@@ -167,6 +191,8 @@ def test_key_column_types_match_stats_contract() -> None:
     assert advanced.c.per.type.scale == 4
     assert isinstance(player_totals.c.source_team_code.type, String)
     assert player_totals.c.source_team_code.type.length == 10
+    assert isinstance(postseason_totals.c.source_team_code.type, String)
+    assert postseason_totals.c.source_team_code.type.length == 10
 
     for table in _stats_tables():
         assert isinstance(table.c.source_url.type, Text)
@@ -185,11 +211,11 @@ def test_stats_models_are_exported() -> None:
         assert getattr(models, model_name).__table__ in _stats_tables()
 
 
-def _stats_tables():
+def _stats_tables() -> list[object]:
     return [Base.metadata.tables[table_key] for table_key in sorted(EXPECTED_STATS_TABLE_KEYS)]
 
 
-def _constraint_names(table, constraint_type: type) -> set[str]:
+def _constraint_names(table: object, constraint_type: type) -> set[str]:
     return {
         constraint.name
         for constraint in table.constraints
@@ -197,9 +223,19 @@ def _constraint_names(table, constraint_type: type) -> set[str]:
     }
 
 
-def _foreign_key_targets(table) -> set[str]:
+def _foreign_key_targets(table: object) -> set[str]:
     targets: set[str] = set()
     for constraint in table.constraints:
         if isinstance(constraint, ForeignKeyConstraint):
             targets.update(element.target_fullname for element in constraint.elements)
     return targets
+
+
+def _team_stint_constraint_name(prefix: str, table_name: str) -> str:
+    suffix = "pts_id" if table_name.startswith("player_team_postseason_") else "player_team_season_id"
+    return f"{prefix}_{table_name}_{suffix}"
+
+
+def _player_season_constraint_name(prefix: str, table_name: str) -> str:
+    suffix = "ps_id" if table_name.startswith("player_postseason_") else "player_season_id"
+    return f"{prefix}_{table_name}_{suffix}"

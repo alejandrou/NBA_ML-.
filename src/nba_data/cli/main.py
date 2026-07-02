@@ -24,6 +24,10 @@ from nba_data.scraping.nba_team_season_acquisition import (
 )
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
 from nba_data.scraping.offline_backfill import run_full_offline_backfill
+from nba_data.scraping.offline_player_postseason_stats_backfill import (
+    DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
+    run_offline_player_postseason_stats_backfill,
+)
 from nba_data.scraping.offline_player_stats_backfill import (
     DEFAULT_PLAYER_STATS_PARSER_VERSION,
     run_offline_player_stats_backfill,
@@ -324,6 +328,74 @@ def backfill_player_stats(
         with session_factory() as session, session.begin():
             try:
                 report = run_offline_player_stats_backfill(
+                    session,
+                    cache=cache,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                    parser_version=parser_version,
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@backfill_app.command("player-postseason-stats")
+def backfill_player_postseason_stats(
+    execute_approved_player_postseason_stats_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-player-postseason-stats-backfill",
+        help="Required explicit confirmation to write player-page postseason stats rows from cached HTML.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for smoke-test sized player-page postseason backfills.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season end year to include.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season end year to include.",
+    ),
+    parser_version: str = typer.Option(
+        DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
+        "--parser-version",
+        help="Parser/normalizer contract label to store in postseason stats lineage.",
+    ),
+    output: Path | None = _STATS_BACKFILL_OUTPUT_OPTION,
+) -> None:
+    """Run cache-only player-page postseason stats backfill."""
+
+    if not execute_approved_player_postseason_stats_backfill:
+        msg = (
+            "Refusing player-page postseason stats backfill without "
+            "--execute-approved-player-postseason-stats-backfill"
+        )
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session, session.begin():
+            try:
+                report = run_offline_player_postseason_stats_backfill(
                     session,
                     cache=cache,
                     limit=limit,

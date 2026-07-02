@@ -9,6 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from nba_data.db.models import (
+    PlayerPostseasonAdjShooting,
+    PlayerPostseasonAdvanced,
+    PlayerPostseasonPbp,
+    PlayerPostseasonPerGame,
+    PlayerPostseasonPerMinute,
+    PlayerPostseasonPerPoss,
+    PlayerPostseasonShooting,
+    PlayerPostseasonTotals,
     PlayerSeason,
     PlayerSeasonAdjShooting,
     PlayerSeasonAdvanced,
@@ -18,6 +26,14 @@ from nba_data.db.models import (
     PlayerSeasonPerPoss,
     PlayerSeasonShooting,
     PlayerSeasonTotals,
+    PlayerTeamPostseasonAdjShooting,
+    PlayerTeamPostseasonAdvanced,
+    PlayerTeamPostseasonPbp,
+    PlayerTeamPostseasonPerGame,
+    PlayerTeamPostseasonPerMinute,
+    PlayerTeamPostseasonPerPoss,
+    PlayerTeamPostseasonShooting,
+    PlayerTeamPostseasonTotals,
     PlayerTeamSeason,
     PlayerTeamSeasonAdjShooting,
     PlayerTeamSeasonAdvanced,
@@ -56,6 +72,32 @@ PLAYER_SEASON_STATS_MODELS: frozenset[StatsModel] = frozenset(
         PlayerSeasonShooting,
         PlayerSeasonAdjShooting,
         PlayerSeasonPbp,
+    }
+)
+
+PLAYER_POSTSEASON_STATS_MODELS: frozenset[StatsModel] = frozenset(
+    {
+        PlayerPostseasonTotals,
+        PlayerPostseasonPerGame,
+        PlayerPostseasonPerMinute,
+        PlayerPostseasonPerPoss,
+        PlayerPostseasonAdvanced,
+        PlayerPostseasonShooting,
+        PlayerPostseasonAdjShooting,
+        PlayerPostseasonPbp,
+    }
+)
+
+PLAYER_TEAM_POSTSEASON_STATS_MODELS: frozenset[StatsModel] = frozenset(
+    {
+        PlayerTeamPostseasonTotals,
+        PlayerTeamPostseasonPerGame,
+        PlayerTeamPostseasonPerMinute,
+        PlayerTeamPostseasonPerPoss,
+        PlayerTeamPostseasonAdvanced,
+        PlayerTeamPostseasonShooting,
+        PlayerTeamPostseasonAdjShooting,
+        PlayerTeamPostseasonPbp,
     }
 )
 
@@ -279,6 +321,24 @@ class StatsRepository:
             parser_version=parser_version,
         )
 
+    def upsert_player_postseason_totals(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonTotals:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonTotals,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
     def upsert_player_season_per_game(
         self,
         *,
@@ -290,6 +350,24 @@ class StatsRepository:
     ) -> PlayerSeasonPerGame:
         return self.upsert_player_season_stat(
             model=PlayerSeasonPerGame,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_postseason_per_game(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonPerGame:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonPerGame,
             player_season_id=player_season_id,
             values=values,
             source_url=source_url,
@@ -315,6 +393,24 @@ class StatsRepository:
             parser_version=parser_version,
         )
 
+    def upsert_player_postseason_per_minute(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonPerMinute:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonPerMinute,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
     def upsert_player_season_per_poss(
         self,
         *,
@@ -326,6 +422,24 @@ class StatsRepository:
     ) -> PlayerSeasonPerPoss:
         return self.upsert_player_season_stat(
             model=PlayerSeasonPerPoss,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_postseason_per_poss(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonPerPoss:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonPerPoss,
             player_season_id=player_season_id,
             values=values,
             source_url=source_url,
@@ -351,6 +465,24 @@ class StatsRepository:
             parser_version=parser_version,
         )
 
+    def upsert_player_postseason_advanced(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonAdvanced:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonAdvanced,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
     def upsert_player_season_shooting(
         self,
         *,
@@ -362,6 +494,24 @@ class StatsRepository:
     ) -> PlayerSeasonShooting:
         return self.upsert_player_season_stat(
             model=PlayerSeasonShooting,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_postseason_shooting(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonShooting:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonShooting,
             player_season_id=player_season_id,
             values=values,
             source_url=source_url,
@@ -387,6 +537,24 @@ class StatsRepository:
             parser_version=parser_version,
         )
 
+    def upsert_player_postseason_adj_shooting(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonAdjShooting:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonAdjShooting,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
     def upsert_player_season_pbp(
         self,
         *,
@@ -399,6 +567,168 @@ class StatsRepository:
         return self.upsert_player_season_stat(
             model=PlayerSeasonPbp,
             player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_postseason_pbp(
+        self,
+        *,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerPostseasonPbp:
+        return self.upsert_player_postseason_stat(
+            model=PlayerPostseasonPbp,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+    
+    def upsert_player_team_postseason_totals(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonTotals:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonTotals,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_per_game(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonPerGame:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonPerGame,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_per_minute(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonPerMinute:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonPerMinute,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_per_poss(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonPerPoss:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonPerPoss,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_advanced(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonAdvanced:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonAdvanced,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_shooting(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonShooting:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonShooting,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_adj_shooting(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonAdjShooting:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonAdjShooting,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_pbp(
+        self,
+        *,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> PlayerTeamPostseasonPbp:
+        return self.upsert_player_team_postseason_stat(
+            model=PlayerTeamPostseasonPbp,
+            player_team_season_id=player_team_season_id,
             values=values,
             source_url=source_url,
             cache_path=cache_path,
@@ -457,6 +787,64 @@ class StatsRepository:
             model=model,
             grain_column="player_season_id",
             grain_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_postseason_stat(
+        self,
+        *,
+        model: StatsModel,
+        player_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> Any:
+        row = PlayerSeasonStatsUpsert(
+            model=model,
+            player_season_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+        self._validate_player_postseason_upserts((row,))
+        return self._upsert(
+            model=model,
+            grain_column="player_season_id",
+            grain_id=player_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+
+    def upsert_player_team_postseason_stat(
+        self,
+        *,
+        model: StatsModel,
+        player_team_season_id: int,
+        values: Mapping[str, Any],
+        source_url: str,
+        cache_path: str,
+        parser_version: str,
+    ) -> Any:
+        row = TeamStintStatsUpsert(
+            model=model,
+            player_team_season_id=player_team_season_id,
+            values=values,
+            source_url=source_url,
+            cache_path=cache_path,
+            parser_version=parser_version,
+        )
+        self._validate_player_team_postseason_upserts((row,))
+        return self._upsert(
+            model=model,
+            grain_column="player_team_season_id",
+            grain_id=player_team_season_id,
             values=values,
             source_url=source_url,
             cache_path=cache_path,
@@ -534,6 +922,41 @@ class StatsRepository:
                 parser_version=row.parser_version,
             )
             self._require_player_season(row.player_season_id)
+
+    def _validate_player_postseason_upserts(self, rows: tuple[PlayerSeasonStatsUpsert, ...]) -> None:
+        _reject_duplicate_grains((row.model, row.player_season_id) for row in rows)
+        for row in rows:
+            _validate_model_allowed(
+                model=row.model,
+                allowed_models=PLAYER_POSTSEASON_STATS_MODELS,
+                grain_column="player_season_id",
+            )
+            _validate_values(model=row.model, values=row.values)
+            _validate_lineage(
+                source_url=row.source_url,
+                cache_path=row.cache_path,
+                parser_version=row.parser_version,
+            )
+            self._require_player_season(row.player_season_id)
+
+    def _validate_player_team_postseason_upserts(
+        self,
+        rows: tuple[TeamStintStatsUpsert, ...],
+    ) -> None:
+        _reject_duplicate_grains((row.model, row.player_team_season_id) for row in rows)
+        for row in rows:
+            _validate_model_allowed(
+                model=row.model,
+                allowed_models=PLAYER_TEAM_POSTSEASON_STATS_MODELS,
+                grain_column="player_team_season_id",
+            )
+            _validate_values(model=row.model, values=row.values)
+            _validate_lineage(
+                source_url=row.source_url,
+                cache_path=row.cache_path,
+                parser_version=row.parser_version,
+            )
+            self._require_player_team_season(row.player_team_season_id)
 
     def _require_player_team_season(self, player_team_season_id: int) -> None:
         exists = self.session.scalar(
@@ -650,7 +1073,9 @@ def _clean_required(value: object, *, field_name: str) -> str:
 
 
 __all__ = [
+    "PLAYER_POSTSEASON_STATS_MODELS",
     "PLAYER_SEASON_STATS_MODELS",
+    "PLAYER_TEAM_POSTSEASON_STATS_MODELS",
     "TEAM_STINT_STATS_MODELS",
     "PlayerSeasonStatsUpsert",
     "StatsRepository",

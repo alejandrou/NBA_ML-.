@@ -115,8 +115,8 @@ metadata only. It is not a foreign key and may contain either a real
 Basketball Reference team code for single-team seasons or a synthetic
 multi-team source marker such as `2TM`, `3TM`, or `4TM`.
 
-`F4E-008` may extend the schema with separate postseason `stats` tables. Do
-not imply those postseason tables already exist until that task is implemented.
+`F4E-008` extends the schema with separate postseason `stats` tables while
+keeping regular season and postseason rows fully separate.
 
 ## Typing Rules
 
@@ -659,10 +659,10 @@ Postseason player-page table IDs planned for `F4E-008`:
 - `adj_shooting_post`
 - `pbp_stats_post`
 
-## Future Postseason Stats
+## Postseason Stats
 
-Postseason stats are a separate future `stats` table family. They must not be
-mixed into regular-season `player_season_*` or `player_team_season_*` tables.
+Postseason stats are a separate `stats` table family. They must not be mixed
+into regular-season `player_season_*` or `player_team_season_*` tables.
 
 Planned postseason player-season tables:
 

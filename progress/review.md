@@ -1100,7 +1100,8 @@ Alembic revision `0003_stats_wide_tables`, and leaves `F4E-003` through
 
 ## Phase 4E F4E-002 Review Focus
 
-- `src/nba_data/db/models/stats.py` exposes exactly 17 official wide stats
+- `src/nba_data/db/models/stats.py` exposes the initial 17 official
+  regular-season wide stats
   tables under schema `stats`.
 - Roster and team-stint tables use non-null
   `player_team_season_id -> core.player_team_seasons.id` with deterministic FK
@@ -1429,3 +1430,49 @@ regular season and postseason isolated, and adds the guarded cache-only
   tests/unit/test_offline_player_postseason_stats_backfill.py
   tests/unit/test_stats_models.py
   tests/unit/test_stats_repositories.py`: passed, 78 passed.
+
+## Phase 4E F4E-009 Review Prep
+
+Status: needs_review
+
+The final official-stats validation pass is ready for owner review. The owner
+explicitly accepted `F4E-007` and `F4E-008` as `done`, and `F4E-009` now
+closes the remaining Phase 4E validation contract by updating the validator,
+tests, task board, and closure docs.
+
+## Phase 4E F4E-009 Review Focus
+
+- `src/nba_data/validation/official_stats.py` validates all 33 Phase 4E stats
+  tables across regular-season team-stint, regular-season aggregate,
+  postseason aggregate, and postseason team-stint families.
+- The validator checks required tables and columns, unique grain constraints,
+  orphan and invalid core grains, generated-metric absence, and JSON-safe
+  reporting.
+- `TOT`, `2TM`, `3TM`, and `4TM` fail in `core` real-team tables and
+  team-stint stats tables, while aggregate `source_team_code` accepts real
+  team codes plus `2TM`/`3TM`/`4TM` and rejects `TOT`.
+- Basketball Reference numeric scales now align with the reviewed source:
+  shooting percentages `0-1`, `efg_pct` and `ts_pct` `0-2`, advanced and PBP
+  percentages `0-100`, and adjusted shooting percentages `0-300`.
+- Lineage metadata validation keeps regular-season and postseason rows in
+  separate table families.
+- `tests/unit/test_official_stats_validation.py` covers clean Harden/Brown
+  regular-season and postseason smoke data plus failing cases for missing
+  tables and columns, orphan grains, synthetic-code misuse, invalid numeric
+  ranges, separation violations, duplicate grains, and CLI error output.
+
+## Phase 4E F4E-009 Checks
+
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 305 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `docker compose up -d postgres`: passed.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run nba-data validate official-stats`: passed with `passed: true` and no
+  issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  305 passed, 1 skipped, and 6 Peewee deprecation warnings.

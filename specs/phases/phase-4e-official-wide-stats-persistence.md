@@ -1,6 +1,6 @@
 # Phase 4E - Official Basketball Reference Wide Stats Persistence
 
-Status: in_progress
+Status: review
 Phase ID: `phase-4e-official-wide-stats-persistence`
 
 ## Goal
@@ -52,10 +52,10 @@ owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
 tests. `F4E-003` is done by explicit owner approval of the reviewed stats
 repositories, tests, and validation. `F4E-004` is done by explicit owner
 approval of the reviewed normalized-row stats loader, tests, and validation.
-`F4E-005` is done by explicit owner approval. `F4E-006` has
-`changes_requested` because validator/design guidance still contains outdated
-`TOT` and numeric-range assumptions. `F4E-007` is ready. `F4E-008` and
-`F4E-009` remain pending.
+`F4E-005` is done by explicit owner approval. `F4E-006` closes through the
+final `F4E-009` validator correction pass. `F4E-007` and `F4E-008` are done by
+explicit owner decision. `F4E-009` is `needs_review`, and Phase 4E is ready
+for owner review but not yet closed.
 
 ## Schema Decisions
 
@@ -65,8 +65,8 @@ approval of the reviewed normalized-row stats loader, tests, and validation.
 - Real-team stat tables FK to `core.player_team_seasons.id`.
 - Full player-season stat tables FK to `core.player_seasons.id`.
 - Player-page `2TM`, `3TM`, and `4TM` rows are source markers, not teams.
-- Plan to add `source_team_code` metadata to player-season stat tables; it is
-  not a FK.
+- `source_team_code` metadata on player-season and player-postseason stat
+  tables is not a FK.
 - `stats.player_team_season_roster` is team-stint only and FKs to
   `core.player_team_seasons.id`.
 - Team-stint wide tables:
@@ -92,8 +92,8 @@ approval of the reviewed normalized-row stats loader, tests, and validation.
 - FK and unique grain columns are non-null.
 - Each wide table has a surrogate primary key plus a unique FK constraint at
   its grain.
-- Postseason stats are future separate table families under `stats`; do not
-  mix postseason rows into regular-season tables.
+- Postseason stats are separate table families under `stats`; do not mix
+  postseason rows into regular-season tables.
 - Do not use Game Highs as a source for official season stats.
 - Do not generate player-season stats by summing team-stint rows, averaging
   percentages, or deriving advanced metrics.
@@ -108,6 +108,8 @@ approval of the reviewed normalized-row stats loader, tests, and validation.
 - Load official stats only from already parsed, normalized, and validated rows.
 - Add validation checks for counts, duplicates, FK integrity, synthetic-code
   separation, nullability, and Basketball Reference numeric ranges.
+- Validate lineage metadata so regular-season and postseason rows remain in the
+  correct table families.
 
 ## Disallowed Work
 

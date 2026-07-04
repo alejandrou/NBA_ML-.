@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
@@ -31,6 +31,43 @@ _BANNED_GENERATED_NAME_TOKENS = (
     "prediction",
     "feature",
 )
+_SYNTHETIC_TEAM_CODES = ("TOT", "2TM", "3TM", "4TM")
+_ALLOWED_AGGREGATE_SOURCE_CODES = ("2TM", "3TM", "4TM")
+_POSTSEASON_MARKERS = ("postseason", "playoff", "_post")
+_ADVANCED_PERCENTAGE_COLUMNS = {
+    "orb_pct",
+    "drb_pct",
+    "trb_pct",
+    "ast_pct",
+    "stl_pct",
+    "blk_pct",
+    "tov_pct",
+    "usg_pct",
+}
+_PBP_POSITION_COLUMNS = {"pct_pg", "pct_sg", "pct_sf", "pct_pf", "pct_c"}
+_TWO_POINT_PERCENTAGE_COLUMNS = {"efg_pct", "ts_pct"}
+_SPECIAL_RATE_RANGES = {
+    "fg3a_per_fga_pct": (0, 1),
+    "fta_per_fga_pct": (0, 10),
+    "adj_efg_pct": (0, 350),
+    "adj_fg3a_per_fga_pct": (0, 3000),
+    "adj_fta_per_fga_pct": (0, 3000),
+}
+_SIGNED_NUMERIC_COLUMNS = {
+    "per",
+    "ows",
+    "dws",
+    "ws",
+    "ws_per_48",
+    "obpm",
+    "dbpm",
+    "bpm",
+    "vorp",
+    "fg_pts_added",
+    "ts_pts_added",
+    "on_court_plus_minus",
+    "net_plus_minus",
+}
 
 
 @dataclass(frozen=True)
@@ -38,35 +75,64 @@ class StatsTableSpec:
     table_name: str
     grain_column: str
     parent_table: str
-    aggregate_table: bool = False
+    season_type: Literal["regular", "postseason"]
+    family: Literal["team_stint", "aggregate"]
 
     @property
     def full_name(self) -> str:
         return f"stats.{self.table_name}"
 
+    @property
+    def requires_source_team_code(self) -> bool:
+        return self.family == "aggregate"
 
+
+REGULAR_TEAM_STINT_TABLE_SPECS = (
+    StatsTableSpec("player_team_season_roster", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_totals", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_per_game", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_per_minute", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_per_poss", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_advanced", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_shooting", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_adj_shooting", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+    StatsTableSpec("player_team_season_pbp", "player_team_season_id", "player_team_seasons", "regular", "team_stint"),
+)
+REGULAR_AGGREGATE_TABLE_SPECS = (
+    StatsTableSpec("player_season_totals", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_per_game", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_per_minute", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_per_poss", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_advanced", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_shooting", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_adj_shooting", "player_season_id", "player_seasons", "regular", "aggregate"),
+    StatsTableSpec("player_season_pbp", "player_season_id", "player_seasons", "regular", "aggregate"),
+)
+POSTSEASON_AGGREGATE_TABLE_SPECS = (
+    StatsTableSpec("player_postseason_totals", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_per_game", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_per_minute", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_per_poss", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_advanced", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_shooting", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_adj_shooting", "player_season_id", "player_seasons", "postseason", "aggregate"),
+    StatsTableSpec("player_postseason_pbp", "player_season_id", "player_seasons", "postseason", "aggregate"),
+)
+POSTSEASON_TEAM_STINT_TABLE_SPECS = (
+    StatsTableSpec("player_team_postseason_totals", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_per_game", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_per_minute", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_per_poss", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_advanced", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_shooting", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_adj_shooting", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+    StatsTableSpec("player_team_postseason_pbp", "player_team_season_id", "player_team_seasons", "postseason", "team_stint"),
+)
 STATS_TABLE_SPECS = (
-    StatsTableSpec("player_team_season_roster", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_totals", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_per_game", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_per_minute", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_per_poss", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_advanced", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_team_season_shooting", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec(
-        "player_team_season_adj_shooting",
-        "player_team_season_id",
-        "player_team_seasons",
-    ),
-    StatsTableSpec("player_team_season_pbp", "player_team_season_id", "player_team_seasons"),
-    StatsTableSpec("player_season_totals", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_per_game", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_per_minute", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_per_poss", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_advanced", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_shooting", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_adj_shooting", "player_season_id", "player_seasons", True),
-    StatsTableSpec("player_season_pbp", "player_season_id", "player_seasons", True),
+    *REGULAR_TEAM_STINT_TABLE_SPECS,
+    *REGULAR_AGGREGATE_TABLE_SPECS,
+    *POSTSEASON_AGGREGATE_TABLE_SPECS,
+    *POSTSEASON_TEAM_STINT_TABLE_SPECS,
 )
 
 
@@ -80,7 +146,7 @@ class OfficialStatsValidationIssue:
         return {
             "code": self.code,
             "message": self.message,
-            "context": dict(self.context),
+            "context": _json_safe_mapping(self.context),
         }
 
 
@@ -88,6 +154,7 @@ class OfficialStatsValidationIssue:
 class OfficialStatsValidationReport:
     passed: bool
     table_counts: Mapping[str, int]
+    validation_summary: Mapping[str, int]
     backfill_summary: Mapping[str, object]
     issues: tuple[OfficialStatsValidationIssue, ...]
 
@@ -95,7 +162,8 @@ class OfficialStatsValidationReport:
         return {
             "passed": self.passed,
             "table_counts": dict(self.table_counts),
-            "backfill_summary": dict(self.backfill_summary),
+            "validation_summary": dict(self.validation_summary),
+            "backfill_summary": _json_safe_mapping(self.backfill_summary),
             "issues": [issue.to_dict() for issue in self.issues],
         }
 
@@ -122,10 +190,11 @@ def validate_official_stats(
                 OfficialStatsValidationIssue(
                     code="missing_stats_table",
                     message=f"Required stats table {spec.full_name} is missing.",
-                    context={"table": spec.full_name},
+                    context={"table": spec.full_name, "count": 1},
                 )
             )
             continue
+
         table = Table(spec.table_name, metadata, schema="stats", autoload_with=bind)
         reflected_tables[spec.table_name] = table
         table_counts[spec.full_name] = session.scalar(select(func.count()).select_from(table)) or 0
@@ -134,22 +203,115 @@ def validate_official_stats(
         name: Table(name, metadata, schema="core", autoload_with=bind)
         for name in ("teams", "team_seasons", "players", "seasons", "player_seasons", "player_team_seasons")
     }
+    core_team_aliases = (
+        Table("team_aliases", metadata, schema="core", autoload_with=bind)
+        if "team_aliases" in inspector.get_table_names(schema="core")
+        else None
+    )
 
+    issues.extend(_schema_requirement_issues(inspector, reflected_tables))
     issues.extend(_duplicate_issues(session, reflected_tables))
     issues.extend(_fk_grain_issues(session, reflected_tables, core_tables))
-    issues.extend(_tot_placement_issues(session, reflected_tables, core_tables))
+    issues.extend(_core_synthetic_code_issues(session, core_tables, core_team_aliases))
+    issues.extend(_team_stint_synthetic_code_issues(session, reflected_tables, core_tables))
+    issues.extend(_aggregate_source_team_code_issues(session, reflected_tables, core_tables, core_team_aliases))
+    issues.extend(_regular_postseason_separation_issues(session, reflected_tables))
     issues.extend(_row_content_issues(session, reflected_tables))
     issues.extend(_generated_schema_issues(inspector))
 
     backfill_summary = _extract_backfill_summary(stats_backfill_report)
     issues.extend(_backfill_report_issues(table_counts, backfill_summary, stats_backfill_report))
+    validation_summary = _build_validation_summary(issues)
 
     return OfficialStatsValidationReport(
         passed=not issues,
         table_counts=table_counts,
+        validation_summary=validation_summary,
         backfill_summary=backfill_summary,
         issues=tuple(issues),
     )
+
+
+def _schema_requirement_issues(
+    inspector: Any,
+    reflected_tables: Mapping[str, Table],
+) -> list[OfficialStatsValidationIssue]:
+    issues: list[OfficialStatsValidationIssue] = []
+    validate_fk_constraints = getattr(getattr(inspector, "bind", None), "dialect", None) is not None and (
+        inspector.bind.dialect.name != "sqlite"
+    )
+    for spec in STATS_TABLE_SPECS:
+        table = reflected_tables.get(spec.table_name)
+        if table is None:
+            continue
+
+        column_names = {column.name for column in table.columns}
+        if spec.grain_column not in column_names:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="missing_required_column",
+                    message=f"stats.{spec.table_name} is missing grain column {spec.grain_column}.",
+                    context={"table": spec.full_name, "column": spec.grain_column, "count": 1},
+                )
+            )
+
+        has_source_team_code = "source_team_code" in column_names
+        if spec.requires_source_team_code and not has_source_team_code:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="missing_required_column",
+                    message=f"stats.{spec.table_name} is missing source_team_code metadata.",
+                    context={"table": spec.full_name, "column": "source_team_code", "count": 1},
+                )
+            )
+        if not spec.requires_source_team_code and has_source_team_code:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="unexpected_source_team_code_column",
+                    message=f"stats.{spec.table_name} must not carry source_team_code.",
+                    context={"table": spec.full_name, "column": "source_team_code", "count": 1},
+                )
+            )
+
+        if validate_fk_constraints:
+            foreign_keys = inspector.get_foreign_keys(spec.table_name, schema="stats")
+            matching_fk = any(
+                tuple(fk.get("constrained_columns") or ()) == (spec.grain_column,)
+                and fk.get("referred_schema") == "core"
+                and fk.get("referred_table") == spec.parent_table
+                and tuple(fk.get("referred_columns") or ()) == ("id",)
+                for fk in foreign_keys
+            )
+            if not matching_fk:
+                issues.append(
+                    OfficialStatsValidationIssue(
+                        code="invalid_fk_constraint",
+                        message=(
+                            f"stats.{spec.table_name} must FK {spec.grain_column} "
+                            f"to core.{spec.parent_table}.id."
+                        ),
+                        context={"table": spec.full_name, "column": spec.grain_column, "count": 1},
+                    )
+                )
+
+        unique_constraints = inspector.get_unique_constraints(spec.table_name, schema="stats")
+        unique_indexes = inspector.get_indexes(spec.table_name, schema="stats")
+        has_unique_grain = any(
+            tuple(constraint.get("column_names") or ()) == (spec.grain_column,)
+            for constraint in unique_constraints
+        ) or any(
+            index.get("unique") and tuple(index.get("column_names") or ()) == (spec.grain_column,)
+            for index in unique_indexes
+        )
+        if not has_unique_grain:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="missing_unique_grain_constraint",
+                    message=f"stats.{spec.table_name} must enforce unique grain on {spec.grain_column}.",
+                    context={"table": spec.full_name, "column": spec.grain_column, "count": 1},
+                )
+            )
+    return issues
 
 
 def _duplicate_issues(
@@ -177,7 +339,11 @@ def _duplicate_issues(
                 OfficialStatsValidationIssue(
                     code="duplicate_logical_rows",
                     message=f"Duplicate logical rows found in stats.{spec.table_name}.",
-                    context={"table": spec.full_name, "examples": rows[:10]},
+                    context={
+                        "table": spec.full_name,
+                        "count": sum(entry["row_count"] - 1 for entry in rows),
+                        "examples": rows[:10],
+                    },
                 )
             )
     return issues
@@ -197,11 +363,11 @@ def _fk_grain_issues(
     issues: list[OfficialStatsValidationIssue] = []
     for spec in STATS_TABLE_SPECS:
         table = reflected_tables.get(spec.table_name)
-        if table is None:
+        if table is None or spec.grain_column not in table.c:
             continue
         grain = table.c[spec.grain_column]
 
-        if spec.aggregate_table:
+        if spec.family == "aggregate":
             orphan_stmt = (
                 select(grain)
                 .select_from(table)
@@ -238,7 +404,7 @@ def _fk_grain_issues(
                 OfficialStatsValidationIssue(
                     code="orphan_fk_grain",
                     message=f"Orphan FK grains found in stats.{spec.table_name}.",
-                    context={"table": spec.full_name, "grains": orphan_rows[:10]},
+                    context={"table": spec.full_name, "count": len(orphan_rows), "grains": orphan_rows[:10]},
                 )
             )
 
@@ -248,88 +414,318 @@ def _fk_grain_issues(
                 OfficialStatsValidationIssue(
                     code="invalid_core_grain_chain",
                     message=f"Invalid core grain chains found in stats.{spec.table_name}.",
-                    context={"table": spec.full_name, "grains": invalid_rows[:10]},
+                    context={"table": spec.full_name, "count": len(invalid_rows), "grains": invalid_rows[:10]},
                 )
             )
     return issues
 
 
-def _tot_placement_issues(
+def _core_synthetic_code_issues(
+    session: Session,
+    core_tables: Mapping[str, Table],
+    core_team_aliases: Table | None,
+) -> list[OfficialStatsValidationIssue]:
+    teams = core_tables["teams"]
+    team_seasons = core_tables["team_seasons"]
+    player_team_seasons = core_tables["player_team_seasons"]
+
+    issues: list[OfficialStatsValidationIssue] = []
+
+    team_rows = list(
+        session.execute(
+            select(
+                teams.c.id,
+                teams.c.basketball_reference_team_id,
+                teams.c.current_abbreviation,
+            ).where(
+                or_(
+                    teams.c.basketball_reference_team_id.in_(_SYNTHETIC_TEAM_CODES),
+                    teams.c.current_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
+                )
+            )
+        )
+    )
+    if team_rows:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="synthetic_code_in_core_teams",
+                message="Synthetic team codes were found in core.teams.",
+                context={
+                    "table": "core.teams",
+                    "count": len(team_rows),
+                    "examples": [
+                        {
+                            "id": row.id,
+                            "basketball_reference_team_id": row.basketball_reference_team_id,
+                            "current_abbreviation": row.current_abbreviation,
+                        }
+                        for row in team_rows[:10]
+                    ],
+                },
+            )
+        )
+
+    if core_team_aliases is not None:
+        alias_rows = list(
+            session.execute(
+                select(core_team_aliases.c.id, core_team_aliases.c.abbreviation).where(
+                    core_team_aliases.c.abbreviation.in_(_SYNTHETIC_TEAM_CODES)
+                )
+            )
+        )
+        if alias_rows:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="synthetic_code_in_core_team_aliases",
+                    message="Synthetic team codes were found in core.team_aliases.",
+                    context={
+                        "table": "core.team_aliases",
+                        "count": len(alias_rows),
+                        "examples": [{"id": row.id, "abbreviation": row.abbreviation} for row in alias_rows[:10]],
+                    },
+                )
+            )
+
+    team_season_rows = list(
+        session.execute(
+            select(team_seasons.c.id, team_seasons.c.team_abbreviation).where(
+                team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES)
+            )
+        )
+    )
+    if team_season_rows:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="synthetic_code_in_core_team_seasons",
+                message="Synthetic team codes were found in core.team_seasons.",
+                context={
+                    "table": "core.team_seasons",
+                    "count": len(team_season_rows),
+                    "examples": [
+                        {"id": row.id, "team_abbreviation": row.team_abbreviation}
+                        for row in team_season_rows[:10]
+                    ],
+                },
+            )
+        )
+
+    pts_rows = list(
+        session.execute(
+            select(
+                player_team_seasons.c.id,
+                team_seasons.c.team_abbreviation,
+            )
+            .select_from(player_team_seasons)
+            .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
+            .where(team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES))
+        )
+    )
+    if pts_rows:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="synthetic_code_in_core_player_team_seasons",
+                message="Synthetic team codes were found in core.player_team_seasons.",
+                context={
+                    "table": "core.player_team_seasons",
+                    "count": len(pts_rows),
+                    "examples": [
+                        {"id": row.id, "team_abbreviation": row.team_abbreviation}
+                        for row in pts_rows[:10]
+                    ],
+                },
+            )
+        )
+
+    return issues
+
+
+def _team_stint_synthetic_code_issues(
     session: Session,
     reflected_tables: Mapping[str, Table],
     core_tables: Mapping[str, Table],
 ) -> list[OfficialStatsValidationIssue]:
     player_team_seasons = core_tables["player_team_seasons"]
-    player_seasons = core_tables["player_seasons"]
     team_seasons = core_tables["team_seasons"]
     teams = core_tables["teams"]
 
     issues: list[OfficialStatsValidationIssue] = []
     for spec in STATS_TABLE_SPECS:
+        if spec.family != "team_stint":
+            continue
         table = reflected_tables.get(spec.table_name)
-        if table is None:
+        if table is None or spec.grain_column not in table.c:
             continue
         grain = table.c[spec.grain_column]
-
-        if spec.aggregate_table:
-            statement = (
-                select(grain, func.count(func.distinct(player_team_seasons.c.id)).label("stint_count"))
-                .select_from(table)
-                .join(player_seasons, grain == player_seasons.c.id)
-                .outerjoin(player_team_seasons, player_team_seasons.c.player_season_id == player_seasons.c.id)
-                .group_by(grain)
-                .having(func.count(func.distinct(player_team_seasons.c.id)) <= 1)
-            )
-            rows = [
-                {spec.grain_column: row[0], "stint_count": int(row.stint_count)}
-                for row in session.execute(statement)
-            ]
-            if rows:
-                issues.append(
-                    OfficialStatsValidationIssue(
-                        code="aggregate_row_not_multi_stint",
-                        message=(
-                            f"Aggregate rows in stats.{spec.table_name} require multi-stint player seasons."
-                        ),
-                        context={"table": spec.full_name, "examples": rows[:10]},
-                    )
+        rows = list(
+            session.execute(
+                select(
+                    grain,
+                    team_seasons.c.team_abbreviation,
+                    teams.c.basketball_reference_team_id,
+                    teams.c.current_abbreviation,
                 )
-            continue
-
-        statement = (
-            select(
-                grain,
-                team_seasons.c.team_abbreviation,
-                teams.c.basketball_reference_team_id,
-                teams.c.current_abbreviation,
-            )
-            .select_from(table)
-            .join(player_team_seasons, grain == player_team_seasons.c.id)
-            .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
-            .join(teams, team_seasons.c.team_id == teams.c.id)
-            .where(
-                or_(
-                    team_seasons.c.team_abbreviation == "TOT",
-                    teams.c.basketball_reference_team_id == "TOT",
-                    teams.c.current_abbreviation == "TOT",
+                .select_from(table)
+                .join(player_team_seasons, grain == player_team_seasons.c.id)
+                .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
+                .join(teams, team_seasons.c.team_id == teams.c.id)
+                .where(
+                    or_(
+                        team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
+                        teams.c.basketball_reference_team_id.in_(_SYNTHETIC_TEAM_CODES),
+                        teams.c.current_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
+                    )
                 )
             )
         )
-        rows = [
-            {
-                spec.grain_column: row[0],
-                "team_abbreviation": row.team_abbreviation,
-                "basketball_reference_team_id": row.basketball_reference_team_id,
-                "current_abbreviation": row.current_abbreviation,
-            }
-            for row in session.execute(statement)
-        ]
         if rows:
             issues.append(
                 OfficialStatsValidationIssue(
-                    code="tot_in_team_stint_table",
-                    message=f"Team-stint rows in stats.{spec.table_name} incorrectly join TOT.",
-                    context={"table": spec.full_name, "examples": rows[:10]},
+                    code="synthetic_code_in_team_stint_stats",
+                    message=f"Synthetic team codes were found in stats.{spec.table_name}.",
+                    context={
+                        "table": spec.full_name,
+                        "count": len(rows),
+                        "examples": [
+                            {
+                                spec.grain_column: row[0],
+                                "team_abbreviation": row.team_abbreviation,
+                                "basketball_reference_team_id": row.basketball_reference_team_id,
+                                "current_abbreviation": row.current_abbreviation,
+                            }
+                            for row in rows[:10]
+                        ],
+                    },
+                )
+            )
+    return issues
+
+
+def _aggregate_source_team_code_issues(
+    session: Session,
+    reflected_tables: Mapping[str, Table],
+    core_tables: Mapping[str, Table],
+    core_team_aliases: Table | None,
+) -> list[OfficialStatsValidationIssue]:
+    teams = core_tables["teams"]
+    team_seasons = core_tables["team_seasons"]
+
+    known_real_codes = {
+        str(value).upper()
+        for value in session.scalars(select(teams.c.basketball_reference_team_id)).all()
+        if value is not None
+    }
+    known_real_codes.update(
+        str(value).upper()
+        for value in session.scalars(select(teams.c.current_abbreviation)).all()
+        if value is not None
+    )
+    known_real_codes.update(
+        str(value).upper()
+        for value in session.scalars(select(team_seasons.c.team_abbreviation)).all()
+        if value is not None
+    )
+    if core_team_aliases is not None and "abbreviation" in core_team_aliases.c:
+        known_real_codes.update(
+            str(value).upper()
+            for value in session.scalars(select(core_team_aliases.c.abbreviation)).all()
+            if value is not None
+        )
+
+    issues: list[OfficialStatsValidationIssue] = []
+    for spec in STATS_TABLE_SPECS:
+        if spec.family != "aggregate":
+            continue
+        table = reflected_tables.get(spec.table_name)
+        if table is None or "source_team_code" not in table.c:
+            continue
+
+        grain = table.c[spec.grain_column]
+        source_team_code = table.c.source_team_code
+        rows = list(session.execute(select(grain, source_team_code).select_from(table)))
+
+        missing_rows = [
+            {spec.grain_column: row[0]}
+            for row in rows
+            if row[1] is None or not str(row[1]).strip()
+        ]
+        if missing_rows:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="missing_source_team_code_value",
+                    message=f"Aggregate rows in stats.{spec.table_name} are missing source_team_code values.",
+                    context={"table": spec.full_name, "count": len(missing_rows), "examples": missing_rows[:10]},
+                )
+            )
+
+        invalid_rows: list[dict[str, object]] = []
+        for row in rows:
+            raw_code = row[1]
+            if raw_code is None:
+                continue
+            code = str(raw_code).strip().upper()
+            if code == "TOT":
+                invalid_rows.append({spec.grain_column: row[0], "source_team_code": code, "reason": "tot_not_supported"})
+                continue
+            if code in _ALLOWED_AGGREGATE_SOURCE_CODES or code in known_real_codes:
+                continue
+            invalid_rows.append({spec.grain_column: row[0], "source_team_code": code, "reason": "unknown_team_code"})
+
+        if invalid_rows:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="invalid_aggregate_source_team_code",
+                    message=f"Invalid source_team_code values were found in stats.{spec.table_name}.",
+                    context={"table": spec.full_name, "count": len(invalid_rows), "examples": invalid_rows[:10]},
+                )
+            )
+    return issues
+
+
+def _regular_postseason_separation_issues(
+    session: Session,
+    reflected_tables: Mapping[str, Table],
+) -> list[OfficialStatsValidationIssue]:
+    issues: list[OfficialStatsValidationIssue] = []
+    for spec in STATS_TABLE_SPECS:
+        table = reflected_tables.get(spec.table_name)
+        if table is None:
+            continue
+
+        lineage_columns = [name for name in ("source_url", "cache_path", "parser_version") if name in table.c]
+        if not lineage_columns:
+            continue
+
+        violations: list[dict[str, object]] = []
+        for row in session.execute(select(table)).mappings():
+            mapping = dict(row)
+            lineage_values = [
+                str(mapping.get(column) or "").lower()
+                for column in lineage_columns
+            ]
+            has_postseason_marker = any(
+                marker in value
+                for value in lineage_values
+                for marker in _POSTSEASON_MARKERS
+            )
+
+            if (
+                (spec.season_type == "regular" and has_postseason_marker)
+                or (spec.season_type == "postseason" and not has_postseason_marker)
+            ):
+                violations.append(
+                    {
+                        spec.grain_column: mapping.get(spec.grain_column),
+                        "parser_version": mapping.get("parser_version"),
+                        "source_url": mapping.get("source_url"),
+                    }
+                )
+
+        if violations:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="regular_postseason_separation_violation",
+                    message=f"Lineage metadata suggests mixed season-type rows in stats.{spec.table_name}.",
+                    context={"table": spec.full_name, "count": len(violations), "examples": violations[:10]},
                 )
             )
     return issues
@@ -380,7 +776,7 @@ def _row_content_issues(
                     message=f"Rows in stats.{spec.table_name} have all stat columns null.",
                     context={
                         "table": spec.full_name,
-                        "row_count": null_count,
+                        "count": null_count,
                         "examples": null_examples,
                     },
                 )
@@ -392,7 +788,7 @@ def _row_content_issues(
                     message=f"Rows in stats.{spec.table_name} have impossible numeric values.",
                     context={
                         "table": spec.full_name,
-                        "row_count": numeric_count,
+                        "count": numeric_count,
                         "examples": numeric_examples,
                     },
                 )
@@ -410,7 +806,7 @@ def _numeric_violations(data_values: Mapping[str, object]) -> list[str]:
         if number is None:
             continue
 
-        if isinstance(value, int) and value < 0:
+        if number < 0 and column_name not in _SIGNED_NUMERIC_COLUMNS:
             violations.append(f"{column_name} is negative")
 
         if column_name == "age" and not _is_between(number, 15, 60):
@@ -429,10 +825,33 @@ def _numeric_violations(data_values: Mapping[str, object]) -> list[str]:
             violations.append("avg_dist outside 0-94")
         elif column_name in {"ortg", "drtg"} and not _is_between(number, 0, 300):
             violations.append(f"{column_name} outside 0-300")
-        elif _is_percentage_like(column_name):
-            upper = 2 if column_name.startswith("adj_") else 1
-            if not _is_between(number, 0, upper):
-                violations.append(f"{column_name} outside 0-{upper}")
+        elif column_name in _SPECIAL_RATE_RANGES:
+            minimum, maximum = _SPECIAL_RATE_RANGES[column_name]
+            if not _is_between(number, minimum, maximum):
+                violations.append(f"{column_name} outside {minimum}-{maximum}")
+        elif (
+            column_name in _ADVANCED_PERCENTAGE_COLUMNS or column_name in _PBP_POSITION_COLUMNS
+        ) and not _is_between(number, 0, 100):
+            violations.append(f"{column_name} outside 0-100")
+        elif column_name in _TWO_POINT_PERCENTAGE_COLUMNS and not _is_between(number, 0, 2):
+            violations.append(f"{column_name} outside 0-2")
+        elif (
+            column_name.startswith("adj_")
+            and column_name.endswith("_pct")
+            and column_name not in _SPECIAL_RATE_RANGES
+            and not _is_between(number, 0, 300)
+        ):
+            violations.append(f"{column_name} outside 0-300")
+        elif (
+            column_name.endswith("_pct")
+            and column_name not in _ADVANCED_PERCENTAGE_COLUMNS
+            and column_name not in _PBP_POSITION_COLUMNS
+            and column_name not in _TWO_POINT_PERCENTAGE_COLUMNS
+            and column_name not in _SPECIAL_RATE_RANGES
+            and not column_name.startswith("adj_")
+            and not _is_between(number, 0, 1)
+        ):
+            violations.append(f"{column_name} outside 0-1")
 
     if games_played is not None and games_started is not None and games_started > games_played:
         violations.append("gs greater than g")
@@ -471,7 +890,7 @@ def _generated_schema_issues(inspector: Any) -> list[OfficialStatsValidationIssu
         OfficialStatsValidationIssue(
             code="generated_metric_schema_name",
             message="Generated-output names were found in the stats schema.",
-            context={"objects": offenders[:25]},
+            context={"count": len(offenders), "objects": offenders[:25]},
         )
     ]
 
@@ -492,6 +911,7 @@ def _backfill_report_issues(
             OfficialStatsValidationIssue(
                 code="stats_backfill_report_missing_field",
                 message="Stats backfill report is missing stats_loaded_rows.",
+                context={"count": 1},
             )
         )
     elif loaded_rows != persisted_total_rows:
@@ -503,6 +923,7 @@ def _backfill_report_issues(
                     f"stats backfill report loaded {loaded_rows} rows."
                 ),
                 context={
+                    "count": 1,
                     "persisted_total_rows": persisted_total_rows,
                     "stats_loaded_rows": loaded_rows,
                 },
@@ -522,7 +943,7 @@ def _backfill_report_issues(
             OfficialStatsValidationIssue(
                 code="backfill_failures_present",
                 message="Stats backfill report contains nonzero processing, load, or quarantine failures.",
-                context=nonzero_failures,
+                context={"count": len(nonzero_failures), **nonzero_failures},
             )
         )
     return issues
@@ -542,13 +963,61 @@ def _extract_backfill_summary(stats_backfill_report: Mapping[str, Any] | None) -
     }
 
 
+def _build_validation_summary(
+    issues: list[OfficialStatsValidationIssue],
+) -> dict[str, int]:
+    summary = {
+        "missing_table_issues": 0,
+        "missing_column_issues": 0,
+        "constraint_issues": 0,
+        "duplicate_grain_rows": 0,
+        "orphan_rows": 0,
+        "invalid_core_grain_rows": 0,
+        "synthetic_code_violations": 0,
+        "source_metadata_violations": 0,
+        "regular_postseason_separation_violations": 0,
+        "numeric_range_violations": 0,
+        "all_null_data_rows": 0,
+        "generated_metric_schema_objects": 0,
+        "backfill_report_violations": 0,
+    }
+    issue_groups = {
+        "missing_stats_table": "missing_table_issues",
+        "missing_required_column": "missing_column_issues",
+        "unexpected_source_team_code_column": "missing_column_issues",
+        "invalid_fk_constraint": "constraint_issues",
+        "missing_unique_grain_constraint": "constraint_issues",
+        "duplicate_logical_rows": "duplicate_grain_rows",
+        "orphan_fk_grain": "orphan_rows",
+        "invalid_core_grain_chain": "invalid_core_grain_rows",
+        "synthetic_code_in_core_teams": "synthetic_code_violations",
+        "synthetic_code_in_core_team_aliases": "synthetic_code_violations",
+        "synthetic_code_in_core_team_seasons": "synthetic_code_violations",
+        "synthetic_code_in_core_player_team_seasons": "synthetic_code_violations",
+        "synthetic_code_in_team_stint_stats": "synthetic_code_violations",
+        "missing_source_team_code_value": "source_metadata_violations",
+        "invalid_aggregate_source_team_code": "source_metadata_violations",
+        "regular_postseason_separation_violation": "regular_postseason_separation_violations",
+        "impossible_numeric_values": "numeric_range_violations",
+        "all_stat_columns_null": "all_null_data_rows",
+        "generated_metric_schema_name": "generated_metric_schema_objects",
+        "stats_backfill_report_missing_field": "backfill_report_violations",
+        "backfill_row_mismatch": "backfill_report_violations",
+        "backfill_failures_present": "backfill_report_violations",
+    }
+
+    for issue in issues:
+        target = issue_groups.get(issue.code)
+        if target is None:
+            continue
+        count = issue.context.get("count", 1)
+        summary[target] += int(count) if isinstance(count, int | float) else 1
+    return summary
+
+
 def _matched_tokens(name: str) -> tuple[str, ...]:
     lowered = name.lower()
     return tuple(token for token in _BANNED_GENERATED_NAME_TOKENS if token in lowered)
-
-
-def _is_percentage_like(column_name: str) -> bool:
-    return "pct" in column_name
 
 
 def _is_between(value: Decimal, minimum: int | float, maximum: int | float) -> bool:
@@ -566,6 +1035,10 @@ def _as_number(value: object) -> Decimal | None:
 
 
 def _json_safe_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return _json_safe_mapping(value)
+    if isinstance(value, tuple | list):
+        return [_json_safe_value(item) for item in value]
     if isinstance(value, Decimal):
         return float(value)
     if isinstance(value, date | datetime):
@@ -573,9 +1046,17 @@ def _json_safe_value(value: object) -> object:
     return value
 
 
+def _json_safe_mapping(mapping: Mapping[str, object]) -> dict[str, object]:
+    return {key: _json_safe_value(value) for key, value in mapping.items()}
+
+
 __all__ = [
     "OfficialStatsValidationIssue",
     "OfficialStatsValidationReport",
+    "POSTSEASON_AGGREGATE_TABLE_SPECS",
+    "POSTSEASON_TEAM_STINT_TABLE_SPECS",
+    "REGULAR_AGGREGATE_TABLE_SPECS",
+    "REGULAR_TEAM_STINT_TABLE_SPECS",
     "STATS_TABLE_SPECS",
     "StatsTableSpec",
     "validate_official_stats",

@@ -5,9 +5,9 @@
 Add post-load validation checks proving official wide stats are coherent,
 queryable, and separated from generated metrics.
 
-Review status: `changes_requested`. The implemented validator still needs the
-later `F4E-009` correction pass for synthetic source-code rules and Basketball
-Reference numeric ranges.
+Review status: `done` through `F4E-009`. The initial validator was corrected by
+the later `F4E-009` pass for synthetic source-code rules, postseason coverage,
+and Basketball Reference numeric ranges.
 
 ## Requirements
 

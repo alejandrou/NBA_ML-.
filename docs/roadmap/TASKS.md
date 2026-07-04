@@ -39,21 +39,21 @@
 - `F4E-003`: Idempotent stats repositories.
 - `F4E-004`: Normalized rows to wide stats loader.
 - `F4E-005`: Offline stats backfill command.
+- `F4E-006`: Official stats validation checks.
+- `F4E-007`: Player-page regular-season aggregate stats backfill.
+- `F4E-008`: Postseason stats schema and player-page backfill.
 
 ## Current
 
 - Current phase: `phase-4e-official-wide-stats-persistence`.
-- Current phase status: `in_progress`.
-- `F4E-006`: Official stats validation checks (`changes_requested`).
-- `F4E-007`: Player-page regular-season aggregate stats backfill (`needs_review`).
-- `F4E-008`: Postseason stats schema and player-page backfill (`needs_review`).
-- `F4E-009`: Official stats final validation and database closure (`pending`).
+- Current phase status: `review`.
+- `F4E-009`: Official stats final validation and database closure (`needs_review`).
 
 ## Next
 
-- Next safe action: review `F4E-007` and `F4E-008`, then start `F4E-009`.
-- Final validation and database closure stay blocked until `F4E-009` after
-  `F4E-006`, `F4E-007`, and `F4E-008`.
+- Owner accepted `F4E-007` and `F4E-008` as `done`.
+- `F4E-006` is closed by the final `F4E-009` validator pass and task-board update.
+- Next safe action: owner review of `F4E-009` and Phase 4E closure readiness.
 - Keep Phase 5 pending until Phase 4E closes through `F4E-009`.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, run the real stats

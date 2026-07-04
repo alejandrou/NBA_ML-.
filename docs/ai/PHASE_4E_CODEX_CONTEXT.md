@@ -12,8 +12,9 @@ Persist official Basketball Reference player statistics in typed relational
 `core` and future generated metrics in `features`.
 
 Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval,
-`F4E-006` has `changes_requested`, and `F4E-007` plus `F4E-008` are ready for
-review.
+`F4E-006` is closed through the final `F4E-009` validator pass, `F4E-007` and
+`F4E-008` are done by explicit owner decision, and `F4E-009` is ready for
+owner review.
 
 ## Current task state
 
@@ -22,10 +23,10 @@ review.
 - `F4E-003`: done
 - `F4E-004`: done
 - `F4E-005`: done
-- `F4E-006`: changes_requested
-- `F4E-007`: needs_review
-- `F4E-008`: needs_review
-- `F4E-009`: pending
+- `F4E-006`: done
+- `F4E-007`: done
+- `F4E-008`: done
+- `F4E-009`: needs_review
 
 Source of truth:
 
@@ -61,6 +62,9 @@ Source of truth:
 - Synthetic team codes must not be inserted into `core.teams`,
   `core.team_seasons`, `core.player_team_seasons`, or
   `stats.player_team_season_*`.
+- Final official-stats validation covers all 33 regular-season and postseason
+  tables, corrected Basketball Reference percentage scales, synthetic-code
+  safety, and regular-versus-postseason lineage separation.
 - `stats.player_team_season_roster` is team-stint only.
 - Official stat columns are typed and nullable by default.
 - `player_name` is not a stable key.
@@ -127,8 +131,8 @@ Source of truth:
 
 ## Next phase gate
 
-Review `F4E-007` and `F4E-008`, then use `F4E-009` for final validation and
-database closure. Phase 5 stays pending until Phase 4E is complete.
+Use `F4E-009` for owner review of final validation and database closure.
+Phase 5 stays pending until Phase 4E is explicitly accepted.
 
 ## Update policy
 

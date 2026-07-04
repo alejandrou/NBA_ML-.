@@ -118,6 +118,12 @@ multi-team source marker such as `2TM`, `3TM`, or `4TM`.
 `F4E-008` extends the schema with separate postseason `stats` tables while
 keeping regular season and postseason rows fully separate.
 
+`F4E-009` closes the reviewed validator contract over the final 33-table model.
+The final validation pass checks table presence, grain integrity, synthetic
+team-code safety, `source_team_code` metadata rules, corrected Basketball
+Reference numeric scales, generated-metric absence, and regular-season versus
+postseason lineage separation.
+
 ## Typing Rules
 
 - Counts use `Integer`.
@@ -637,7 +643,7 @@ for future player-page work. It maps Basketball Reference player-page table IDs
 to regular-season `stats.player_season_*` tables, the corresponding
 team-season table family, and future postseason tables.
 
-Regular-season player-page table IDs planned for `F4E-007`:
+Regular-season player-page table IDs implemented by `F4E-007`:
 
 - `per_game_stats`
 - `totals_stats`
@@ -648,7 +654,7 @@ Regular-season player-page table IDs planned for `F4E-007`:
 - `adj_shooting`
 - `pbp_stats`
 
-Postseason player-page table IDs planned for `F4E-008`:
+Postseason player-page table IDs implemented by `F4E-008`:
 
 - `per_game_stats_post`
 - `totals_stats_post`
@@ -729,14 +735,16 @@ uv run nba-data backfill stats --execute-approved-stats-backfill --output report
   `--max-workers`;
 - does not reload `core` unless a later reviewed task explicitly decides it.
 
-F4E-006 validation checks:
+F4E-006 and F4E-009 validation checks:
 
 - table counts;
 - duplicate rows;
 - orphan FKs;
 - synthetic source-code separation;
+- `source_team_code` metadata requirements;
 - principal stat population;
 - coverage by season and team;
 - Basketball Reference numeric ranges;
+- regular-season versus postseason separation;
 - idempotency;
 - absence of generated metrics in `stats`.

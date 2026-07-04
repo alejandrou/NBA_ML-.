@@ -24,6 +24,9 @@ These rules are stable unless the owner explicitly approves a change.
   not be modeled as a foreign key.
 - Do not store generated or derived stats in `stats`.
 - Keep regular-season and postseason stats in separate stat table families.
+- Official stats validation uses Basketball Reference scales: basic shooting
+  percentages `0-1`, `efg_pct` and `ts_pct` `0-2`, advanced and PBP position
+  percentages `0-100`, and adjusted shooting index percentages `0-300`.
 - Do not use `player_name` as a stable primary key.
 - Do not add API, frontend, OVR, ranking, similarity, or ML work outside an
   approved phase.

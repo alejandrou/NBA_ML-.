@@ -19,7 +19,7 @@ additive Alembic migration after the F4E-001 schema plan is approved.
 - Export all stats models from `src/nba_data/db/models/__init__.py`.
 - Create an Alembic revision after `0002_core_team_player_season`.
 - Create schema `stats` through Alembic, not `create_tables()`.
-- Add exactly 17 tables documented in
+- Add the initial 17 regular-season tables documented in
   `docs/architecture/OFFICIAL_STATS_SCHEMA.md`:
   `stats.player_team_season_roster`, 8 `player_team_season_*` stats tables,
   and 8 `player_season_*` aggregate stats tables.

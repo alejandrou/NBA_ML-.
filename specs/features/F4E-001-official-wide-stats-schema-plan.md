@@ -41,7 +41,7 @@ Not allowed:
   `per_poss`, `advanced`, `shooting`, `adj_shooting`, and `pbp`.
 - Define wide typed target tables for real team stints and separate
   player-page full-season target tables.
-- Define exactly 17 additive `stats` tables:
+- Define the initial 17 additive regular-season `stats` tables:
   `stats.player_team_season_roster`, 8 team-stint stats tables, and 8
   player-season stats tables.
 - Use `core.player_team_seasons.id` as the FK grain for roster and real-team

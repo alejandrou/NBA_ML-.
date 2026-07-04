@@ -1,7 +1,7 @@
 # Current Phase
 
 Phase ID: `phase-4e-official-wide-stats-persistence`
-Status: `in_progress`
+Status: `review`
 
 ## Phase 4E - Official Basketball Reference Wide Stats Persistence
 
@@ -50,13 +50,15 @@ plus the final closure notes in `progress/review.md`. The requested
   approval of the reviewed loader, tests, and validation.
 - `F4E-005`: Offline stats backfill command (`done`) by explicit owner
   approval of the reviewed guarded command, tests, and validation.
-- `F4E-006`: Official stats validation checks (`changes_requested`) because
-  validator/design guidance still contains outdated `TOT` and numeric-range
-  assumptions.
-- `F4E-007`: Player-page regular-season aggregate stats backfill (`needs_review`).
-- `F4E-008`: Postseason stats schema and player-page backfill (`needs_review`).
-- `F4E-009`: Official stats final validation and database closure (`pending`)
-  and dependent on `F4E-006`, `F4E-007`, and `F4E-008`.
+- `F4E-006`: Official stats validation checks (`done`) after the final
+  `F4E-009` correction pass updated synthetic-code and Basketball Reference
+  numeric-range validation.
+- `F4E-007`: Player-page regular-season aggregate stats backfill (`done`) by
+  explicit owner decision.
+- `F4E-008`: Postseason stats schema and player-page backfill (`done`) by
+  explicit owner decision.
+- `F4E-009`: Official stats final validation and database closure
+  (`needs_review`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -65,13 +67,13 @@ creating core rows, loading normalized rows, or introducing backfill behavior.
 `F4E-004` adds the normalized-row loader over those repositories without
 owning transaction commits, creating core rows, or running offline stats
 backfills. `F4E-005` adds the guarded cache-only stats backfill command and is
-closed by explicit owner approval. `F4E-006` added read-only validation over
-the initial official regular-season `stats` tables, but review now requests
-updates for synthetic source-code handling and Basketball Reference numeric
-ranges before Phase 4E can close. `F4E-007` now has the cache-only player-page
-parser, selector, loader, migration, CLI path, and validation completed, and
-is ready for review. `F4E-009` owns the final validation and database-closure
-dependency on `F4E-006`.
+closed by explicit owner approval. `F4E-006` now closes through the final
+`F4E-009` validator implementation, which validates all regular-season and
+postseason stats tables, source-team-code safety, corrected Basketball
+Reference numeric ranges, generated-metric absence, and regular-season versus
+postseason lineage separation. `F4E-007` and `F4E-008` are accepted as done by
+explicit owner decision. Phase 4E is now ready for owner review through
+`F4E-009`.
 
 ## Guardrails
 
@@ -86,9 +88,8 @@ dependency on `F4E-006`.
 
 ## Next Safe Action
 
-Review `F4E-007` and `F4E-008`, then proceed to `F4E-009`. Final validation
-and database closure remain blocked until `F4E-009`. Keep Phase 5 pending
-until Phase 4E closes through `F4E-009`.
+Review `F4E-009` and Phase 4E closure readiness. Keep Phase 5 pending until
+the owner explicitly accepts Phase 4E.
 
 ## References
 

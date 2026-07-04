@@ -20,7 +20,9 @@ loaders, models, migrations, or backfills.
 | `pbp_stats` | `stats.player_season_pbp` | Team-season pages populate `stats.player_team_season_pbp`. |
 
 `F4E-007` implements the regular-season mapping below through a cache-only
-player-page parser, selector, loader, and guarded backfill command.
+player-page parser, selector, loader, and guarded backfill command. The owner
+accepted `F4E-007` as `done`, and `F4E-009` validates the final routing and
+source-team-code safety rules.
 
 `source_team_code` on `stats.player_season_*` is metadata only. Valid source
 examples include `BOS`, `HOU`, `BRK`, `2TM`, `3TM`, and `4TM`. Synthetic codes
@@ -60,7 +62,9 @@ Examples:
 | `pbp_stats_post` | `stats.player_postseason_pbp` | `stats.player_team_postseason_pbp` |
 
 `F4E-008` implements the postseason mapping below through a cache-only
-player-page parser, selector, loader, and guarded backfill command.
+player-page parser, selector, loader, and guarded backfill command. The owner
+accepted `F4E-008` as `done`, and `F4E-009` validates the separation between
+regular-season and postseason table families.
 
 For each player-season and supported postseason stat table, load exactly one
 aggregate row into `stats.player_postseason_*`.

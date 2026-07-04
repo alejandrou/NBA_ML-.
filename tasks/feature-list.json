@@ -1,6 +1,6 @@
 {
   "current_phase_id": "phase-4e-official-wide-stats-persistence",
-  "current_phase_status": "in_progress",
+  "current_phase_status": "review",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -1535,7 +1535,7 @@
       "id": "F4E-006",
       "title": "Add official stats validation checks",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "changes_requested",
+      "status": "done",
       "depends_on": [
         "F4E-005"
       ],
@@ -1575,7 +1575,7 @@
       "id": "F4E-007",
       "title": "Add player-page regular-season aggregate stats backfill",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4E-005"
       ],
@@ -1620,7 +1620,7 @@
       "id": "F4E-008",
       "title": "Add postseason stats schema and player-page backfill",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4E-007"
       ],
@@ -1659,7 +1659,7 @@
       "id": "F4E-009",
       "title": "Add official stats final validation and database closure",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "needs_review",
       "depends_on": [
         "F4E-006",
         "F4E-007",

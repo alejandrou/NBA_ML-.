@@ -28,11 +28,14 @@ synthetic source-code placement, and Basketball Reference numeric ranges.
 
 - Validator tests cover synthetic-team-code placement and corrected numeric
   ranges.
+- Validator covers all regular-season and postseason Phase 4E table families.
 - Validation reports actionable failures for duplicates, orphan FKs, invalid
   core grains, unsupported source rows, and generated-metric contamination.
 - Phase 4E docs, progress, review notes, task board, and learning changelog are
   updated for closure readiness.
 - Phase 5 remains pending until Phase 4E closure is explicitly approved.
+- Owner-accepted `F4E-007` and `F4E-008` remain closed unless a hard blocker is
+  found.
 
 ## Validation
 
@@ -47,4 +50,3 @@ synthetic source-code placement, and Basketball Reference numeric ranges.
 - Cache refresh or acquisition.
 - API endpoints, frontend, generated metrics, OVR, rankings, similarity,
   recommendations, or ML work.
-

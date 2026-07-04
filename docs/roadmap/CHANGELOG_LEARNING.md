@@ -3077,3 +3077,39 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
   exist through SQLAlchemy models and Alembic.
 - Player-page postseason parsing, selection, loading, and guarded cache-only
   backfill are in place offline.
+
+## 2026-07-04 - F4E-009 official stats final validation and closure prep
+
+### Files Read
+
+- `src/nba_data/validation/official_stats.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_official_stats_validation.py`
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
+- `docs/ai/PHASE_4E_CODEX_CONTEXT.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`,
+`uv run nba-data validate official-stats`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+
+### Outcome
+
+- `F4E-006` is closed through the final `F4E-009` validator pass.
+- The official-stats validator now covers the final 33-table regular-season
+  and postseason model, corrected Basketball Reference percentage scales,
+  synthetic team-code safety, and regular-versus-postseason lineage
+  separation.
+- The owner accepted `F4E-007` and `F4E-008` as `done`.
+- `F4E-009` is `needs_review`, and Phase 4E is ready for owner review while
+  Phase 5 remains pending.

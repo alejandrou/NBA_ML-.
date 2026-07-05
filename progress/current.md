@@ -1,6 +1,6 @@
 # Current Work
 
-Status: phase_4e_f4e_009_needs_review
+Status: phase_4e_f4e_009_f4e_010_needs_review
 
 ## Active Task
 
@@ -12,6 +12,7 @@ Status: phase_4e_f4e_009_needs_review
   explicit owner decision.
 - `F4E-009`: Official stats final validation and database closure is
   `needs_review`.
+- `F4E-010`: Player-page cache acquisition is `needs_review`.
 
 ## Current Phase
 
@@ -21,55 +22,43 @@ Status: phase_4e_f4e_009_needs_review
 
 ## Latest Checkpoint
 
-- Updated `src/nba_data/validation/official_stats.py` to validate the final
-  33-table Phase 4E model across regular-season team-stint tables,
-  regular-season aggregate tables, postseason aggregate tables, and
-  postseason team-stint tables.
-- Added schema checks for required tables, grain columns, unique grain
-  constraints, and aggregate `source_team_code` metadata presence.
-- Added final synthetic-code validation so `TOT`, `2TM`, `3TM`, and `4TM`
-  fail in `core` real-team tables and all team-stint stats tables, while
-  `2TM`, `3TM`, and `4TM` remain allowed only as aggregate metadata.
-- Added aggregate metadata validation so `source_team_code` rejects `TOT`,
-  rejects unknown codes, and allows real team codes plus `2TM`/`3TM`/`4TM`.
-- Added regular-season versus postseason lineage checks so postseason parser
-  metadata cannot land in regular tables and vice versa.
-- Corrected Basketball Reference numeric ranges:
-  shooting percentages `0-1`, `efg_pct` and `ts_pct` `0-2`, advanced and PBP
-  percentages `0-100`, adjusted shooting percentages `0-300`, and signed
-  allowances for BPM, VORP, win shares, plus/minus, and points-added fields.
-- Expanded `tests/unit/test_official_stats_validation.py` with final-pass
-  coverage for clean Harden/Brown regular-season and postseason fixtures,
-  missing tables and columns, orphan and invalid grains, synthetic-code misuse,
-  accepted Basketball Reference scales, rejected numeric ranges, season-family
-  separation, duplicate grains, and CLI failure output.
-- Updated the task board and current phase docs so `F4E-007` and `F4E-008`
-  are closed by explicit owner decision, `F4E-006` is closed through
-  `F4E-009`, and Phase 4E is ready for owner review.
+- Added `src/nba_data/scraping/player_page_acquisition.py` with a deterministic
+  `core.players` manifest builder, optional `core.player_seasons` year
+  filtering, dry-run reporting, guarded acquisition execution, safe cache
+  writes, and stop-on-429 or stop-on-failure partial reports.
+- Added `nba-data acquisition dry-run-player-pages` and
+  `nba-data acquisition acquire-player-pages` to `src/nba_data/cli/main.py`.
+- Kept live acquisition sequential, cache-first, and client/cache-only:
+  manifest planning uses read-only DB queries, the live client is created only
+  after manifest validation, and cache writes refuse to overwrite existing
+  files.
+- Added `tests/unit/test_player_page_acquisition.py` covering URL building,
+  season-filtered manifest selection, dry-run cache hits, acquisition reports,
+  CLI guards, CLI report output, rate-limit settings, and the no-DB-write
+  boundary.
+- Added `specs/features/F4E-010-player-page-cache-acquisition.md` and updated
+  Phase 4E task/phase docs so the owner-gated player-page acquisition path is
+  in scope without starting Phase 5 or changing the cache-only loaders.
 
 ## Latest Validation
 
-- `uv run pytest tests/unit/test_official_stats_validation.py`: passed, 10 passed.
+- `uv run pytest tests/unit/test_player_page_acquisition.py`: passed, 10 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 305 passed, 1 skipped, and 6 Peewee deprecation warnings.
-- `docker compose up -d postgres`: passed.
-- `uv run alembic upgrade head`: passed.
+- `uv run pytest`: passed, 315 passed, 1 skipped, and 6 Peewee deprecation warnings.
 - `uv run alembic check`: passed with no new upgrade operations detected.
-- `uv run nba-data validate official-stats`: passed with zero issues. The
-  current local PostgreSQL state has loaded regular-season team-stint stats,
-  while aggregate player-season and postseason stats tables remain present but
-  empty.
 - `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
-  305 passed, 1 skipped, and 6 Peewee deprecation warnings.
+  315 passed, 1 skipped, and 6 Peewee deprecation warnings.
 
 ## Guardrails Observed
 
-- No live scraping, Basketball Reference contact, cache refresh,
-  API/frontend/generated metric work, destructive migration, data deletion,
-  Peewee removal, branch creation, commit, push, or PR occurred.
+- No live scraping, Basketball Reference contact, cache refresh, player-page
+  acquisition execution, API/frontend/generated metric work, destructive
+  migration, data deletion, Peewee removal, branch creation, commit, push, or
+  PR occurred.
 
 ## Next Safe Action
 
-- Owner review of `F4E-009` and Phase 4E closure readiness after validation.
+- Review `F4E-010`, then re-review `F4E-009` and Phase 4E closure readiness
+  after validation.
 - Keep Phase 5 pending until Phase 4E is explicitly accepted.

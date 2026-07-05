@@ -3113,3 +3113,37 @@ Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
 - The owner accepted `F4E-007` and `F4E-008` as `done`.
 - `F4E-009` is `needs_review`, and Phase 4E is ready for owner review while
   Phase 5 remains pending.
+
+## 2026-07-05 - F4E-010 player-page cache acquisition
+
+### Files Read
+
+- `src/nba_data/cli/main.py`
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `src/nba_data/scraping/offline_player_stats_backfill.py`
+- `src/nba_data/scraping/offline_player_postseason_stats_backfill.py`
+- `src/nba_data/db/models/core.py`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-4e-official-wide-stats-persistence.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Concepts Learned
+
+- The player-page backfills were already cache-only, so the missing piece was a
+  separate acquisition boundary rather than loader changes.
+- A deterministic manifest can be derived from `core.players` alone, with
+  optional narrowing through `core.player_seasons` and `core.seasons`.
+- Keeping the live client separate from manifest planning avoids accidental DB
+  writes and avoids `BasketballReferenceClient` cache overwrites on misses.
+- Player-page acquisition should stay stricter than the global hard cap and
+  refuse rates above the project default 10 requests/minute.
+
+### Review Questions
+
+- Should the first owner-approved live run use a small filtered manifest, such
+  as one player or one season range, before a broader acquisition?

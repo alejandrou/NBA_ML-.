@@ -1695,6 +1695,53 @@
       ]
     },
     {
+      "id": "F4E-010",
+      "title": "Add player-page cache acquisition",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "needs_review",
+      "depends_on": [
+        "F4E-007",
+        "F4E-008"
+      ],
+      "description": "Add a controlled cache-first acquisition path for Basketball Reference player pages using existing core player identities.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-010-player-page-cache-acquisition.md.",
+        "A deterministic player-page manifest is built from core.players using basketball_reference_player_id values.",
+        "The manifest can be filtered by core.seasons.season_year through core.player_seasons.",
+        "Player-page URLs are built only as https://www.basketball-reference.com/players/{first_letter}/{player_id}.html.",
+        "acquisition dry-run-player-pages reports cache coverage without creating a live client.",
+        "acquisition acquire-player-pages refuses to run without both --owner-approved and --execute-approved-manifest.",
+        "Live acquisition is cache-first, sequential, rate-limited, and uses only BasketballReferenceClient plus HtmlCache.",
+        "Acquisition writes no database rows and does not overwrite cache files.",
+        "Live acquisition stops safely on HTTP 429 or failed fetch and emits a partial JSON report.",
+        "Reports include total_players, cache_hits, fetched, failures, live_request_count, and entries.",
+        "Unit tests cover URL building, manifest filtering, cache hits, acquisition reporting, CLI guards, and the no-DB-write boundary.",
+        "Player-page regular-season and postseason loaders remain cache-only."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "uv run alembic check",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live acquisition without explicit owner approval",
+        "Refreshing or overwriting existing player-page cache files",
+        "Writing stats rows during acquisition",
+        "Phase 5 API/frontend/OVR/ranking/similarity/ML work"
+      ],
+      "expected_files": [
+        "specs/features/F4E-010-player-page-cache-acquisition.md",
+        "src/nba_data/scraping/player_page_acquisition.py",
+        "src/nba_data/cli/main.py",
+        "tests/unit/test_player_page_acquisition.py",
+        "docs/roadmap/CURRENT_PHASE.md",
+        "specs/phases/phase-4e-official-wide-stats-persistence.md",
+        "progress/current.md"
+      ]
+    },
+    {
       "id": "F5-001",
       "title": "Design read-only API foundation",
       "phase_id": "phase-5-api",

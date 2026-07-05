@@ -36,6 +36,14 @@ from nba_data.scraping.offline_stats_backfill import (
     DEFAULT_STATS_PARSER_VERSION,
     run_offline_stats_backfill,
 )
+from nba_data.scraping.player_page_acquisition import (
+    PlayerPageAcquisitionConfigurationError,
+    PlayerPageAcquisitionStopped,
+    acquire_player_page_manifest,
+    build_player_page_dry_run_report,
+    build_player_page_manifest,
+    validate_player_page_acquisition_settings,
+)
 from nba_data.validation.official_stats import (
     validate_official_stats as run_official_stats_validation,
 )
@@ -515,6 +523,130 @@ def acquisition_acquire_nba_team_seasons(
         with BasketballReferenceClient(settings, max_429_retries=0) as client:
             report = acquire_nba_team_season_manifest(manifest, cache=cache, client=client)
     except NbaTeamSeasonAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("dry-run-player-pages")
+def acquisition_dry_run_player_pages(
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for deterministic player-page manifest entries.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season year to include via core.player_seasons.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season year to include via core.player_seasons.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Plan the deterministic Phase 4E player-page manifest without downloading anything."""
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            try:
+                report = build_player_page_dry_run_report(
+                    session,
+                    cache=cache,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
+            except PlayerPageAcquisitionConfigurationError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("acquire-player-pages")
+def acquisition_acquire_player_pages(
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for deterministic player-page acquisition.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved acquisition.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for deterministic player-page manifest entries.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season year to include via core.player_seasons.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season year to include via core.player_seasons.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run controlled Phase 4E player-page cache acquisition."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    try:
+        validate_player_page_acquisition_settings(settings)
+    except PlayerPageAcquisitionConfigurationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            try:
+                manifest = build_player_page_manifest(
+                    session,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
+            except PlayerPageAcquisitionConfigurationError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        with BasketballReferenceClient(settings, max_429_retries=0) as client:
+            report = acquire_player_page_manifest(manifest, cache=cache, client=client)
+    except PlayerPageAcquisitionStopped as exc:
         _print_and_optionally_write_json(exc.report.to_dict(), output)
         raise typer.Exit(code=1) from exc
 

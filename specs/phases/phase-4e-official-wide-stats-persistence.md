@@ -6,8 +6,9 @@ Phase ID: `phase-4e-official-wide-stats-persistence`
 ## Goal
 
 Prepare and then implement a relational `stats` schema for official Basketball
-Reference player statistics from cached NBA team-season pages and future cached
-player pages.
+Reference player statistics from cached NBA team-season pages and cached player
+pages, with an owner-gated acquisition path available only when cache coverage
+is missing.
 
 The phase keeps identity and membership in `core`, official scraped statistics
 in `stats`, and future app-generated metrics in `features`.
@@ -46,6 +47,7 @@ cached team-season HTML and future cached player-page HTML
 - `F4E-007`: Player-page regular-season aggregate stats backfill.
 - `F4E-008`: Postseason stats schema and player-page backfill.
 - `F4E-009`: Official stats final validation and database closure.
+- `F4E-010`: Player-page cache acquisition.
 
 `F4E-001` is done by explicit owner approval. `F4E-002` is done by explicit
 owner approval of the reviewed SQLAlchemy stats models, Alembic migration, and
@@ -54,8 +56,8 @@ repositories, tests, and validation. `F4E-004` is done by explicit owner
 approval of the reviewed normalized-row stats loader, tests, and validation.
 `F4E-005` is done by explicit owner approval. `F4E-006` closes through the
 final `F4E-009` validator correction pass. `F4E-007` and `F4E-008` are done by
-explicit owner decision. `F4E-009` is `needs_review`, and Phase 4E is ready
-for owner review but not yet closed.
+explicit owner decision. `F4E-009` and `F4E-010` are `needs_review`, and Phase
+4E remains in review but is not yet closed.
 
 ## Schema Decisions
 
@@ -110,10 +112,15 @@ for owner review but not yet closed.
   separation, nullability, and Basketball Reference numeric ranges.
 - Validate lineage metadata so regular-season and postseason rows remain in the
   correct table families.
+- Build a deterministic player-page manifest from `core.players` and optional
+  `core.player_seasons` year filters.
+- Add owner-gated, cache-first player-page acquisition commands that write
+  `.html.gz` files only through `HtmlCache` and never write DB rows.
 
 ## Disallowed Work
 
-- Live scraping, cache refresh, or Basketball Reference contact.
+- Live scraping, cache refresh, or Basketball Reference contact outside the
+  owner-gated player-page acquisition task.
 - Treating `TOT`, `2TM`, `3TM`, or `4TM` as real teams.
 - Loading synthetic team codes into `stats.player_team_season_*`.
 - Using Game Highs as a source for official season stats.

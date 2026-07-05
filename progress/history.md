@@ -2405,3 +2405,19 @@ Task:
 - Did not run live scraping, contact Basketball Reference, refresh cache,
   delete data, run destructive migrations, implement API/frontend/generated
   metrics, create a branch, commit, push, or open a PR.
+
+## Phase 4E F4E-010 Player-Page Cache Acquisition
+
+- Added `src/nba_data/scraping/player_page_acquisition.py` with deterministic
+  manifest planning from `core.players`, optional year filtering through
+  `core.player_seasons`, dry-run reporting, safe cache writes, and stop-on-429
+  or stop-on-failure live acquisition behavior.
+- Added `nba-data acquisition dry-run-player-pages` and
+  `nba-data acquisition acquire-player-pages`.
+- Kept the live path owner-gated with both `--owner-approved` and
+  `--execute-approved-manifest`.
+- Kept acquisition sequential, cache-first, rate-limited, and DB-read-only.
+- Added `tests/unit/test_player_page_acquisition.py`.
+- Added `specs/features/F4E-010-player-page-cache-acquisition.md`.
+- Updated Phase 4E phase/task/progress docs so the owner-gated player-page
+  acquisition path is in scope without starting Phase 5.

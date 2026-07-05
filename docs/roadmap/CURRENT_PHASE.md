@@ -9,7 +9,8 @@ Status: `review`
 
 Add persistence for official Basketball Reference player statistics in typed
 wide relational tables under schema `stats`, while keeping identity and
-relationships in `core` and future generated metrics in `features`.
+relationships in `core`, using owner-gated player-page cache acquisition when
+needed, and reserving future generated metrics for `features`.
 
 Phase 4E remains pre-API. Phase 5 API work must not begin until Phase 4E is
 complete unless the owner explicitly approves a core-only API path.
@@ -59,6 +60,7 @@ plus the final closure notes in `progress/review.md`. The requested
   explicit owner decision.
 - `F4E-009`: Official stats final validation and database closure
   (`needs_review`).
+- `F4E-010`: Player-page cache acquisition (`needs_review`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -72,13 +74,17 @@ closed by explicit owner approval. `F4E-006` now closes through the final
 postseason stats tables, source-team-code safety, corrected Basketball
 Reference numeric ranges, generated-metric absence, and regular-season versus
 postseason lineage separation. `F4E-007` and `F4E-008` are accepted as done by
-explicit owner decision. Phase 4E is now ready for owner review through
-`F4E-009`.
+explicit owner decision. `F4E-010` adds a deterministic `core.players`-driven
+player-page manifest plus guarded cache-first acquisition commands so the
+existing cache-only player-page backfills can process real cached HTML without
+writing any database rows. Phase 4E remains in review with `F4E-009` and
+`F4E-010` awaiting owner review.
 
 ## Guardrails
 
 - Do not run live scraping, contact Basketball Reference, refresh cache, or
-  run acquisition commands.
+  execute player-page acquisition without explicit owner approval and
+  `--execute-approved-manifest`.
 - Do not run the real stats backfill command or write real stats backfill data
   as part of review preparation.
 - Do not implement API endpoints, frontend pages, generated metrics, OVR,
@@ -88,8 +94,8 @@ explicit owner decision. Phase 4E is now ready for owner review through
 
 ## Next Safe Action
 
-Review `F4E-009` and Phase 4E closure readiness. Keep Phase 5 pending until
-the owner explicitly accepts Phase 4E.
+Review `F4E-009` and `F4E-010`, then reassess Phase 4E closure readiness. Keep
+Phase 5 pending until the owner explicitly accepts Phase 4E.
 
 ## References
 
@@ -104,6 +110,7 @@ the owner explicitly accepts Phase 4E.
 - `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
 - `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
 - `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
+- `specs/features/F4E-010-player-page-cache-acquisition.md`
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
 - `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`

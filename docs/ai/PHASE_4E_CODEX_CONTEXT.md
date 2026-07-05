@@ -13,8 +13,8 @@ Persist official Basketball Reference player statistics in typed relational
 
 Phase 4E is pre-API. `F4E-005` is closed by explicit owner approval,
 `F4E-006` is closed through the final `F4E-009` validator pass, `F4E-007` and
-`F4E-008` are done by explicit owner decision, and `F4E-009` is ready for
-owner review.
+`F4E-008` are done by explicit owner decision, and `F4E-009` plus `F4E-010`
+are ready for owner review.
 
 ## Current task state
 
@@ -27,6 +27,7 @@ owner review.
 - `F4E-007`: done
 - `F4E-008`: done
 - `F4E-009`: needs_review
+- `F4E-010`: needs_review
 
 Source of truth:
 
@@ -80,8 +81,8 @@ Source of truth:
 
 ## Out of scope
 
-- Live scraping.
-- Cache refresh or acquisition.
+- Live scraping outside the owner-gated player-page acquisition path.
+- Cache refresh or unapproved acquisition.
 - API or frontend work.
 - Generated metrics, OVR, ranking, similarity, recommendations, or ML.
 - Destructive database operations or Peewee removal.
@@ -104,7 +105,9 @@ Source of truth:
 - `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
 - `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
 - `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
+- `specs/features/F4E-010-player-page-cache-acquisition.md`
 - `src/nba_data/validation/official_stats.py`
+- `src/nba_data/scraping/player_page_acquisition.py`
 - `src/nba_data/cli/main.py`
 - `tests/unit/test_official_stats_validation.py`
 
@@ -131,8 +134,9 @@ Source of truth:
 
 ## Next phase gate
 
-Use `F4E-009` for owner review of final validation and database closure.
-Phase 5 stays pending until Phase 4E is explicitly accepted.
+Use `F4E-010` to fill player-page cache coverage when explicitly approved, then
+review `F4E-009` plus `F4E-010` before closing Phase 4E. Phase 5 stays pending
+until Phase 4E is explicitly accepted.
 
 ## Update policy
 

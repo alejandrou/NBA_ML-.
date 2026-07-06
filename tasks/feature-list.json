@@ -1659,7 +1659,7 @@
       "id": "F4E-009",
       "title": "Add official stats final validation and database closure",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4E-006",
         "F4E-007",
@@ -1698,7 +1698,7 @@
       "id": "F4E-010",
       "title": "Add player-page cache acquisition",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "needs_review",
+      "status": "done",
       "depends_on": [
         "F4E-007",
         "F4E-008"

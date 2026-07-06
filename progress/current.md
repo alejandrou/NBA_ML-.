@@ -1,6 +1,6 @@
 # Current Work
 
-Status: phase_4e_f4e_009_f4e_010_needs_review
+Status: phase_4e_done
 
 ## Active Task
 
@@ -10,15 +10,14 @@ Status: phase_4e_f4e_009_f4e_010_needs_review
   explicit owner decision.
 - `F4E-008`: Postseason stats schema and player-page backfill is `done` by
   explicit owner decision.
-- `F4E-009`: Official stats final validation and database closure is
-  `needs_review`.
-- `F4E-010`: Player-page cache acquisition is `needs_review`.
+- `F4E-009`: Official stats final validation and database closure is `done`.
+- `F4E-010`: Player-page cache acquisition is `done`.
 
 ## Current Phase
 
 - Phase ID: `phase-4e-official-wide-stats-persistence`.
-- Phase status: `review`.
-- Phase 4E remains pre-API and Phase 5 stays pending until owner acceptance.
+- Phase status: `done`.
+- Phase 4E is closed and Phase 5 stays pending until owner acceptance.
 
 ## Latest Checkpoint
 
@@ -67,6 +66,11 @@ Status: phase_4e_f4e_009_f4e_010_needs_review
   warnings.
 - `uv run pytest`: passed, 319 passed, 1 skipped, and 6 Peewee deprecation
   warnings.
+- Phase 4E closure validation:
+  `uv run nba-data validate official-stats`: passed with `passed: true`.
+- Direct PostgreSQL audits:
+  zero synthetic core teams, zero synthetic core team seasons, zero orphan
+  stats rows, zero duplicate grain groups.
 - `uv run pytest tests/unit/test_player_page_acquisition.py`: passed, 10 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.

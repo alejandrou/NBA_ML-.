@@ -1,7 +1,7 @@
 # Current Phase
 
 Phase ID: `phase-4e-official-wide-stats-persistence`
-Status: `review`
+Status: `done`
 
 ## Phase 4E - Official Basketball Reference Wide Stats Persistence
 
@@ -58,9 +58,8 @@ plus the final closure notes in `progress/review.md`. The requested
   explicit owner decision.
 - `F4E-008`: Postseason stats schema and player-page backfill (`done`) by
   explicit owner decision.
-- `F4E-009`: Official stats final validation and database closure
-  (`needs_review`).
-- `F4E-010`: Player-page cache acquisition (`needs_review`).
+- `F4E-009`: Official stats final validation and database closure (`done`).
+- `F4E-010`: Player-page cache acquisition (`done`).
 
 `F4E-002` implements the reviewed schema as SQLAlchemy models and Alembic
 revision `0003_stats_wide_tables`. `F4E-003` adds idempotent SQLAlchemy
@@ -77,8 +76,7 @@ postseason lineage separation. `F4E-007` and `F4E-008` are accepted as done by
 explicit owner decision. `F4E-010` adds a deterministic `core.players`-driven
 player-page manifest plus guarded cache-first acquisition commands so the
 existing cache-only player-page backfills can process real cached HTML without
-writing any database rows. Phase 4E remains in review with `F4E-009` and
-`F4E-010` awaiting owner review.
+writing any database rows. Phase 4E is done after final validation and closure.
 
 ## Guardrails
 
@@ -94,8 +92,9 @@ writing any database rows. Phase 4E remains in review with `F4E-009` and
 
 ## Next Safe Action
 
-Review `F4E-009` and `F4E-010`, then reassess Phase 4E closure readiness. Keep
-Phase 5 pending until the owner explicitly accepts Phase 4E.
+Phase 4E is complete. Prepare the closure summary, update progress/history
+records, and keep Phase 5 pending until the owner explicitly accepts the phase
+transition.
 
 ## References
 

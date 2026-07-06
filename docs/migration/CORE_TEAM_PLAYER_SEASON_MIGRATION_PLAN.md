@@ -81,8 +81,8 @@ migrations may add:
 
 - non-null constraints after source coverage proves identifiers are reliable;
 - indexes for common lookups by Basketball Reference IDs and season;
-- explicit tables for player-team-season and player-season aggregate stats;
-- constraints that separate real team rows from `TOT` aggregate rows;
+- explicit tables for player-team-season and player-season stats;
+- constraints that separate real team rows from synthetic source markers;
 - source lineage columns that connect loaded rows back to `raw.raw_pages`.
 
 Any migration that changes existing tables must include downgrade behavior where

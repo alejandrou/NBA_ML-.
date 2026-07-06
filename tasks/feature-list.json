@@ -1,6 +1,6 @@
 {
-  "current_phase_id": "phase-4d-full-offline-database-preparation",
-  "current_phase_status": "done",
+  "current_phase_id": "phase-4e-official-wide-stats-persistence",
+  "current_phase_status": "review",
   "max_approved_tasks": 1,
   "max_in_progress_tasks": 1,
   "allow_auto_promote_ready_in_proposed_phase": false,
@@ -852,7 +852,7 @@
         "Validation and duplicate natural-key checks run before any DB write.",
         "Repositories use portable select-then-insert/update logic.",
         "Loader and repository methods do not call session.commit().",
-        "Tests cover duplicate input, invalid batches, rollback behavior, name overwrite rules, TOT aggregate handling, and PostgreSQL idempotent reruns."
+        "Tests cover duplicate input, invalid batches, rollback behavior, name overwrite rules, non-real-team marker handling, and PostgreSQL idempotent reruns."
       ],
       "validation": [
         "python -m json.tool tasks/feature-list.json",
@@ -1333,7 +1333,7 @@
       "id": "F4E-001",
       "title": "Plan official wide stats schema",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4D-004"
       ],
@@ -1344,7 +1344,7 @@
         "Design doc exists at docs/architecture/OFFICIAL_STATS_SCHEMA.md.",
         "Legacy stats review exists at docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md.",
         "The design documents the core/stats/features separation.",
-        "The design documents separate team-stint and TOT aggregate stats tables.",
+        "The design documents separate team-stint and player-page full-season stats tables.",
         "The design documents stats.player_team_season_roster as team-stint only.",
         "The design records normalized keys emitted by the current normalizer before final columns are frozen.",
         "The design rejects JSONB as primary stat storage.",
@@ -1378,7 +1378,7 @@
       "id": "F4E-002",
       "title": "Add stats models and Alembic migration",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-001"
       ],
@@ -1388,7 +1388,7 @@
         "The stats schema is created through Alembic.",
         "All reviewed team-stint and aggregate wide stats tables exist.",
         "Real-team stat tables FK to core.player_team_seasons.id.",
-        "Aggregate TOT tables FK to core.player_seasons.id.",
+        "Full player-season tables FK to core.player_seasons.id.",
         "Each wide table has a surrogate primary key plus a unique FK constraint at its grain.",
         "Official stat columns are typed and nullable by default.",
         "No JSONB primary stat storage is introduced.",
@@ -1421,7 +1421,7 @@
       "id": "F4E-003",
       "title": "Add idempotent stats repositories",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-002"
       ],
@@ -1430,11 +1430,11 @@
         "Feature spec exists at specs/features/F4E-003-idempotent-stats-repositories.md.",
         "Repository methods cover roster, team-stint stats, and aggregate stats tables.",
         "Team-stint stats upsert by player_team_season_id.",
-        "Aggregate TOT stats upsert by player_season_id.",
+        "Full player-season stats upsert by player_season_id.",
         "Repositories do not call session.commit() or session.rollback().",
         "Duplicate natural keys fail before any write.",
         "Reruns do not create duplicate stats rows.",
-        "Tests cover idempotency, duplicate input, rollback behavior, FK grain enforcement, and TOT separation."
+        "Tests cover idempotency, duplicate input, rollback behavior, FK grain enforcement, and source-code separation."
       ],
       "validation": [
         "python -m json.tool tasks/feature-list.json",
@@ -1458,7 +1458,7 @@
       "id": "F4E-004",
       "title": "Load normalized rows into wide stats",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-003"
       ],
@@ -1468,11 +1468,11 @@
         "Loader starts from parsed, normalized, and validated rows.",
         "Loader maps every supported source_table to the expected wide stats table.",
         "Real-team rows load through core.player_team_seasons.id.",
-        "Aggregate TOT rows load through core.player_seasons.id.",
+        "Full player-season rows load through core.player_seasons.id.",
         "Roster rows load only to stats.player_team_season_roster.",
         "Missing core identity rows produce actionable failures.",
         "Reruns do not duplicate stats rows.",
-        "Tests cover routing, type conversion, idempotency, missing identity rows, duplicate input, and TOT separation."
+        "Tests cover routing, type conversion, idempotency, missing identity rows, duplicate input, and source-code separation."
       ],
       "validation": [
         "python -m json.tool tasks/feature-list.json",
@@ -1496,7 +1496,7 @@
       "id": "F4E-005",
       "title": "Add offline stats backfill command",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-004"
       ],
@@ -1535,7 +1535,7 @@
       "id": "F4E-006",
       "title": "Add official stats validation checks",
       "phase_id": "phase-4e-official-wide-stats-persistence",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "F4E-005"
       ],
@@ -1544,8 +1544,8 @@
         "Feature spec exists at specs/features/F4E-006-official-stats-validation-checks.md.",
         "Validation covers all F4E wide stats tables.",
         "Validation detects duplicate rows and orphan FKs.",
-        "Validation detects incorrect TOT placement.",
-        "Validation catches obvious impossible numeric values.",
+        "Validation detects incorrect synthetic source-code placement.",
+        "Validation catches obvious impossible numeric values using Basketball Reference scales.",
         "Validation confirms generated metrics are not stored in stats.",
         "Tests cover passing and failing checks.",
         "No API implementation is introduced."
@@ -1569,6 +1569,176 @@
         "specs/features/F4E-006-official-stats-validation-checks.md",
         "src/nba_data/validation",
         "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-007",
+      "title": "Add player-page regular-season aggregate stats backfill",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "done",
+      "depends_on": [
+        "F4E-005"
+      ],
+      "description": "Add a cache-only player-page path that populates regular-season player-season stats from official Basketball Reference player pages.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md.",
+        "Player-page regular-season table IDs map to stats.player_season_* tables.",
+        "For each player-season and supported stat table, exactly one full-season row is loaded into stats.player_season_*.",
+        "If a 2TM, 3TM, or 4TM player-page row exists for the player-season, that synthetic multi-team row is the stats.player_season_* source row.",
+        "If no 2TM, 3TM, or 4TM row exists, the single real-team player-page row is the stats.player_season_* source row.",
+        "For traded seasons, player-page real-team stint rows are ignored for stats.player_season_* and belong only to stats.player_team_season_*.",
+        "source_team_code is stored as metadata only and is not a foreign key.",
+        "2TM, 3TM, and 4TM are source markers, not teams.",
+        "Synthetic codes are not inserted into core.teams, core.team_seasons, core.player_team_seasons, or stats.player_team_season_*.",
+        "No player-season stats are generated by summing team stints, averaging percentages, or deriving advanced metrics.",
+        "Game Highs and other unsupported player-page tables remain out of scope.",
+        "No live scraping or Basketball Reference contact is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Basketball Reference contact",
+        "Cache refresh",
+        "Postseason stats",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md",
+        "docs/architecture/PLAYER_PAGE_STATS_MAPPING.md",
+        "src/nba_data/db/models/stats.py",
+        "alembic/versions",
+        "src/nba_data/scraping",
+        "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-008",
+      "title": "Add postseason stats schema and player-page backfill",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "done",
+      "depends_on": [
+        "F4E-007"
+      ],
+      "description": "Add separate postseason stats tables and player-page playoff backfill support without mixing postseason rows into regular-season stats tables.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md.",
+        "Postseason player-page table IDs map to separate postseason stats tables.",
+        "stats.player_postseason_* FKs to core.player_seasons.id.",
+        "stats.player_team_postseason_* FKs to core.player_team_seasons.id.",
+        "Regular-season and postseason stats remain separate.",
+        "No new core postseason tables are created unless a reviewed design proves they are needed.",
+        "No live scraping or Basketball Reference contact is introduced."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "uv run alembic upgrade head",
+        "uv run alembic check",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Basketball Reference contact",
+        "Cache refresh",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md",
+        "src/nba_data/db/models/stats.py",
+        "alembic/versions",
+        "tests/unit"
+      ]
+    },
+    {
+      "id": "F4E-009",
+      "title": "Add official stats final validation and database closure",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "done",
+      "depends_on": [
+        "F4E-006",
+        "F4E-007",
+        "F4E-008"
+      ],
+      "description": "Finalize official stats validation and prepare Phase 4E database closure after regular-season and postseason stats work is reviewed.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-009-official-stats-final-validation-and-db-closure.md.",
+        "Validator rejects TOT, 2TM, 3TM, and 4TM as core teams or team seasons.",
+        "Validator rejects synthetic codes in team-stint stats tables.",
+        "Validator allows source_team_code metadata in player-season stats tables.",
+        "Validator uses Basketball Reference numeric ranges.",
+        "Generated metrics remain absent from stats.",
+        "Phase 4E closure notes, progress, review notes, and task board are updated."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live scraping",
+        "Basketball Reference contact",
+        "Cache refresh",
+        "API/frontend/OVR/ranking/similarity/ML"
+      ],
+      "expected_files": [
+        "specs/features/F4E-009-official-stats-final-validation-and-db-closure.md",
+        "src/nba_data/validation",
+        "progress",
+        "docs/roadmap"
+      ]
+    },
+    {
+      "id": "F4E-010",
+      "title": "Add player-page cache acquisition",
+      "phase_id": "phase-4e-official-wide-stats-persistence",
+      "status": "done",
+      "depends_on": [
+        "F4E-007",
+        "F4E-008"
+      ],
+      "description": "Add a controlled cache-first acquisition path for Basketball Reference player pages using existing core player identities.",
+      "acceptance_criteria": [
+        "Feature spec exists at specs/features/F4E-010-player-page-cache-acquisition.md.",
+        "A deterministic player-page manifest is built from core.players using basketball_reference_player_id values.",
+        "The manifest can be filtered by core.seasons.season_year through core.player_seasons.",
+        "Player-page URLs are built only as https://www.basketball-reference.com/players/{first_letter}/{player_id}.html.",
+        "acquisition dry-run-player-pages reports cache coverage without creating a live client.",
+        "acquisition acquire-player-pages refuses to run without both --owner-approved and --execute-approved-manifest.",
+        "Live acquisition is cache-first, sequential, rate-limited, and uses only BasketballReferenceClient plus HtmlCache.",
+        "Acquisition writes no database rows and does not overwrite cache files.",
+        "Live acquisition stops safely on HTTP 429 or failed fetch and emits a partial JSON report.",
+        "Reports include total_players, cache_hits, fetched, failures, live_request_count, and entries.",
+        "Unit tests cover URL building, manifest filtering, cache hits, acquisition reporting, CLI guards, and the no-DB-write boundary.",
+        "Player-page regular-season and postseason loaders remain cache-only."
+      ],
+      "validation": [
+        "python -m json.tool tasks/feature-list.json",
+        "uv run ruff check .",
+        "uv run pytest",
+        "uv run alembic check",
+        "C:\\Program Files\\Git\\bin\\bash.exe scripts/harness/validate.sh"
+      ],
+      "out_of_scope": [
+        "Live acquisition without explicit owner approval",
+        "Refreshing or overwriting existing player-page cache files",
+        "Writing stats rows during acquisition",
+        "Phase 5 API/frontend/OVR/ranking/similarity/ML work"
+      ],
+      "expected_files": [
+        "specs/features/F4E-010-player-page-cache-acquisition.md",
+        "src/nba_data/scraping/player_page_acquisition.py",
+        "src/nba_data/cli/main.py",
+        "tests/unit/test_player_page_acquisition.py",
+        "docs/roadmap/CURRENT_PHASE.md",
+        "specs/phases/phase-4e-official-wide-stats-persistence.md",
+        "progress/current.md"
       ]
     },
     {

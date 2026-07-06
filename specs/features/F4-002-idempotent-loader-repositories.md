@@ -14,7 +14,7 @@ core identity and membership records idempotently.
 - Do not call `session.commit()` from loaders or repositories.
 - Let callers own transaction boundaries and rollback behavior.
 - Use existing F4-001 core tables and constraints.
-- Keep `TOT` as a player-season aggregate, not a real team.
+- Keep non-real-team markers such as `TOT` out of real team tables.
 - Keep player names descriptive; never use `player_name` as an identity key.
 - Preserve meaningful existing team and player names when inputs are fallback
   or empty.

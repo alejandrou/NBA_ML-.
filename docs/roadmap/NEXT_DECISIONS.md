@@ -20,6 +20,9 @@ Defaults are recorded here until the owner chooses otherwise.
 - Player-specific Basketball Reference pages are future scope; current player
   rows come from team-season pages unless a later manifest explicitly adds
   player-page acquisition.
+- Phase 4E player-page stats implementation starts from fixtures and cached
+  HTML only. Any live player-page acquisition requires exact owner approval for
+  the player-page manifest before contacting Basketball Reference.
 - Phase 4C first processes cached HTML offline, then loads only validated
   normalized rows through idempotent loaders. It is not direct DB loading from
   raw HTML.
@@ -45,4 +48,6 @@ Defaults are recorded here until the owner chooses otherwise.
 - Final historical backfill start and end seasons.
 - Whether player-specific Basketball Reference pages should be included in a
   later acquisition manifest.
+- Exact player-page acquisition/cache manifest for `F4E-007`, including the
+  approved sample players and URLs.
 - Final branch and PR strategy.

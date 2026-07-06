@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+  <body>
+    <!--
+    <table id="totals_stats">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="pts">PTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="pts">1083</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">HOU</td><td data-stat="age">31</td><td data-stat="games">8</td><td data-stat="pts">199</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">BRK</td><td data-stat="age">31</td><td data-stat="games">36</td><td data-stat="pts">884</td></tr>
+      </tbody>
+    </table>
+    -->
+    <table id="per_game_stats">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="pts_per_g">PTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="pts_per_g">24.6</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">HOU</td><td data-stat="age">31</td><td data-stat="games">8</td><td data-stat="pts_per_g">24.8</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">BRK</td><td data-stat="age">31</td><td data-stat="games">36</td><td data-stat="pts_per_g">24.6</td></tr>
+      </tbody>
+    </table>
+    <!--
+    <table id="per_minute_stats">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="pts_per_minute_36">PTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="pts_per_minute_36">25.1</td></tr>
+      </tbody>
+    </table>
+    <table id="per_poss">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="pts_per_poss">PTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="pts_per_poss">36.2</td></tr>
+      </tbody>
+    </table>
+    -->
+    <table id="advanced">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="per">PER</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="per">25.0</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">HOU</td><td data-stat="age">31</td><td data-stat="games">8</td><td data-stat="mp">290</td><td data-stat="per">24.3</td></tr>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">BRK</td><td data-stat="age">31</td><td data-stat="games">36</td><td data-stat="mp">1302</td><td data-stat="per">25.2</td></tr>
+      </tbody>
+    </table>
+    <!--
+    <table id="shooting">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="avg_dist">Dist.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="avg_dist">14.8</td></tr>
+      </tbody>
+    </table>
+    <table id="adj_shooting">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="adj_ts_pct">Adj TS+</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="adj_ts_pct">111</td></tr>
+      </tbody>
+    </table>
+    <table id="pbp_stats">
+      <thead>
+        <tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="age">Age</th>
+          <th data-stat="games">G</th>
+          <th data-stat="mp">MP</th>
+          <th data-stat="pct_1">% PG</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th data-stat="season">2020-21</th><td data-stat="team_id">2TM</td><td data-stat="age">31</td><td data-stat="games">44</td><td data-stat="mp">1592</td><td data-stat="pct_1">97</td></tr>
+      </tbody>
+    </table>
+    -->
+  </body>
+</html>

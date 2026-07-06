@@ -1,77 +1,93 @@
 # Current Work
 
-Status: phase_4d_done
+Status: phase_4e_done
 
 ## Active Task
 
-- No active implementation task.
-- `F4D-002`, `F4D-003`, and `F4D-004` were explicitly owner-approved for block
-  closure and are marked `done`.
-- Phase 4D is marked `done`.
+- `F4E-006`: Official stats validation checks is `done` through the final
+  `F4E-009` validator pass.
+- `F4E-007`: Player-page regular-season aggregate stats backfill is `done` by
+  explicit owner decision.
+- `F4E-008`: Postseason stats schema and player-page backfill is `done` by
+  explicit owner decision.
+- `F4E-009`: Official stats final validation and database closure is `done`.
+- `F4E-010`: Player-page cache acquisition is `done`.
 
 ## Current Phase
 
-- Phase ID: `phase-4d-full-offline-database-preparation`.
+- Phase ID: `phase-4e-official-wide-stats-persistence`.
 - Phase status: `done`.
-- Phase 4D remains pre-API.
+- Phase 4E is closed and Phase 5 stays pending until owner acceptance.
 
 ## Latest Checkpoint
 
-- Reviewed and closed `F4D-002`, the guarded full offline backfill command.
-- Added `src/nba_data/validation/offline_database.py`.
-- Added `nba-data validate offline-database --backfill-report ...`.
-- Added `tests/unit/test_offline_database_validation.py`.
-- Added `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
-- The validation checks table counts, season coverage, duplicate logical rows,
-  orphan relationships, team-seasons without players, suspiciously low
-  per-season counts, `TOT` real-team misuse, missing Basketball Reference
-  player IDs, and backfill failure/quarantine counts.
-- The owner-confirmed local PostgreSQL baseline is:
-
-```text
-core.seasons                26
-core.teams                  37
-core.team_aliases           775
-core.team_seasons           775
-core.players                2551
-core.player_seasons         12676
-core.player_team_seasons    14344
-```
-
-- `reports/offline-backfill-2000-2025.json` records 775 selected inventory
-  entries, 775 loaded entries, 129000 loaded rows, 0 failed entries, and 0
-  quarantined entries.
-- No live scraping, Basketball Reference contact, cache refresh, data deletion,
-  destructive migration, API/frontend/stats persistence/OVR/ranking/
-  similarity/recommendations/ML work, branch, commit, push, or PR occurred.
+- Added `src/nba_data/scraping/player_page_acquisition.py` with a deterministic
+  `core.players` manifest builder, optional `core.player_seasons` year
+  filtering, dry-run reporting, guarded acquisition execution, safe cache
+  writes, and stop-on-429 or stop-on-failure partial reports.
+- Added `nba-data acquisition dry-run-player-pages` and
+  `nba-data acquisition acquire-player-pages` to `src/nba_data/cli/main.py`.
+- Kept live acquisition sequential, cache-first, and client/cache-only:
+  manifest planning uses read-only DB queries, the live client is created only
+  after manifest validation, and cache writes refuse to overwrite existing
+  files.
+- Added `tests/unit/test_player_page_acquisition.py` covering URL building,
+  season-filtered manifest selection, dry-run cache hits, acquisition reports,
+  CLI guards, CLI report output, rate-limit settings, and the no-DB-write
+  boundary.
+- Added `specs/features/F4E-010-player-page-cache-acquisition.md` and updated
+  Phase 4E task/phase docs so the owner-gated player-page acquisition path is
+  in scope without starting Phase 5 or changing the cache-only loaders.
+- Fixed player-page stats normalization against real cached Basketball
+  Reference player-page HTML: regular-season and postseason parsed rows now
+  recognize `year_id` and `team_name_abbr` aliases, and normalization excludes
+  `year_id`, `team_name_abbr`, and `comp_name_abbr` from stats payload values.
+- Fixed the remaining player-page stats load failures against real cache HTML:
+  normalized player-page `totals` and `per_poss` rows now drop `pos` before
+  loading because the approved wide stats schema does not persist `position`
+  on those table families, while other supported tables still retain `pos`
+  where the schema maps it.
+- Added focused regression coverage for real-cache player-page column aliases
+  in `tests/unit/test_player_page_normalizer.py` and
+  `tests/unit/test_offline_player_stats_backfill.py`.
 
 ## Latest Validation
 
-- `uv run pytest tests/unit/test_offline_database_validation.py`: passed, 8
-  passed.
-- Focused Ruff on offline database validation, CLI, exports, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_offline_player_stats_backfill.py`: passed, 19 passed.
+- `uv run pytest tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_offline_player_stats_backfill.py`: passed, 24 passed.
+- `uv run ruff check .`: passed.
+- Real-cache reproduction for `zubaciv01` through parse -> normalize -> load:
+  `loaded_rows=72`, `failed_rows=0`.
+- `uv run pytest`: passed, 318 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `uv run pytest`: passed, 319 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- Phase 4E closure validation:
+  `uv run nba-data validate official-stats`: passed with `passed: true`.
+- Direct PostgreSQL audits:
+  zero synthetic core teams, zero synthetic core team seasons, zero orphan
+  stats rows, zero duplicate grain groups.
+- `uv run pytest tests/unit/test_player_page_acquisition.py`: passed, 10 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest`: passed, 159 passed and 6 Peewee deprecation warnings.
-- `uv run nba-data validate offline-database --backfill-report reports/offline-backfill-2000-2025.json`:
-  passed with `passed: true` and no issues.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 159
-  passed and 6 Peewee deprecation warnings.
-- `C:\Program Files\Git\bin\bash.exe scripts/harness/close.sh`: passed, 159
-  passed and 6 Peewee deprecation warnings.
+- `uv run pytest`: passed, 315 passed, 1 skipped, and 6 Peewee deprecation warnings.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  315 passed, 1 skipped, and 6 Peewee deprecation warnings.
 
-## Current Working Tree
+## Guardrails Observed
 
-- Expected Phase 4D new files:
-  `src/nba_data/validation/offline_database.py`,
-  `tests/unit/test_offline_database_validation.py`, and
-  `docs/validation/OFFLINE_DATABASE_PREPARATION.md`.
-- Existing expected future Phase 4E planning files remain uncommitted and
-  pending; no F4E task has been promoted.
-- Reports under `reports/` and raw cache under `data/raw/` remain ignored and
-  should not be committed.
+- No live scraping, Basketball Reference contact, cache refresh, player-page
+  acquisition execution, API/frontend/generated metric work, destructive
+  migration, data deletion, Peewee removal, branch creation, commit, push, or
+  PR occurred.
 
 ## Next Safe Action
 
-- Prepare a Phase 4D to Phase 4E transition summary and ask for explicit owner
-  approval before promoting any Phase 4E task.
+- Review `F4E-010`, then re-review `F4E-009` and Phase 4E closure readiness
+  after validation.
+- Keep Phase 5 pending until Phase 4E is explicitly accepted.

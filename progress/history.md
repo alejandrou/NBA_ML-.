@@ -2267,3 +2267,157 @@ Task:
   delete data, run destructive migrations, implement F4E/F5/API/frontend/stats
   persistence/OVR/ranking/similarity/recommendations/ML work, create a branch,
   commit, push, or open a PR.
+
+## Phase 4E F4E-002 Stats Models And Migration
+
+- Closed `F4E-001` as `done` by explicit owner approval of the reviewed
+  official stats schema contract.
+- Promoted and completed `F4E-002` through implementation, leaving it in
+  `needs_review`.
+- Added `src/nba_data/db/models/stats.py` with the 17 reviewed official wide
+  stats tables under schema `stats`.
+- Exported all stats models from `src/nba_data/db/models/__init__.py`.
+- Updated `alembic/env.py` so Alembic metadata includes the `stats` schema.
+- Added Alembic revision `0003_stats_wide_tables` after
+  `0002_core_team_player_season`.
+- Added `tests/unit/test_stats_models.py` for metadata registration, schemas,
+  FKs, unique constraints, lineage, nullability, type choices, model exports,
+  and absence of JSONB.
+- Updated the PostgreSQL core-loader integration test to accept the additive
+  `0003` head as compatible.
+- Ran `uv run pytest tests/unit/test_stats_models.py`: passed, 9 passed.
+- Ran focused Ruff on the touched stats files: passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- Ran `uv run alembic upgrade head`: passed, upgrading to
+  `0003_stats_wide_tables`.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- Ran `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+- Kept `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` as `pending`.
+- Did not implement repositories, loaders, backfill commands, validation
+  commands, CLI stats commands, API/frontend, generated metrics, OVR, rankings,
+  similarity, recommendations, or ML work.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, remove Peewee or legacy code, create a branch, commit, push, or
+  open a PR.
+
+## Phase 4E F4E-002 Review Closure
+
+- Owner explicitly approved the reviewed `F4E-002` SQLAlchemy stats models,
+  Alembic migration, and tests.
+- Marked `F4E-002` as `done`.
+- Kept `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` as `pending`.
+- Next action is to commit and push the completed `F4E-002` checkpoint before
+  starting `F4E-003`.
+
+## Phase 4E F4E-003 Idempotent Stats Repositories
+
+- Committed and pushed `F4E-002` before starting repository work.
+- Promoted `F4E-003` through `ready`, `approved`, and `in_progress` by explicit
+  owner approval.
+- Added `src/nba_data/db/repositories/stats.py` with `StatsRepository` and
+  explicit wrappers for all 17 official wide stats tables.
+- Added batch upsert input types that detect duplicate table/grain keys before
+  any stats write.
+- Repository upserts use select-then-insert/update behavior and caller-owned
+  transactions; they flush but do not commit or rollback.
+- Repository validation rejects unknown value columns, protected grain/lineage
+  columns, wrong model/grain routing, and missing `core` grain rows.
+- Added `tests/unit/test_stats_repositories.py`.
+- Focused Ruff check on the stats repository files and tests: passed.
+- Focused stats repository tests: passed, 31 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic upgrade head`: passed.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.
+- Moved `F4E-003` to `needs_review`; `F4E-004`, `F4E-005`, and `F4E-006`
+  remain `pending`.
+- Did not implement loaders, backfill commands, validation commands, CLI stats
+  commands, API/frontend, generated metrics, OVR, rankings, similarity,
+  recommendations, or ML work.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, remove Peewee or legacy code, create
+  a branch, or open a PR.
+
+## Phase 4E F4E-004 Normalized Rows To Wide Stats Loader
+
+- Closed `F4E-003` as `done` by explicit owner approval of the reviewed stats
+  repositories, tests, and validation.
+- Promoted `F4E-004` through `ready`, `approved`, and `in_progress` by explicit
+  owner approval.
+- Added `src/nba_data/scraping/loaders/team_season_stats.py` with
+  `load_team_season_stats`, `TeamSeasonStatsLoadEntry`, and
+  `TeamSeasonStatsLoadReport`.
+- Exported the stats loader API from `src/nba_data/scraping/loaders/__init__.py`.
+- The loader maps normalized official `source_table` rows into the reviewed
+  wide stats tables through `StatsRepository`.
+- Real-team rows resolve existing `core.player_team_seasons.id`; aggregate
+  `TOT` rows resolve existing `core.player_seasons.id`.
+- Missing core identities are reported as skipped rows without creating core
+  records.
+- Unknown/protected normalized values and duplicate destination grains fail
+  before stats writes.
+- Added `tests/unit/test_team_season_stats_loader.py` covering routing,
+  idempotency, roster loading, type conversion, `TOT` aggregate separation,
+  missing identities, unsupported rows, duplicate input, report serialization,
+  no network/parser boundaries, caller rollback, and transaction ownership.
+- Ran focused Ruff on the stats loader and tests: passed.
+- Ran `uv run pytest tests/unit/test_team_season_stats_loader.py`: passed,
+  35 passed.
+- Ran `python -m json.tool tasks/feature-list.json`: passed.
+- Ran `uv run ruff check .`: passed.
+- Ran `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- Ran `uv run alembic upgrade head`: passed.
+- Ran `uv run alembic check`: passed with no new upgrade operations detected.
+- Ran `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.
+- Moved `F4E-004` to `needs_review`; `F4E-005` and `F4E-006` remain
+  `pending`.
+- Did not run live scraping, contact Basketball Reference, refresh cache, run
+  stats backfills, create core identities from the stats loader, implement
+  validation commands, API/frontend, generated metrics, OVR, rankings,
+  similarity, recommendations, or ML work.
+
+## Phase 4E Official Stats Source Plan Update
+
+- Documented the owner-approved replacement for outdated `TOT aggregate`
+  guidance in active Phase 4E docs.
+- Recorded that team-season pages populate `stats.player_team_season_*` and
+  player pages populate `stats.player_season_*`.
+- Recorded `2TM`, `3TM`, and `4TM` as official player-page source markers, not
+  teams.
+- Documented that `TOT`, `2TM`, `3TM`, and `4TM` must not be inserted into
+  `core.teams`, `core.team_seasons`, or team-stint stats tables.
+- Added `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`.
+- Added feature specs for `F4E-007`, `F4E-008`, and `F4E-009`.
+- Marked `F4E-006` as `changes_requested`, `F4E-007` as `ready`, and
+  `F4E-008`/`F4E-009` as `pending`.
+- Did not modify runtime code, tests, SQLAlchemy models, Alembic migrations,
+  parsers, loaders, or database data.
+- Did not run live scraping, contact Basketball Reference, refresh cache,
+  delete data, run destructive migrations, implement API/frontend/generated
+  metrics, create a branch, commit, push, or open a PR.
+
+## Phase 4E F4E-010 Player-Page Cache Acquisition
+
+- Added `src/nba_data/scraping/player_page_acquisition.py` with deterministic
+  manifest planning from `core.players`, optional year filtering through
+  `core.player_seasons`, dry-run reporting, safe cache writes, and stop-on-429
+  or stop-on-failure live acquisition behavior.
+- Added `nba-data acquisition dry-run-player-pages` and
+  `nba-data acquisition acquire-player-pages`.
+- Kept the live path owner-gated with both `--owner-approved` and
+  `--execute-approved-manifest`.
+- Kept acquisition sequential, cache-first, rate-limited, and DB-read-only.
+- Added `tests/unit/test_player_page_acquisition.py`.
+- Added `specs/features/F4E-010-player-page-cache-acquisition.md`.
+- Updated Phase 4E phase/task/progress docs so the owner-gated player-page
+  acquisition path is in scope without starting Phase 5.

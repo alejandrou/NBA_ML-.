@@ -24,6 +24,29 @@ from nba_data.scraping.nba_team_season_acquisition import (
 )
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
 from nba_data.scraping.offline_backfill import run_full_offline_backfill
+from nba_data.scraping.offline_player_postseason_stats_backfill import (
+    DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
+    run_offline_player_postseason_stats_backfill,
+)
+from nba_data.scraping.offline_player_stats_backfill import (
+    DEFAULT_PLAYER_STATS_PARSER_VERSION,
+    run_offline_player_stats_backfill,
+)
+from nba_data.scraping.offline_stats_backfill import (
+    DEFAULT_STATS_PARSER_VERSION,
+    run_offline_stats_backfill,
+)
+from nba_data.scraping.player_page_acquisition import (
+    PlayerPageAcquisitionConfigurationError,
+    PlayerPageAcquisitionStopped,
+    acquire_player_page_manifest,
+    build_player_page_dry_run_report,
+    build_player_page_manifest,
+    validate_player_page_acquisition_settings,
+)
+from nba_data.validation.official_stats import (
+    validate_official_stats as run_official_stats_validation,
+)
 from nba_data.validation.offline_database import (
     validate_offline_database as run_offline_database_validation,
 )
@@ -48,6 +71,11 @@ _OFFLINE_BACKFILL_OUTPUT_OPTION = typer.Option(
     "--output",
     help="Optional path to write the offline backfill JSON report.",
 )
+_STATS_BACKFILL_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Optional path to write the offline stats backfill JSON report.",
+)
 _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION = typer.Option(
     ...,
     "--backfill-report",
@@ -55,6 +83,14 @@ _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION = typer.Option(
     dir_okay=False,
     readable=True,
     help="Path to the Phase 4D offline backfill JSON report.",
+)
+_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
+    None,
+    "--stats-backfill-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional path to the Phase 4E stats backfill JSON report.",
 )
 
 
@@ -177,6 +213,213 @@ def backfill_offline(
     _print_and_optionally_write_json(report.to_dict(), output)
 
 
+@backfill_app.command("stats")
+def backfill_stats(
+    execute_approved_stats_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-stats-backfill",
+        help="Required explicit confirmation to write stats rows from cached HTML.",
+    ),
+    max_workers: int = typer.Option(
+        1,
+        "--max-workers",
+        help="Local worker count for processing already-cached HTML files.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for smoke-test sized offline stats backfills.",
+    ),
+    team: str | None = typer.Option(
+        None,
+        "--team",
+        help="Optional real team abbreviation filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season end year to include.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season end year to include.",
+    ),
+    parser_version: str = typer.Option(
+        DEFAULT_STATS_PARSER_VERSION,
+        "--parser-version",
+        help="Parser/normalizer contract label to store in stats lineage.",
+    ),
+    output: Path | None = _STATS_BACKFILL_OUTPUT_OPTION,
+) -> None:
+    """Run Phase 4E offline stats backfill from cached inventory entries."""
+
+    if not execute_approved_stats_backfill:
+        msg = "Refusing stats backfill without --execute-approved-stats-backfill"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session, session.begin():
+            try:
+                report = run_offline_stats_backfill(
+                    session,
+                    cache=cache,
+                    max_workers=max_workers,
+                    limit=limit,
+                    team=team,
+                    start_year=start_year,
+                    end_year=end_year,
+                    parser_version=parser_version,
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@backfill_app.command("player-stats")
+def backfill_player_stats(
+    execute_approved_player_stats_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-player-stats-backfill",
+        help="Required explicit confirmation to write player-page stats rows from cached HTML.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for smoke-test sized player-page stats backfills.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season end year to include.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season end year to include.",
+    ),
+    parser_version: str = typer.Option(
+        DEFAULT_PLAYER_STATS_PARSER_VERSION,
+        "--parser-version",
+        help="Parser/normalizer contract label to store in stats lineage.",
+    ),
+    output: Path | None = _STATS_BACKFILL_OUTPUT_OPTION,
+) -> None:
+    """Run cache-only player-page regular-season aggregate stats backfill."""
+
+    if not execute_approved_player_stats_backfill:
+        msg = (
+            "Refusing player-page stats backfill without "
+            "--execute-approved-player-stats-backfill"
+        )
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session, session.begin():
+            try:
+                report = run_offline_player_stats_backfill(
+                    session,
+                    cache=cache,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                    parser_version=parser_version,
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@backfill_app.command("player-postseason-stats")
+def backfill_player_postseason_stats(
+    execute_approved_player_postseason_stats_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-player-postseason-stats-backfill",
+        help="Required explicit confirmation to write player-page postseason stats rows from cached HTML.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for smoke-test sized player-page postseason backfills.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season end year to include.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season end year to include.",
+    ),
+    parser_version: str = typer.Option(
+        DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
+        "--parser-version",
+        help="Parser/normalizer contract label to store in postseason stats lineage.",
+    ),
+    output: Path | None = _STATS_BACKFILL_OUTPUT_OPTION,
+) -> None:
+    """Run cache-only player-page postseason stats backfill."""
+
+    if not execute_approved_player_postseason_stats_backfill:
+        msg = (
+            "Refusing player-page postseason stats backfill without "
+            "--execute-approved-player-postseason-stats-backfill"
+        )
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session, session.begin():
+            try:
+                report = run_offline_player_postseason_stats_backfill(
+                    session,
+                    cache=cache,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                    parser_version=parser_version,
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
 @validation_app.command("offline-database")
 def validate_offline_database(
     backfill_report: Path = _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION,
@@ -194,6 +437,36 @@ def validate_offline_database(
         session_factory = create_session_factory(engine)
         with session_factory() as session:
             report = run_offline_database_validation(session, backfill_data)
+    finally:
+        engine.dispose()
+
+    console.print_json(data=report.to_dict())
+    if not report.passed:
+        raise typer.Exit(code=1)
+
+
+@validation_app.command("official-stats")
+def validate_official_stats(
+    stats_backfill_report: Path | None = _OFFICIAL_STATS_BACKFILL_REPORT_OPTION,
+) -> None:
+    """Validate the local Phase 4E official stats state."""
+
+    backfill_data: dict[str, object] | None = None
+    if stats_backfill_report is not None:
+        try:
+            loaded = json.loads(stats_backfill_report.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise typer.BadParameter(f"Invalid stats backfill report JSON: {exc}") from exc
+        if not isinstance(loaded, dict):
+            raise typer.BadParameter("Stats backfill report JSON must be an object.")
+        backfill_data = loaded
+
+    settings = get_settings()
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            report = run_official_stats_validation(session, backfill_data)
     finally:
         engine.dispose()
 
@@ -250,6 +523,130 @@ def acquisition_acquire_nba_team_seasons(
         with BasketballReferenceClient(settings, max_429_retries=0) as client:
             report = acquire_nba_team_season_manifest(manifest, cache=cache, client=client)
     except NbaTeamSeasonAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("dry-run-player-pages")
+def acquisition_dry_run_player_pages(
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for deterministic player-page manifest entries.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season year to include via core.player_seasons.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season year to include via core.player_seasons.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Plan the deterministic Phase 4E player-page manifest without downloading anything."""
+
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            try:
+                report = build_player_page_dry_run_report(
+                    session,
+                    cache=cache,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
+            except PlayerPageAcquisitionConfigurationError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("acquire-player-pages")
+def acquisition_acquire_player_pages(
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for deterministic player-page acquisition.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved acquisition.",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        help="Optional positive limit for deterministic player-page manifest entries.",
+    ),
+    player: str | None = typer.Option(
+        None,
+        "--player",
+        help="Optional basketball_reference_player_id filter.",
+    ),
+    start_year: int | None = typer.Option(
+        None,
+        "--start-year",
+        help="Optional first season year to include via core.player_seasons.",
+    ),
+    end_year: int | None = typer.Option(
+        None,
+        "--end-year",
+        help="Optional last season year to include via core.player_seasons.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run controlled Phase 4E player-page cache acquisition."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    try:
+        validate_player_page_acquisition_settings(settings)
+    except PlayerPageAcquisitionConfigurationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            try:
+                manifest = build_player_page_manifest(
+                    session,
+                    limit=limit,
+                    player=player,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
+            except PlayerPageAcquisitionConfigurationError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+    finally:
+        engine.dispose()
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        with BasketballReferenceClient(settings, max_429_retries=0) as client:
+            report = acquire_player_page_manifest(manifest, cache=cache, client=client)
+    except PlayerPageAcquisitionStopped as exc:
         _print_and_optionally_write_json(exc.report.to_dict(), output)
         raise typer.Exit(code=1) from exc
 

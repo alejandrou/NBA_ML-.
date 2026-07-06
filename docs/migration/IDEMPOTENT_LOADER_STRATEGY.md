@@ -44,8 +44,8 @@ order or display names.
   `player_name` is descriptive only and must not be a stable primary key.
 - Future team-season stat tables: unique by the narrowest stable grain, such as
   `(season_id, team_id, player_id, stat_scope)` for player-team-season rows.
-- Future player-season aggregate tables: separate `TOT` aggregate rows from
-  real team rows; `TOT` is not a team.
+- Future player-season stats tables: separate player-page full-season rows
+  from real team-stint rows; `TOT`, `2TM`, `3TM`, and `4TM` are not teams.
 
 When a stable Basketball Reference player ID is unavailable, the loader should
 reject or quarantine the row unless an explicitly documented matching strategy
@@ -72,7 +72,7 @@ Future validation should run before database writes and stay separate from
 parsing.
 
 - Required identifiers are present at the expected grain.
-- `TOT` rows are classified as aggregates, not teams.
+- Synthetic source codes are classified as metadata, not teams.
 - Player names are not used as stable keys.
 - Numeric fields are parseable or explicitly marked as unavailable.
 - Missing data distinguishes unavailable, not scraped, and parse error cases.

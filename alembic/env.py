@@ -10,7 +10,24 @@ from nba_data.db.base import Base
 from nba_data.db.models import (
     Player,
     PlayerSeason,
+    PlayerSeasonAdjShooting,
+    PlayerSeasonAdvanced,
+    PlayerSeasonPbp,
+    PlayerSeasonPerGame,
+    PlayerSeasonPerMinute,
+    PlayerSeasonPerPoss,
+    PlayerSeasonShooting,
+    PlayerSeasonTotals,
     PlayerTeamSeason,
+    PlayerTeamSeasonAdjShooting,
+    PlayerTeamSeasonAdvanced,
+    PlayerTeamSeasonPbp,
+    PlayerTeamSeasonPerGame,
+    PlayerTeamSeasonPerMinute,
+    PlayerTeamSeasonPerPoss,
+    PlayerTeamSeasonRoster,
+    PlayerTeamSeasonShooting,
+    PlayerTeamSeasonTotals,
     RawPage,
     ScraperRequest,
     ScraperRun,
@@ -23,7 +40,24 @@ from nba_data.db.models import (
 _ = (
     Player,
     PlayerSeason,
+    PlayerSeasonAdjShooting,
+    PlayerSeasonAdvanced,
+    PlayerSeasonPbp,
+    PlayerSeasonPerGame,
+    PlayerSeasonPerMinute,
+    PlayerSeasonPerPoss,
+    PlayerSeasonShooting,
+    PlayerSeasonTotals,
     PlayerTeamSeason,
+    PlayerTeamSeasonAdjShooting,
+    PlayerTeamSeasonAdvanced,
+    PlayerTeamSeasonPbp,
+    PlayerTeamSeasonPerGame,
+    PlayerTeamSeasonPerMinute,
+    PlayerTeamSeasonPerPoss,
+    PlayerTeamSeasonRoster,
+    PlayerTeamSeasonShooting,
+    PlayerTeamSeasonTotals,
     RawPage,
     ScraperRequest,
     ScraperRun,
@@ -43,7 +77,7 @@ target_metadata = Base.metadata
 
 def include_name(name: str | None, type_: str, parent_names: dict[str, str]) -> bool:
     if type_ == "schema":
-        return name in {"raw", "core"}
+        return name in {"raw", "core", "stats"}
     return True
 
 

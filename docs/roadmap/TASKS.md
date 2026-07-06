@@ -34,29 +34,35 @@
 - `F4D-002`: Add full offline backfill command.
 - `F4D-003`: Add post-load data quality validation checks.
 - `F4D-004`: Document API-ready database readiness workflow.
+- `F4E-001`: Plan official wide stats schema.
+- `F4E-002`: Stats models and Alembic migration.
+- `F4E-003`: Idempotent stats repositories.
+- `F4E-004`: Normalized rows to wide stats loader.
+- `F4E-005`: Offline stats backfill command.
+- `F4E-006`: Official stats validation checks.
+- `F4E-007`: Player-page regular-season aggregate stats backfill.
+- `F4E-008`: Postseason stats schema and player-page backfill.
 
 ## Current
 
-- Current phase: `phase-4d-full-offline-database-preparation`.
-- Current phase status: `done`.
-- No active implementation task.
-- No task is in `needs_review`.
+- Current phase: `phase-4e-official-wide-stats-persistence`.
+- Current phase status: `review`.
+- `F4E-009`: Official stats final validation and database closure (`needs_review`).
 
 ## Next
 
-- Next safe action: prepare a Phase 4D to Phase 4E transition summary and wait
-  for explicit owner approval before promoting any Phase 4E task.
-- `F4E-001` through `F4E-006` remain `pending`.
+- Owner accepted `F4E-007` and `F4E-008` as `done`.
+- `F4E-006` is closed by the final `F4E-009` validator pass and task-board update.
+- Next safe action: owner review of `F4E-009` and Phase 4E closure readiness.
+- Keep Phase 5 pending until Phase 4E closes through `F4E-009`.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
-  Reference again, refresh or overwrite cache hits, create a branch, commit,
-  push, open a PR, or implement F4E/F5/API/frontend/stats persistence/OVR/
-  ranking/similarity/recommendations/ML work without separate explicit owner
-  approval.
+  Reference again, refresh or overwrite cache hits, run the real stats
+  backfill command, open a PR, or implement F5/API/frontend/OVR/ranking/
+  similarity/recommendations/ML work without separate explicit owner approval.
 
 ## Later
 
-- Proposed Phase 4E has been prepared as a future official wide stats
-  persistence phase. It is not active.
-- Phase 5-7 tasks remain `pending` until Phase 4D and any approved pre-API
-  stats work are reviewed and approved for closure and the owner explicitly
-  approves an API transition.
+- Phase 4E continues with player-page regular-season aggregate stats,
+  postseason stats, and final validation/database closure before Phase 5.
+- Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
+  owner explicitly approves a core-only API transition.

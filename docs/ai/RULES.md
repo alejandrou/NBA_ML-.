@@ -44,7 +44,8 @@ These rules apply to all generated code, docs, tests, and reviews.
 ## Domain Rules
 
 - Initial scope is NBA only.
-- `TOT` is a player-season aggregate, not a real team.
+- `TOT`, `2TM`, `3TM`, and `4TM` are not real teams.
+- `2TM`, `3TM`, and `4TM` are player-page source markers, not team rows.
 - Do not use names as stable keys.
 - Prefer Basketball Reference IDs when available.
 - Official scraped stats belong in `stats`.

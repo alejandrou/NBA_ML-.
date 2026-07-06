@@ -44,8 +44,11 @@ mixed into normalized scraped stats.
 
 ## Domain Rules
 
-- `TOT` is not a real team. It is normalized as `team_context="aggregate"` and
-  `stat_scope="player_season_aggregate"`.
+- Team-season pages handle real team rows only.
+- Synthetic codes such as `TOT`, `2TM`, `3TM`, and `4TM` must not be emitted
+  as real team-season rows.
+- Full player-season aggregate rows are future player-page scope, not
+  team-season page scope.
 - `player_name` is descriptive only and must not be used as a stable key.
 - `basketball_reference_player_id` is the stable player identifier when
   available.
@@ -58,7 +61,7 @@ mixed into normalized scraped stats.
 `validate_normalized_team_season_rows(...)` reports issues for:
 
 - missing basic context such as `source_table`, `season_year`, or `stat_scope`;
-- `TOT` rows that are not classified as aggregates;
+- synthetic team-code rows that appear in team-season output;
 - player rows missing `basketball_reference_player_id` when stable IDs are
   required;
 - duplicate natural keys within one normalized batch;
@@ -97,4 +100,5 @@ There is no separate player-page pipeline yet. Current player rows are derived
 from team-season pages such as roster, totals, and advanced tables, with
 `basketball_reference_player_id` extracted from player links when present.
 Dedicated Basketball Reference player pages remain future scope unless a later
-manifest and parser task explicitly adds them.
+manifest and parser task explicitly adds them. When that future player-page
+path lands, it will own full player-season aggregate rows for `stats.player_season_*`.

@@ -1047,3 +1047,450 @@ No live scraping, Basketball Reference contact, cache refresh, data deletion,
 destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
 similarity/recommendations/ML work, branch creation, commit, push, or PR
 occurred during final Phase 4D closure.
+
+## Phase 4E F4E-001 Review Prep
+
+Status: needs_review
+
+`F4E-001` is ready for owner review as a documentation-only schema design
+checkpoint. Phase 4E is now current and `in_progress`; `F4E-001` is
+`needs_review`; `F4E-002` through `F4E-006` remain `pending`.
+
+## Phase 4E F4E-001 Review Focus
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md` documents all 17 reviewed
+  `stats` tables.
+- Team-stint and roster tables FK to `core.player_team_seasons.id`.
+- Aggregate player-season tables FK to `core.player_seasons.id`.
+- Every table has a surrogate PK, unique FK grain constraint, lineage columns,
+  nullable stat columns, and reviewed SQL type recommendations.
+- The design records observed normalized keys from the current parser and
+  normalizer and final `normalized key -> DB column` mappings.
+- `TOT` is routed only to aggregate player-season tables and is never treated
+  as a real team or roster row.
+- Legacy totals, advanced, and roster ideas are documented as conceptual
+  references only; name-based identity, loose years, FK-to-roster identity,
+  numeric `CharField`s, missing idempotency, and mixed identity/stat entities
+  are rejected.
+- `F4E-002` is prepared to implement `src/nba_data/db/models/stats.py`, model
+  exports, and the next Alembic revision without redesigning the schema.
+
+## Phase 4E F4E-001 Checks
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 158 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 158
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+No SQLAlchemy stats models, Alembic migrations, repositories, loaders, backfill
+commands, database writes, live scraping, Basketball Reference contact, cache
+refresh, API/frontend/OVR/ranking/similarity/recommendations/ML work, branch
+creation, commit, push, or PR occurred during this checkpoint.
+
+## Phase 4E F4E-002 Review Prep
+
+Status: needs_review
+
+`F4E-002` is ready for review. The implementation closes `F4E-001` as `done`
+by explicit owner approval, adds the reviewed SQLAlchemy `stats` models, creates
+Alembic revision `0003_stats_wide_tables`, and leaves `F4E-003` through
+`F4E-006` as `pending`.
+
+## Phase 4E F4E-002 Review Focus
+
+- `src/nba_data/db/models/stats.py` exposes the initial 17 official
+  regular-season wide stats
+  tables under schema `stats`.
+- Roster and team-stint tables use non-null
+  `player_team_season_id -> core.player_team_seasons.id` with deterministic FK
+  and unique constraint names.
+- Aggregate player-season tables use non-null
+  `player_season_id -> core.player_seasons.id` with deterministic FK and
+  unique constraint names.
+- Every stats table has non-null lineage columns: `source_url`, `cache_path`,
+  `parser_version`, `created_at`, and `updated_at`.
+- Official stat columns are nullable by default, typed according to
+  `docs/architecture/OFFICIAL_STATS_SCHEMA.md`, and no JSONB stat storage is
+  introduced.
+- `alembic/env.py` includes the `stats` schema in metadata comparison.
+- No repositories, loaders, backfill commands, validators, CLI stats commands,
+  API/frontend, generated metrics, OVR, ranking, similarity, recommendations,
+  or ML work were introduced.
+
+## Phase 4E F4E-002 Checks
+
+- `uv run pytest tests/unit/test_stats_models.py`: passed, 9 passed.
+- Focused Ruff check on stats models, migration, Alembic env, and tests:
+  passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- `uv run alembic upgrade head`: passed, upgrading
+  `0002_core_team_player_season -> 0003_stats_wide_tables`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed after accepting the additive `0003` head as core-loader
+  compatible.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-002 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-002` for closure. The SQLAlchemy stats
+models, Alembic revision `0003_stats_wide_tables`, model exports, Alembic
+metadata wiring, and stats model tests are accepted. `F4E-002` is marked
+`done`; `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` remain `pending` until
+the `F4E-002` checkpoint is committed and pushed.
+
+## Phase 4E F4E-003 Review Prep
+
+Status: needs_review
+
+`F4E-003` is ready for review. The implementation adds idempotent SQLAlchemy
+repositories for all official wide stats tables introduced by `F4E-002` and
+leaves `F4E-004` through `F4E-006` as `pending`.
+
+## Phase 4E F4E-003 Review Focus
+
+- `StatsRepository` exposes explicit wrappers for `stats.player_team_season_roster`,
+  all 8 team-stint stats tables, and all 8 aggregate player-season stats tables.
+- Team-stint upserts use `player_team_season_id`; aggregate upserts use
+  `player_season_id`.
+- Repeated upserts update the same row and preserve `created_at` while updating
+  stats values, lineage, and `updated_at`.
+- The repository rejects unknown columns, protected PK/FK/lineage/timestamp
+  columns inside `values`, duplicate batch grains, wrong table/grain routing,
+  and missing core grains before stats writes.
+- The repository does not create `core` rows, open sessions, call `commit()` or
+  `rollback()`, import network/scraping/parser/normalizer/cache/acquisition
+  boundaries, implement loaders, or run backfills.
+
+## Phase 4E F4E-003 Checks
+
+- Focused Ruff check on stats repositories and tests: passed.
+- `uv run pytest tests/unit/test_stats_repositories.py`: passed, 31 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-003 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-003` for closure. The idempotent stats
+repositories, repository exports, and tests are accepted. `F4E-003` is marked
+`done`; `F4E-004` was promoted through `ready`, `approved`, and `in_progress`
+by explicit owner approval before implementation.
+
+## Phase 4E F4E-004 Review Prep
+
+Status: needs_review
+
+`F4E-004` is ready for review. The implementation adds a normalized-row stats
+loader that routes already parsed, normalized, and validated rows into the
+official wide stats tables through `StatsRepository`, while leaving offline
+stats backfill orchestration for `F4E-005`.
+
+## Phase 4E F4E-004 Review Focus
+
+- `load_team_season_stats` accepts normalized rows plus lineage and returns a
+  JSON-safe per-row report with loaded, skipped, and failed counts.
+- The loader maps roster, all 8 team-stint stat tables, and all 8 aggregate
+  player-season stat tables using the reviewed normalized key to DB column
+  mappings.
+- Real-team rows resolve existing `core.player_team_seasons.id`; aggregate
+  `TOT` rows resolve existing `core.player_seasons.id`.
+- Missing core identities are reported as skipped rows without creating core
+  records.
+- Unknown/protected normalized values and duplicate destination grains fail
+  before stats writes.
+- The loader uses row-level savepoints but does not create sessions, call
+  `commit()` or `rollback()`, run scraping, refresh cache, or import parser,
+  normalizer, cache, acquisition, CLI, API/frontend, or generated metric
+  boundaries.
+
+## Phase 4E F4E-004 Checks
+
+- Focused Ruff check on the stats loader and tests: passed.
+- `uv run pytest tests/unit/test_team_season_stats_loader.py`: passed,
+  35 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-004 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-004` for closure. The normalized-row stats
+loader, tests, and validation are accepted. `F4E-004` is marked `done`;
+`F4E-005` was promoted through `ready`, `approved`, and `in_progress` by
+explicit owner approval before implementation.
+
+## Phase 4E F4E-005 Review Prep
+
+Status: needs_review
+
+`F4E-005` is ready for review. The implementation adds a guarded cache-only
+offline stats backfill command that routes valid cached team-season inventory
+entries through the existing offline processor and then loads validated
+normalized rows through the `F4E-004` wide stats loader.
+
+## Phase 4E F4E-005 Review Focus
+
+- `run_offline_stats_backfill` builds the cached HTML inventory and selects
+  only valid entries.
+- Selected sources are sorted deterministically, filtered by optional `team`,
+  `start_year`, `end_year`, and positive `limit`, and processed as explicit
+  cached paths.
+- Validated processor entries call `load_team_season_stats` with source URL,
+  cache path, and parser-version lineage.
+- Processor failures do not call the stats loader and are reported with source
+  context.
+- Source-level savepoints protect each team-season stats load while preserving
+  caller-owned outer transactions.
+- The orchestrator does not call the core loader, create core rows, run live
+  scraping, refresh cache, run acquisition, delete data, call `commit()` or
+  `rollback()`, or import network client boundaries.
+- `nba-data backfill stats` refuses to run without
+  `--execute-approved-stats-backfill`, prints JSON, and writes `--output` only
+  after successful guarded execution.
+
+## Phase 4E F4E-005 Checks
+
+- Focused Ruff check on the stats backfill module, CLI, and new tests: passed.
+- `uv run pytest tests/unit/test_offline_stats_backfill.py`: passed,
+  16 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 250 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  250 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-005 Review Closure
+
+Status: approved
+
+The owner explicitly approved `F4E-005` for closure. The guarded cache-only
+stats backfill command, CLI wiring, and tests are accepted. `F4E-005` is marked
+`done`; `F4E-006` was activated for the official stats validation checkpoint.
+
+## Phase 4E F4E-006 Review Prep
+
+Status: needs_review
+
+`F4E-006` is ready for review. The implementation adds a read-only validator
+for all 17 official `stats` tables, checks separation from generated metrics,
+and exposes a JSON CLI command without running a backfill or writing data.
+
+## Phase 4E F4E-006 Review Focus
+
+- `validate_official_stats` reports row counts for every official `stats`
+  table and returns JSON-safe issues and summary data.
+- Validation detects duplicate logical rows, orphan or invalid FK grains, and
+  incorrect `TOT` placement between team-stint and aggregate tables.
+- Validation flags obvious impossible numeric values, `gs > g`, and all-stat-
+  columns-null rows while allowing legitimately nullable official fields.
+- Validation inspects the live `stats` schema for banned generated-output names
+  such as OVR, ranking, similarity, recommendation, prediction, and ML terms.
+- Optional stats backfill report comparison checks persisted-row totals and
+  nonzero processing/load/quarantine failures.
+- `nba-data validate official-stats` prints JSON and exits `1` on validation
+  failures without running backfills or mutating the database.
+
+## Phase 4E F4E-006 Checks
+
+- Focused Ruff check on the official stats validator, CLI, and new tests:
+  passed.
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 259 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  259 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4E Official Stats Source Plan Update
+
+Status: changes_requested
+
+The owner confirmed `F4E-006` should be marked `changes_requested` because the
+current validator/design guidance still contains outdated `TOT` and numeric
+range assumptions.
+
+The planning update documents that team-season pages populate
+`stats.player_team_season_*`, player pages populate `stats.player_season_*`,
+and player-page `2TM`, `3TM`, and `4TM` rows are source markers rather than
+teams. It also documents separate future postseason stats table families and
+keeps Game Highs out of scope.
+
+Next review focus:
+
+- `F4E-007` should implement player-page regular-season full-season stats from
+  cached HTML only.
+- `F4E-008` should add separate postseason table families.
+- `F4E-009` should fix the official stats validator's synthetic-code and
+  Basketball Reference numeric-range checks before Phase 4E closure.
+
+## Phase 4E F4E-007 Review Prep
+
+Status: needs_review
+
+`F4E-007` is ready for review. The cache-only player-page parser, selector,
+loader, migration, CLI path, and validation all passed after local PostgreSQL
+was brought up and Alembic head migration completed successfully.
+
+## Phase 4E F4E-007 Review Focus
+
+- `source_team_code` is present only on `stats.player_season_*` regular-season
+  tables and remains metadata, not a foreign key.
+- Player-page regular-season parsing supports `totals_stats`,
+  `per_game_stats`, `per_minute_stats`, `per_poss`, `advanced`, `shooting`,
+  `adj_shooting`, and `pbp_stats` from cached HTML only.
+- Row selection loads exactly one full-season row per player, season, and
+  supported table: prefer `2TM`/`3TM`/`4TM`, otherwise use the single real-team
+  row, and never treat `TOT` or synthetic codes as teams.
+- Player-page aggregate loading resolves by
+  `core.players.basketball_reference_player_id` and `core.player_seasons.id`,
+  is idempotent, and never creates fake teams or team-stint rows.
+- `nba-data backfill player-stats` is cache-only by default, requires an
+  explicit execution flag, and reports player pages processed, tables parsed,
+  rows selected, rows skipped, rows loaded or updated, and unresolved
+  players/seasons.
+
+## Phase 4E F4E-007 Checks
+
+- Focused Ruff check on the new player-page parser, normalizer, loader,
+  backfill, CLI, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 58 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 277 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `docker compose up -d postgres`: passed.
+- `uv run alembic upgrade head`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  278 passed and 6 Peewee deprecation warnings.
+
+## Phase 4E F4E-008 Review Prep
+
+Status: needs_review
+
+`F4E-008` is ready for review. The implementation adds 16 separate postseason
+stats tables, extends player-page parsing/loading for playoff rows only, keeps
+regular season and postseason isolated, and adds the guarded cache-only
+`nba-data backfill player-postseason-stats` path.
+
+## Phase 4E F4E-008 Review Focus
+
+- `stats.player_postseason_*` FKs to `core.player_seasons.id` and include
+  `source_team_code` metadata only.
+- `stats.player_team_postseason_*` FKs to `core.player_team_seasons.id` and
+  never store `TOT`, `2TM`, `3TM`, or `4TM`.
+- Player-page postseason parsing supports `totals_stats_post`,
+  `per_game_stats_post`, `per_minute_stats_post`, `per_poss_post`,
+  `advanced_post`, `shooting_post`, `adj_shooting_post`, and
+  `pbp_stats_post`.
+- Postseason normalization loads exactly one aggregate row per player-season
+  table and loads each real team row into the matching team-stint postseason
+  table.
+- Harden-style `BRK` and Brown-style `BOS` playoff cases are fixture-tested.
+- The new backfill command is cache-only, requires an explicit write guard,
+  and reports aggregate loads, team-stint loads, skipped rows, unresolved
+  grains, and unsupported `TOT` rows.
+
+## Phase 4E F4E-008 Checks
+
+- Focused `uv run ruff check` on the postseason models, repositories, parser,
+  normalizer, loader, backfill, CLI, migration, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_postseason_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 78 passed.
+
+## Phase 4E F4E-009 Review Prep
+
+Status: needs_review
+
+The final official-stats validation pass is ready for owner review. The owner
+explicitly accepted `F4E-007` and `F4E-008` as `done`, and `F4E-009` now
+closes the remaining Phase 4E validation contract by updating the validator,
+tests, task board, and closure docs.
+
+## Phase 4E F4E-009 Review Focus
+
+- `src/nba_data/validation/official_stats.py` validates all 33 Phase 4E stats
+  tables across regular-season team-stint, regular-season aggregate,
+  postseason aggregate, and postseason team-stint families.
+- The validator checks required tables and columns, unique grain constraints,
+  orphan and invalid core grains, generated-metric absence, and JSON-safe
+  reporting.
+- `TOT`, `2TM`, `3TM`, and `4TM` fail in `core` real-team tables and
+  team-stint stats tables, while aggregate `source_team_code` accepts real
+  team codes plus `2TM`/`3TM`/`4TM` and rejects `TOT`.
+- Basketball Reference numeric scales now align with the reviewed source:
+  shooting percentages `0-1`, `efg_pct` and `ts_pct` `0-2`, advanced and PBP
+  percentages `0-100`, and adjusted shooting percentages `0-300`.
+- Lineage metadata validation keeps regular-season and postseason rows in
+  separate table families.
+- `tests/unit/test_official_stats_validation.py` covers clean Harden/Brown
+  regular-season and postseason smoke data plus failing cases for missing
+  tables and columns, orphan grains, synthetic-code misuse, invalid numeric
+  ranges, separation violations, duplicate grains, and CLI error output.
+
+## Phase 4E F4E-009 Checks
+
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 305 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `docker compose up -d postgres`: passed.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run nba-data validate official-stats`: passed with `passed: true` and no
+  issues.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  305 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+## Phase 4E Closure Review
+
+Status: approved
+
+Phase 4E is approved for closure. Final validation passed, PostgreSQL audits
+found zero synthetic-core violations, zero orphan stats rows, and zero
+duplicate grain groups, and the official stats validator returned
+`passed: true`. `F4E-009` and `F4E-010` are accepted as `done`, and Phase 4E
+is closed.
+
+## Phase 4E Closure Checks
+
+- `uv run nba-data validate official-stats`: passed.
+- Direct PostgreSQL audits over `core` and `stats`: passed with zero issues.
+- `uv run pytest`: passed, 319 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `uv run ruff check .`: passed.

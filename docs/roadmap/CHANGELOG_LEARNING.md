@@ -2441,3 +2441,709 @@ reports/offline-backfill-2000-2025.json`, and
 - No live scraping, Basketball Reference contact, cache refresh, data deletion,
   destructive migration, F4E/F5/API/frontend/stats persistence/OVR/ranking/
   similarity/recommendations/ML work, branch, commit, push, or PR occurred.
+
+## Checkpoint 61 - Phase 4E F4E-001 Official Stats Schema Plan
+
+### What Changed
+
+Activated Phase 4E and moved `F4E-001` to `needs_review` as a
+documentation-only schema design checkpoint. Finalized
+`docs/architecture/OFFICIAL_STATS_SCHEMA.md` as the contract for 17 typed wide
+`stats` tables and updated the F4E specs, roadmap, progress, review notes, and
+legacy stats review.
+
+### Why
+
+Phase 4D delivered reviewed `core` identity and relationships. Phase 4E needs a
+precise official-stats persistence design before `F4E-002` can safely add
+SQLAlchemy models and an Alembic migration.
+
+### Concepts Learned
+
+- Official stats belong in schema `stats`; generated metrics remain future
+  `features` work.
+- Team-stint stats and roster rows should FK to
+  `core.player_team_seasons.id`.
+- Aggregate player-season stats, including official `TOT` rows, should FK to
+  `core.player_seasons.id`.
+- Current cached team-season pages emit the expected nine source families from
+  the parser/normalizer sample, but that sample did not emit `TOT` rows.
+- Missing known official columns should load as `NULL`; unknown normalized keys
+  should be reported or quarantined until the schema is reviewed.
+- Legacy roster, totals, and advanced models are useful concepts, but their
+  name-based identity, loose year fields, string numeric fields, and missing
+  idempotency must not be copied.
+
+### Files to Read
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `specs/features/F4E-001-official-wide-stats-schema-plan.md`
+- `specs/features/F4E-002-stats-models-and-alembic-migration.md`
+- `docs/migration/LEGACY_STATS_SCHEMA_REVIEW.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 158 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed, 158
+  passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- Phase 4E is current and `in_progress`.
+- `F4E-001` is `needs_review`.
+- `F4E-002` through `F4E-006` remain `pending`.
+- No SQLAlchemy stats models, Alembic migrations, repositories, loaders,
+  backfill commands, database writes, live scraping, Basketball Reference
+  contact, cache refresh, API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, branch, commit, push, or PR occurred.
+
+## Checkpoint 62 - Phase 4E F4E-002 Stats Models And Migration
+
+### What Changed
+
+Closed `F4E-001` as `done` by explicit owner approval and implemented
+`F4E-002` as an additive schema checkpoint. Added SQLAlchemy models for the 17
+reviewed `stats` tables, exported them from the model package, wired Alembic
+metadata to include schema `stats`, and added migration
+`0003_stats_wide_tables`.
+
+### Why
+
+Phase 4E needs official Basketball Reference stats in typed wide relational
+tables before repositories, loaders, backfills, validation checks, API work, or
+generated metrics can safely build on the data.
+
+### Concepts Learned
+
+- The reviewed wide stats contract can be represented with one explicit ORM
+  class per table while still using small mixins for repeated grain and lineage
+  columns.
+- The unique FK grain constraint is enough for table-grain lookup, so the
+  migration does not add duplicate FK indexes.
+- Alembic schema filtering must include `stats`; otherwise autogenerate cannot
+  compare the new stats metadata.
+- Additive schema heads should remain compatible with existing core-loader
+  integration tests.
+
+### Files to Read
+
+- `src/nba_data/db/models/stats.py`
+- `alembic/versions/0003_stats_wide_tables.py`
+- `tests/unit/test_stats_models.py`
+- `alembic/env.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats model tests: passed, 9 passed.
+- Focused Ruff check on touched stats files: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `docker compose up -d postgres`: passed; PostgreSQL became ready.
+- `uv run alembic upgrade head`: passed, upgrading to
+  `0003_stats_wide_tables`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 168 passed and 6 Peewee deprecation warnings.
+- `uv run pytest tests/integration/test_team_season_loader_postgres.py`:
+  passed, 1 passed after accepting `0003_stats_wide_tables` as compatible.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  168 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done` by explicit owner approval.
+- `F4E-003`, `F4E-004`, `F4E-005`, and `F4E-006` remain `pending`.
+- No stats repositories, loaders, backfill commands, validators, live scraping,
+  cache refresh, Basketball Reference contact, data deletion, destructive
+  migration, API/frontend/OVR/ranking/similarity/recommendations/ML work,
+  branch, commit, push, or PR occurred.
+
+## Checkpoint 63 - Phase 4E F4E-003 Idempotent Stats Repositories
+
+### What Changed
+
+Committed and pushed the completed `F4E-002` checkpoint first, then implemented
+`F4E-003` as a repository-only checkpoint. Added idempotent stats upserts for
+the roster table, all team-stint stats tables, and all aggregate player-season
+stats tables.
+
+### Why
+
+Phase 4E needs a transaction-safe repository layer before a later task can map
+normalized rows into typed wide stats tables. Repositories should only write
+approved `stats` tables and should not own commits, create `core` identities,
+or load parser/normalizer rows directly.
+
+### Concepts Learned
+
+- SQLite attached schemas can create the `core` and `stats` tables for unit
+  tests, but explicit repository core-grain checks are needed for portable
+  missing-FK behavior.
+- A small model allow-list keeps generic upsert helpers from becoming an
+  accidental write path to non-stats tables.
+- Rejecting unknown columns at the repository boundary keeps F4E-004's mapping
+  contract honest instead of silently dropping unsupported normalized keys.
+
+### Files to Read
+
+- `src/nba_data/db/repositories/stats.py`
+- `tests/unit/test_stats_repositories.py`
+- `src/nba_data/db/repositories/__init__.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats repository tests: passed, 31 passed.
+- Focused Ruff check on stats repository files and tests: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 199 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  199 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `needs_review`.
+- `F4E-004`, `F4E-005`, and `F4E-006` remain `pending`.
+- No loaders, backfill commands, CLI stats commands, validation commands,
+  live scraping, cache refresh, Basketball Reference contact, data deletion,
+  destructive migration, API/frontend/OVR/ranking/similarity/recommendations/
+  ML work, branch creation, or PR occurred.
+
+## Checkpoint 64 - Phase 4E F4E-004 Normalized Rows To Wide Stats Loader
+
+### What Changed
+
+Closed the owner-approved `F4E-003` repository checkpoint, then implemented
+`F4E-004` as a standalone normalized-row stats loader. Added
+`load_team_season_stats` with JSON-safe row reports, explicit routing for the
+17 official wide stats table writes, existing-core-grain resolution, duplicate
+destination-grain rejection, and row-level savepoints.
+
+### Why
+
+Phase 4E needs a narrow bridge from validated normalized parser output into the
+typed `stats` tables before an offline stats backfill command can compose the
+pipeline. The loader must preserve the core/stats separation and avoid creating
+identity rows or owning transactions.
+
+### Concepts Learned
+
+- Loader tests can reuse attached SQLite `core` and `stats` schemas to exercise
+  the same portable missing-FK behavior as the repository tests.
+- Current normalized `TOT` rows may carry routing context inside `values`, so
+  the loader strips known context keys while still failing unknown stat keys.
+- Planning all candidate writes before executing them lets duplicate
+  destination grains fail without partial stats writes.
+- Row-level savepoints give entry-level failure reporting while leaving the
+  outer transaction under the caller's control.
+
+### Files to Read
+
+- `src/nba_data/scraping/loaders/team_season_stats.py`
+- `tests/unit/test_team_season_stats_loader.py`
+- `src/nba_data/scraping/loaders/__init__.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused stats loader tests: passed, 35 passed.
+- Focused Ruff check on the stats loader and tests: passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 234 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  234 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `done` by explicit owner approval.
+- `F4E-004` is `needs_review`.
+- `F4E-005` and `F4E-006` remain `pending`.
+- No live scraping, cache refresh, Basketball Reference contact, stats
+  backfill, validation command, API/frontend/OVR/ranking/similarity/
+  recommendations/ML work, data deletion, destructive migration, branch
+  creation, or PR occurred.
+
+## Checkpoint 65 - Phase 4E F4E-005 Offline Stats Backfill Command
+
+### What Changed
+
+Closed the owner-approved `F4E-004` loader checkpoint, then implemented
+`F4E-005` as a guarded cache-only offline stats backfill command. Added
+`run_offline_stats_backfill`, JSON-safe stats backfill report dataclasses, the
+`nba-data backfill stats` CLI command, and focused unit tests.
+
+### Why
+
+Phase 4E needs a repeatable way to turn the reviewed cached team-season HTML
+inventory into official wide `stats` rows without rerunning core loading,
+scraping live pages, refreshing cache, or creating identity records.
+
+### Concepts Learned
+
+- The cached HTML inventory remains the safe selection boundary for stats
+  backfill orchestration.
+- Explicit-path offline processor sources preserve the reviewed cache artifact
+  chosen by inventory.
+- Stats backfill should assume Phase 4D core data already exists and should
+  report missing core grains through the existing stats loader instead of
+  creating core identities.
+- Source-level savepoints let one team-season stats load fail without leaving
+  partial writes or stopping later cache-only sources.
+- CLI write commands can stay owner-gated while still supporting smoke-test
+  filters such as team, season range, and limit.
+
+### Files to Read
+
+- `src/nba_data/scraping/offline_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_offline_stats_backfill.py`
+- `specs/features/F4E-005-offline-stats-backfill-command.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the stats backfill module, CLI, and new tests: passed.
+- `uv run pytest tests/unit/test_offline_stats_backfill.py`: passed,
+  16 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 250 passed and 6 Peewee deprecation warnings.
+- `uv run alembic upgrade head`: passed.
+- `uv run alembic check`: passed with no new upgrade operations detected.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  250 passed and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-001` is `done`.
+- `F4E-002` is `done`.
+- `F4E-003` is `done`.
+- `F4E-004` is `done` by explicit owner approval.
+- `F4E-005` is `needs_review`.
+- `F4E-006` remains `pending`.
+- No live scraping, cache refresh, Basketball Reference contact, real stats
+  backfill execution, acquisition, validation command implementation,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, data deletion,
+  destructive migration, branch creation, or PR occurred.
+
+## Checkpoint 66 - Codex Context Strategy Documentation
+
+### What Changed
+
+Added reusable Codex execution and context documentation:
+`docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`,
+`docs/ai/CODEX_USAGE_OPTIMIZATION.md`,
+`docs/ai/PHASE_CONTEXT_TEMPLATE.md`,
+`docs/ai/PHASE_4E_CODEX_CONTEXT.md`, and
+`docs/ai/PROMPT_TEMPLATES.md`. Linked the strategy from
+`docs/ai/WORKFLOW_PROTOCOL.md` and recorded the change in progress memory.
+
+### Why
+
+Future Codex prompts should use repository memory instead of repeating the
+full workflow and phase history in every task prompt.
+
+### Concepts Learned
+
+- A compact phase context file can replace repeated prompt history.
+- Global workflow rules belong in one reusable protocol.
+- Task prompts stay shorter when phase and task state live in docs.
+
+### Files to Read
+
+- `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
+- `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
+- `docs/ai/PHASE_CONTEXT_TEMPLATE.md`
+- `docs/ai/PHASE_4E_CODEX_CONTEXT.md`
+- `docs/ai/PROMPT_TEMPLATES.md`
+- `docs/ai/WORKFLOW_PROTOCOL.md`
+
+### How to Test
+
+Inspect the markdown files and confirm the links are present.
+
+### Review Questions
+
+- Should each new phase start by creating its own compact Codex context file
+  from the shared template?
+
+## Checkpoint 67 - Codex Context Optimization Expansion
+
+### What Changed
+
+Added `docs/ai/REPO_MAP.md`, `docs/ai/ARCHITECTURE_INVARIANTS.md`, and
+`docs/ai/tasks/README.md`. Expanded the Codex execution protocol, usage
+optimization notes, prompt templates, workflow references, and phase context
+links to favor smaller prompts, fewer file reads, shorter output, and task
+cards when specs are still too large.
+
+Normalized the harness shell scripts to LF to avoid Bash line-ending issues.
+
+### Why
+
+Future Codex sessions should rely on repository memory instead of repeatedly
+carrying long task context in the prompt.
+
+### Concepts Learned
+
+- Repo maps and invariants can replace exploratory reads and repeated rules.
+- Compact task cards keep large specs manageable without duplicating them.
+- Short prompts and short final responses reduce unnecessary context growth.
+
+### Files to Read
+
+- `docs/ai/REPO_MAP.md`
+- `docs/ai/ARCHITECTURE_INVARIANTS.md`
+- `docs/ai/tasks/README.md`
+- `docs/ai/CODEX_PHASE_EXECUTION_PROTOCOL.md`
+- `docs/ai/CODEX_USAGE_OPTIMIZATION.md`
+
+### How to Test
+
+Inspect the docs and confirm the updated links and prompt templates are
+present.
+
+### Review Questions
+
+- Should more phase-specific task cards be added when a spec starts to grow?
+
+## Checkpoint 68 - Phase 4E F4E-006 Official Stats Validation Checks
+
+### What Changed
+
+Closed `F4E-005` as `done` by explicit owner approval and implemented
+`F4E-006` as a read-only validation checkpoint. Added
+`src/nba_data/validation/official_stats.py`, exported the validator from
+`src/nba_data/validation/__init__.py`, wired `nba-data validate official-stats`
+into the CLI, and added `tests/unit/test_official_stats_validation.py`.
+
+Updated the Phase 4E task state, roadmap, review notes, current progress, and
+Codex phase context so `F4E-006` is now the active `needs_review` checkpoint.
+
+### Why
+
+Phase 4E needs a final verification layer proving the persisted official
+`stats` tables are coherent, respect `TOT` separation, stay free of generated
+metrics, and match the guarded stats backfill report when one is provided.
+
+### Concepts Learned
+
+- The safest Phase 4E validator is read-only: inspect actual `stats` schema
+  objects, query persisted row counts, and compare against `core` grains and
+  optional saved backfill metadata.
+- SQLite attached `core` and `stats` schemas are sufficient for portable unit
+  tests that simulate duplicates, orphan grains, invalid core chains, `TOT`
+  misuse, and schema pollution without relying on PostgreSQL constraints.
+- The validation boundary should treat all-stat-columns-null rows as likely
+  parse/load failures while still allowing individual official nullable fields.
+- Generated-output contamination can be detected cheaply by scanning actual
+  `stats` table and column names for banned feature-engineering vocabulary.
+
+### Files to Read
+
+- `src/nba_data/validation/official_stats.py`
+- `src/nba_data/cli/main.py`
+- `src/nba_data/validation/__init__.py`
+- `tests/unit/test_official_stats_validation.py`
+- `docs/roadmap/CURRENT_PHASE.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the official stats validator, CLI, and new tests:
+  passed.
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 259 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  259 passed, 1 skipped, and 6 Peewee deprecation warnings.
+
+### Outcome
+
+- `F4E-005` is `done` by explicit owner approval.
+- `F4E-006` is `needs_review`.
+- Phase 4E remains `in_progress`; Phase 5 remains `pending`.
+- No live scraping, Basketball Reference contact, cache refresh, acquisition,
+  real stats backfill execution, data deletion, destructive migration,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
+  or PR occurred.
+
+## Checkpoint 69 - Phase 4E Official Stats Source Plan Update
+
+### What Changed
+
+Updated active Phase 4E planning docs, architecture docs, task state, and
+progress memory for the owner-approved player-page source plan. Added
+`docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` and feature specs for
+`F4E-007`, `F4E-008`, and `F4E-009`.
+
+### Why
+
+The previous Phase 4E guidance still described full player-season stats as
+`TOT` aggregates. The approved architecture uses player-page `2TM`, `3TM`, and
+`4TM` rows as official full-season source markers, while team-season pages stay
+the source for team-stint stats.
+
+### Concepts Learned
+
+- `2TM`, `3TM`, and `4TM` are source metadata markers, not teams.
+- `TOT`, `2TM`, `3TM`, and `4TM` must never become `core` teams or team-season
+  rows.
+- Full player-season stats should come from official player-page rows, not from
+  generated sums of team stints.
+- Postseason stats need separate future table families.
+- Basketball Reference numeric ranges need validator-specific handling:
+  ordinary percentages, advanced percentages, PBP position percentages, and
+  adjusted shooting index columns use different scales.
+
+### Files to Read
+
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
+- `specs/features/F4E-007-player-page-regular-season-aggregate-stats-backfill.md`
+- `specs/features/F4E-008-postseason-stats-schema-and-player-page-backfill.md`
+- `specs/features/F4E-009-official-stats-final-validation-and-db-closure.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Review Questions
+
+- Which player-page cache/acquisition manifest should be approved before
+  `F4E-007` needs real player-page HTML beyond fixtures?
+
+## Checkpoint 70 - Phase 4E F4E-007 Player-Page Regular-Season Aggregate Stats Backfill
+
+### What Changed
+
+Implemented the cache-only `F4E-007` player-page path. Added
+`source_team_code` to all regular-season `stats.player_season_*` tables
+through Alembic and SQLAlchemy model updates, added the pure player-page
+regular-season parser and normalizer, added the idempotent aggregate loader,
+wired the guarded `nba-data backfill player-stats` CLI command, and added new
+fixture-based tests for Harden-style multi-team selection, Brown-style single-
+team selection, loader idempotency, and cache-only backfill behavior.
+
+Updated the active phase/task docs and review notes, then moved `F4E-007` to
+`needs_review` after PostgreSQL-backed Alembic validation passed.
+
+### Why
+
+Phase 4E needs official full-season player stats to come from Basketball
+Reference player pages rather than generated sums of team-stint rows. The new
+path preserves that separation while keeping all processing offline and
+idempotent.
+
+### Concepts Learned
+
+- A dedicated player-page selector is required because the supported full-
+  season source row is a domain rule, not a generic parser rule.
+- `source_team_code` belongs on `stats.player_season_*` as lineage metadata,
+  and it should be stored directly in the upsert payload rather than modeled as
+  a `core` identity relationship.
+- The existing stats repository and column-mapping contracts can be reused for
+  player-page aggregate loading with a narrow loader adapter instead of a broad
+  repository rewrite.
+- Cache discovery for player pages can safely infer
+  `basketball_reference_player_id` and source URL from `HtmlCache` filenames
+  without introducing live acquisition.
+- Alembic revision identifiers must stay within the effective
+  `alembic_version.version_num` length used by the live database.
+
+### Files to Read
+
+- `src/nba_data/scraping/parsers/player_page.py`
+- `src/nba_data/scraping/normalizers/player_page.py`
+- `src/nba_data/scraping/loaders/player_page_stats.py`
+- `src/nba_data/scraping/offline_player_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `alembic/versions/0004_player_season_source_team_code.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused Ruff check on the new player-page modules, CLI, and tests: passed.
+- Focused pytest on the new player-page and stats model/repository tests:
+  passed, 58 passed.
+- `python -m json.tool tasks/feature-list.json`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, 277 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `uv run alembic upgrade head`: passed.
+- `C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`: passed,
+  278 passed and 6 Peewee deprecation warnings.
+- `docker compose up -d postgres`: passed.
+
+### Outcome
+
+- `F4E-007` is `needs_review`.
+- The player-page parser, selector, loader, migration, CLI, and tests are in
+  place offline.
+- No live scraping, Basketball Reference contact, cache refresh, acquisition,
+  API/frontend/OVR/ranking/similarity/recommendations/ML work, branch creation,
+  or PR occurred.
+
+## 2026-07-02 - F4E-008 postseason stats schema and player-page backfill
+
+### Files Read
+
+- `src/nba_data/db/models/stats.py`
+- `src/nba_data/db/repositories/stats.py`
+- `src/nba_data/scraping/parsers/player_page.py`
+- `src/nba_data/scraping/normalizers/player_page.py`
+- `src/nba_data/scraping/loaders/player_page_stats.py`
+- `src/nba_data/scraping/offline_player_postseason_stats_backfill.py`
+- `src/nba_data/cli/main.py`
+- `alembic/versions/0005_postseason_stats_tables.py`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- Focused `uv run ruff check` on the postseason models, repositories, parser,
+  normalizer, loader, backfill, CLI, migration, and tests: passed.
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_offline_player_postseason_stats_backfill.py
+  tests/unit/test_stats_models.py
+  tests/unit/test_stats_repositories.py`: passed, 78 passed.
+
+### Outcome
+
+- `F4E-008` is `needs_review`.
+- Separate aggregate postseason and team-stint postseason stats tables now
+  exist through SQLAlchemy models and Alembic.
+- Player-page postseason parsing, selection, loading, and guarded cache-only
+  backfill are in place offline.
+
+## 2026-07-04 - F4E-009 official stats final validation and closure prep
+
+### Files Read
+
+- `src/nba_data/validation/official_stats.py`
+- `src/nba_data/cli/main.py`
+- `tests/unit/test_official_stats_validation.py`
+- `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`
+- `docs/ai/PHASE_4E_CODEX_CONTEXT.md`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `tasks/feature-list.json`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic upgrade head`, `uv run alembic check`,
+`uv run nba-data validate official-stats`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Validation
+
+- `uv run pytest tests/unit/test_official_stats_validation.py`: passed,
+  10 passed.
+
+### Outcome
+
+- `F4E-006` is closed through the final `F4E-009` validator pass.
+- The official-stats validator now covers the final 33-table regular-season
+  and postseason model, corrected Basketball Reference percentage scales,
+  synthetic team-code safety, and regular-versus-postseason lineage
+  separation.
+- The owner accepted `F4E-007` and `F4E-008` as `done`.
+- `F4E-009` is `needs_review`, and Phase 4E is ready for owner review while
+  Phase 5 remains pending.
+
+## 2026-07-05 - F4E-010 player-page cache acquisition
+
+### Files Read
+
+- `src/nba_data/cli/main.py`
+- `src/nba_data/scraping/nba_team_season_acquisition.py`
+- `src/nba_data/scraping/offline_player_stats_backfill.py`
+- `src/nba_data/scraping/offline_player_postseason_stats_backfill.py`
+- `src/nba_data/db/models/core.py`
+- `docs/roadmap/CURRENT_PHASE.md`
+- `specs/phases/phase-4e-official-wide-stats-persistence.md`
+
+### How to Test
+
+Run `python -m json.tool tasks/feature-list.json`, `uv run ruff check .`,
+`uv run pytest`, `uv run alembic check`, and
+`C:\Program Files\Git\bin\bash.exe scripts/harness/validate.sh`.
+
+### Concepts Learned
+
+- The player-page backfills were already cache-only, so the missing piece was a
+  separate acquisition boundary rather than loader changes.
+- A deterministic manifest can be derived from `core.players` alone, with
+  optional narrowing through `core.player_seasons` and `core.seasons`.
+- Keeping the live client separate from manifest planning avoids accidental DB
+  writes and avoids `BasketballReferenceClient` cache overwrites on misses.
+- Player-page acquisition should stay stricter than the global hard cap and
+  refuse rates above the project default 10 requests/minute.
+
+### Review Questions
+
+- Should the first owner-approved live run use a small filtered manifest, such
+  as one player or one season range, before a broader acquisition?

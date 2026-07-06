@@ -57,6 +57,53 @@ def test_normalize_player_page_regular_season_selects_single_real_team_row_when_
 
 
 @pytest.mark.unit
+def test_normalize_player_page_regular_season_supports_real_cache_column_aliases() -> None:
+    parsed = {
+        "totals": [
+            {"year_id": "2020-21", "team_name_abbr": "2TM", "comp_name_abbr": "NBA", "games": "44", "pts": "1083"},
+            {"year_id": "2020-21", "team_name_abbr": "HOU", "comp_name_abbr": "NBA", "games": "8", "pts": "199"},
+            {"year_id": "2020-21", "team_name_abbr": "BRK", "comp_name_abbr": "NBA", "games": "36", "pts": "884"},
+        ],
+    }
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="hardeja01",
+    )
+
+    assert result.rows_selected == 1
+    assert result.rows_skipped == 2
+    assert result.selected_rows[0]["season_year"] == 2021
+    assert result.selected_rows[0]["source_team_code"] == "2TM"
+    assert result.selected_rows[0]["values"] == {"games": 44, "pts": 1083}
+
+
+@pytest.mark.unit
+def test_normalize_player_page_regular_season_drops_pos_for_totals_and_per_poss() -> None:
+    parsed = {
+        "totals": [
+            {"year_id": "2020-21", "team_name_abbr": "2TM", "pos": "C", "games": "44", "pts": "1083"},
+        ],
+        "per_poss": [
+            {"year_id": "2020-21", "team_name_abbr": "2TM", "pos": "C", "games": "44", "mp": "1592", "pts_per_poss": "36.2"},
+        ],
+        "advanced": [
+            {"year_id": "2020-21", "team_name_abbr": "2TM", "pos": "C", "games": "44", "mp": "1592", "per": "25.0"},
+        ],
+    }
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="example01",
+    )
+
+    values_by_table = {row["source_table"]: row["values"] for row in result.selected_rows}
+    assert "pos" not in values_by_table["totals"]
+    assert "pos" not in values_by_table["per_poss"]
+    assert values_by_table["advanced"]["pos"] == "C"
+
+
+@pytest.mark.unit
 def test_normalize_player_page_regular_season_never_selects_tot() -> None:
     parsed = {
         "totals": [
@@ -116,3 +163,30 @@ def test_normalize_player_page_postseason_loads_synthetic_only_for_aggregate_and
     assert len(team_rows) == 1
     assert team_rows[0]["team_abbreviation"] == "BRK"
     assert result.unsupported_rows == 1
+
+
+@pytest.mark.unit
+def test_normalize_player_page_postseason_supports_real_cache_column_aliases() -> None:
+    parsed = {
+        "totals": [
+            {"year_id": "2020-21", "team_name_abbr": "2TM", "comp_name_abbr": "NBA", "games": "10", "pts": "201"},
+            {"year_id": "2020-21", "team_name_abbr": "BRK", "comp_name_abbr": "NBA", "games": "9", "pts": "180"},
+            {"year_id": "2020-21", "team_name_abbr": "TOT", "comp_name_abbr": "NBA", "games": "10", "pts": "201"},
+        ],
+    }
+
+    result = normalize_player_page_postseason(
+        parsed,
+        basketball_reference_player_id="hardeja01",
+    )
+
+    aggregate_rows = [row for row in result.selected_rows if row["stat_scope"] == "player_postseason_aggregate"]
+    team_rows = [row for row in result.selected_rows if row["stat_scope"] == "player_team_postseason"]
+
+    assert len(aggregate_rows) == 1
+    assert aggregate_rows[0]["season_year"] == 2021
+    assert aggregate_rows[0]["source_team_code"] == "2TM"
+    assert aggregate_rows[0]["values"] == {"games": 10, "pts": 201}
+    assert len(team_rows) == 1
+    assert team_rows[0]["team_abbreviation"] == "BRK"
+    assert team_rows[0]["values"] == {"games": 9, "pts": 180}

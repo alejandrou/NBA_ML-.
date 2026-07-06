@@ -187,17 +187,17 @@ def normalize_player_page_postseason(
                     )
                 )
                 selected_rows.append(
-                    _build_row(
-                        row=aggregate_row,
-                        league=league,
-                        season_year=season_year,
-                        source_table=source_table,
+                _build_row(
+                    row=aggregate_row,
+                    league=league,
+                    season_year=season_year,
+                    source_table=source_table,
                         stat_scope="player_postseason_aggregate",
-                        player_id=player_id,
-                        source_team_code=aggregate_team_code,
-                        team_abbreviation=None,
-                    )
+                    player_id=player_id,
+                    source_team_code=aggregate_team_code,
+                    team_abbreviation=None,
                 )
+            )
 
             for real_team_row in real_team_rows:
                 team_code = _team_code(real_team_row)
@@ -212,17 +212,17 @@ def normalize_player_page_postseason(
                     )
                 )
                 selected_rows.append(
-                    _build_row(
-                        row=real_team_row,
-                        league=league,
-                        season_year=season_year,
-                        source_table=source_table,
+                _build_row(
+                    row=real_team_row,
+                    league=league,
+                    season_year=season_year,
+                    source_table=source_table,
                         stat_scope="player_team_postseason",
-                        player_id=player_id,
-                        source_team_code=None,
-                        team_abbreviation=team_code,
-                    )
+                    player_id=player_id,
+                    source_team_code=None,
+                    team_abbreviation=team_code,
                 )
+            )
 
             if synthetic_rows and aggregate_row is not None and _team_code(aggregate_row) in MULTI_TEAM_CODES:
                 rows_skipped += max(len(synthetic_rows) - 1, 0)
@@ -407,12 +407,16 @@ def _build_row(
         "identifier_status": "present",
         "source_team_code": source_team_code,
         "team_abbreviation": team_abbreviation,
-        "values": _normalized_values(row),
+        "values": _normalized_values(row, source_table=source_table),
     }
 
 
 def _season_end_year(row: Mapping[str, str]) -> int | None:
-    season_value = _clean_string(row.get("season"))
+    season_value = None
+    for key in ("season", "year_id"):
+        season_value = _clean_string(row.get(key))
+        if season_value is not None:
+            break
     if season_value is None:
         return None
 
@@ -432,7 +436,7 @@ def _season_end_year(row: Mapping[str, str]) -> int | None:
 
 
 def _team_code(row: Mapping[str, str]) -> str | None:
-    for key in ("team_id", "team_abbreviation", "team", "tm"):
+    for key in ("team_id", "team_name_abbr", "team_abbreviation", "team", "tm"):
         value = _clean_string(row.get(key))
         if value:
             return value.upper()
@@ -447,20 +451,27 @@ def _player_name(row: Mapping[str, str]) -> str | None:
     return None
 
 
-def _normalized_values(row: Mapping[str, str]) -> dict[str, Any]:
+def _normalized_values(row: Mapping[str, str], *, source_table: str) -> dict[str, Any]:
     values: dict[str, Any] = {}
+    excluded_keys = {
+        "basketball_reference_player_id",
+        "season",
+        "year_id",
+        "team_id",
+        "team_name_abbr",
+        "team",
+        "tm",
+        "team_abbreviation",
+        "lg",
+        "lg_id",
+        "comp_name_abbr",
+    }
+    if source_table in {"totals", "per_poss"}:
+        excluded_keys.add("pos")
+
     for key, value in row.items():
         normalized_key = _snake_case(key)
-        if normalized_key in {
-            "basketball_reference_player_id",
-            "season",
-            "team_id",
-            "team",
-            "tm",
-            "team_abbreviation",
-            "lg",
-            "lg_id",
-        }:
+        if normalized_key in excluded_keys:
             continue
         values[normalized_key] = _safe_number(value)
     return values

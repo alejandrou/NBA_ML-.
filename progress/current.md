@@ -39,9 +39,34 @@ Status: phase_4e_f4e_009_f4e_010_needs_review
 - Added `specs/features/F4E-010-player-page-cache-acquisition.md` and updated
   Phase 4E task/phase docs so the owner-gated player-page acquisition path is
   in scope without starting Phase 5 or changing the cache-only loaders.
+- Fixed player-page stats normalization against real cached Basketball
+  Reference player-page HTML: regular-season and postseason parsed rows now
+  recognize `year_id` and `team_name_abbr` aliases, and normalization excludes
+  `year_id`, `team_name_abbr`, and `comp_name_abbr` from stats payload values.
+- Fixed the remaining player-page stats load failures against real cache HTML:
+  normalized player-page `totals` and `per_poss` rows now drop `pos` before
+  loading because the approved wide stats schema does not persist `position`
+  on those table families, while other supported tables still retain `pos`
+  where the schema maps it.
+- Added focused regression coverage for real-cache player-page column aliases
+  in `tests/unit/test_player_page_normalizer.py` and
+  `tests/unit/test_offline_player_stats_backfill.py`.
 
 ## Latest Validation
 
+- `uv run pytest tests/unit/test_player_page_parser.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_offline_player_stats_backfill.py`: passed, 19 passed.
+- `uv run pytest tests/unit/test_player_page_stats_loader.py
+  tests/unit/test_player_page_normalizer.py
+  tests/unit/test_offline_player_stats_backfill.py`: passed, 24 passed.
+- `uv run ruff check .`: passed.
+- Real-cache reproduction for `zubaciv01` through parse -> normalize -> load:
+  `loaded_rows=72`, `failed_rows=0`.
+- `uv run pytest`: passed, 318 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
+- `uv run pytest`: passed, 319 passed, 1 skipped, and 6 Peewee deprecation
+  warnings.
 - `uv run pytest tests/unit/test_player_page_acquisition.py`: passed, 10 passed.
 - `python -m json.tool tasks/feature-list.json`: passed.
 - `uv run ruff check .`: passed.

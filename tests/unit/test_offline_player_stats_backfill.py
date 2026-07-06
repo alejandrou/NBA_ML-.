@@ -118,6 +118,52 @@ def test_offline_player_stats_backfill_loads_selected_rows_from_cached_player_pa
 
 
 @pytest.mark.unit
+def test_offline_player_stats_backfill_supports_real_cache_player_page_columns(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    _create_player_season(session)
+    cache = HtmlCache(tmp_path / "cache")
+    cache_path = cache.path_for_url(PLAYER_URL)
+    _write_gzip(
+        cache_path,
+        """
+        <html><body>
+        <table id="totals_stats">
+          <thead>
+            <tr>
+              <th data-stat="year_id">Season</th>
+              <th data-stat="team_name_abbr">Tm</th>
+              <th data-stat="comp_name_abbr">Lg</th>
+              <th data-stat="games">G</th>
+              <th data-stat="pts">PTS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th data-stat="year_id">2020-21</th><td data-stat="team_name_abbr">2TM</td><td data-stat="comp_name_abbr">NBA</td><td data-stat="games">44</td><td data-stat="pts">1083</td></tr>
+            <tr><th data-stat="year_id">2020-21</th><td data-stat="team_name_abbr">HOU</td><td data-stat="comp_name_abbr">NBA</td><td data-stat="games">8</td><td data-stat="pts">199</td></tr>
+            <tr><th data-stat="year_id">2020-21</th><td data-stat="team_name_abbr">BRK</td><td data-stat="comp_name_abbr">NBA</td><td data-stat="games">36</td><td data-stat="pts">884</td></tr>
+          </tbody>
+        </table>
+        </body></html>
+        """,
+    )
+
+    report = run_offline_player_stats_backfill(session, cache=cache)
+
+    totals = session.scalar(select(PlayerSeasonTotals))
+    assert report.player_pages_processed == 1
+    assert report.tables_parsed == 1
+    assert report.rows_selected == 1
+    assert report.rows_loaded_or_updated == 1
+    assert report.unresolved_players_or_seasons == 0
+    assert totals is not None
+    assert totals.source_team_code == "2TM"
+    assert totals.g == 44
+    assert totals.pts == 1083
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     (

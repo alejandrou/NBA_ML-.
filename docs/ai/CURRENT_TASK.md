@@ -1,3 +1,3 @@
 ---
-task_card: docs/ai/tasks/docs/F5-PREP-001.md
+task_card: docs/ai/tasks/api/F5-001.md
 ---

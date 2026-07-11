@@ -1,24 +1,47 @@
 # API contract
 
-## Version and responses
+## Version
 
-The planned public prefix is `/api/v1`. Single resources return a JSON object;
-collections return `{ "items": [], "page": 1, "page_size": 50, "total": 0 }`.
-Implementations must use explicit Pydantic response schemas.
+All public routes use `/api/v1`.
 
-Errors use FastAPI's HTTP error shape with a stable `detail` value and an
-appropriate status code. Validation errors remain distinguishable from missing
-resources and server errors.
+## Content type and naming
 
-Collection filters and pagination are typed, bounded, and documented. Clients
-may rely on response field names within `/api/v1`; breaking changes require a
-new version or an explicit compatibility decision.
+Responses use `application/json`. JSON fields use stable `snake_case` names within v1. A single resource is an explicit Pydantic-defined JSON object; ORM models are never the public contract.
 
-## Planned endpoints
+## Collection response
 
-- `GET /api/v1/health` — planned foundation health check.
-- `GET /api/v1/teams` — planned read-only team collection.
-- `GET /api/v1/seasons` — planned read-only season collection.
+```json
+{
+  "items": [],
+  "page": 1,
+  "page_size": 50,
+  "total": 0
+}
+```
 
-These endpoints do not exist until their task cards are approved and
-implemented.
+`page` defaults to 1 and is at least 1. `page_size` defaults to 50, is at least 1, and is at most 100. `total` counts filtered records before pagination. Ordering is deterministic. A valid page with no results returns 200 and an empty `items` list.
+
+## Errors
+
+FastAPI/Pydantic path and query validation returns 422. A missing resource returns 404. Input that is syntactically valid but semantically incompatible returns 400. Unexpected failures return 500. Error bodies use the standard `detail` field and never expose SQL, credentials, local paths, or other internals.
+
+## Health
+
+`GET /api/v1/health` returns:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+It is liveness only: it does not verify the database, scraping, or external services.
+
+## Planned resources
+
+The following are planned, not implemented:
+
+- `GET /api/v1/teams`
+- `GET /api/v1/teams/{team_id}`
+- `GET /api/v1/seasons`
+- `GET /api/v1/seasons/{season_year}`

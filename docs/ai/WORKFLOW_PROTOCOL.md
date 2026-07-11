@@ -1,8 +1,12 @@
-# Workflow Protocol
+# Workflow Protocol (legacy reference)
 
 All agents must follow this protocol.
 
-## Startup
+## Startup compatibility
+
+The compact workflow in `AGENTS.md` is authoritative: read `CURRENT_TASK.md`,
+then its card and declared context. The phase/JSON/progress reads below remain
+for harness compatibility and phase governance, not normal Codex startup.
 
 1. Read `AGENTS.md`.
 2. Run `scripts/harness/init.sh`.

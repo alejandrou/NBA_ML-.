@@ -33,7 +33,8 @@ These rules are stable unless the owner explicitly approves a change.
 
 ## State And Scope Sources
 
-- `tasks/feature-list.json` holds feature and task state.
+- `tasks/feature-list.json` holds machine-readable feature/task state for
+  harnesses; active Codex scope comes from `docs/ai/CURRENT_TASK.md`.
 - `docs/roadmap/CURRENT_PHASE.md` holds the current phase state.
 - `progress/current.md` holds the operational summary for the active task.
 - `progress/review.md` holds review state and findings.

@@ -1,7 +1,7 @@
 # Repo Map
 
-Use this as the first stop when a Codex task needs targeted repository memory.
-Prefer `rg` before opening large files.
+Use the active task card first. This map is a compact lookup aid; prefer `rg`
+before opening large files.
 
 ## Main Areas
 
@@ -9,7 +9,9 @@ Prefer `rg` before opening large files.
 - `docs/ai/`: reusable Codex workflow, prompt, and context docs.
 - `specs/phases/`: phase contracts and scope gates.
 - `specs/features/`: per-task acceptance specs.
-- `tasks/feature-list.json`: executable task source of truth.
+- `tasks/feature-list.json`: machine-readable backlog for harnesses.
+- `docs/ai/CURRENT_TASK.md`: active Codex task pointer.
+- `docs/ai/tasks/`: focused executable task cards.
 - `progress/`: current work, review notes, blockers, and history.
 - `src/nba_data/`: SQLAlchemy, scraping, loader, CLI, and validation code.
 - `scripts/harness/`: init, validate, close, and DB validation scripts.

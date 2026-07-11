@@ -24,3 +24,9 @@ data/cache/
 .vscode/
 geckodriver.exe
 reports/
+data/exports/
+
+*.pyc
+*.pyo
+*.pyd
+.local/

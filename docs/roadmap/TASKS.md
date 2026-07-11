@@ -43,18 +43,21 @@
 - `F4E-007`: Player-page regular-season aggregate stats backfill.
 - `F4E-008`: Postseason stats schema and player-page backfill.
 
-## Current
+## Current / handoff
 
-- Current phase: `phase-4e-official-wide-stats-persistence`.
-- Current phase status: `review`.
-- `F4E-009`: Official stats final validation and database closure (`needs_review`).
+- Phase 4E is documented as complete in `CURRENT_PHASE.md` and
+  `progress/current.md`.
+- Active Codex task: `F5-PREP-001`, tracked by
+  `docs/ai/tasks/docs/F5-PREP-001.md`.
+- The machine-readable JSON still reports Phase 4E as `review`; reconcile that
+  governance state only with explicit owner acceptance of the phase transition.
 
 ## Next
 
 - Owner accepted `F4E-007` and `F4E-008` as `done`.
 - `F4E-006` is closed by the final `F4E-009` validator pass and task-board update.
-- Next safe action: owner review of `F4E-009` and Phase 4E closure readiness.
-- Keep Phase 5 pending until Phase 4E closes through `F4E-009`.
+- Next safe action: review the documentation handoff, then obtain owner
+  acceptance before promoting Phase 5.
 - Do not rerun live acquisition, fetch extra HTML, contact Basketball
   Reference again, refresh or overwrite cache hits, run the real stats
   backfill command, open a PR, or implement F5/API/frontend/OVR/ranking/
@@ -62,7 +65,6 @@
 
 ## Later
 
-- Phase 4E continues with player-page regular-season aggregate stats,
-  postseason stats, and final validation/database closure before Phase 5.
+- Phase 4E results remain in the roadmap and archived context for reference.
 - Phase 5-7 tasks remain `pending` until Phase 4E is complete, unless the
   owner explicitly approves a core-only API transition.

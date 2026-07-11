@@ -1,4 +1,7 @@
-# Phase 4E Codex Context
+# Archived Phase 4E Codex Context
+
+> Archived: Phase 4E is complete. This file is historical context only; the
+> active Codex task is selected through `docs/ai/CURRENT_TASK.md`.
 
 ## Phase
 

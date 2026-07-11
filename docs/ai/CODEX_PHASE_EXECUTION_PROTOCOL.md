@@ -8,22 +8,12 @@ instructions.
 
 ## Standard Execution Flow
 
-1. Read `AGENTS.md`.
-2. Read the existing AI workflow and review protocols.
-3. Read `docs/roadmap/CURRENT_PHASE.md`, `tasks/feature-list.json`,
-   `docs/roadmap/TASKS.md`, `progress/current.md`, and `progress/review.md`.
-4. Confirm the current phase and the current task state.
-5. Check whether the phase context file already exists.
-6. Read the current task spec and any directly relevant phase spec.
-7. Use `docs/ai/REPO_MAP.md` and `docs/ai/ARCHITECTURE_INVARIANTS.md` before
-   exploring the repository.
-8. Read only the files needed for the requested scope.
-9. Implement only the requested task scope.
-10. Validate the change with the lightest commands that prove the task.
-11. Update the task state, progress notes, and learning changelog when
-   required.
-12. Commit and push only if the prompt explicitly requests it.
-13. Respond with a short summary of the outcome.
+1. Read `AGENTS.md` and `docs/ai/CURRENT_TASK.md`.
+2. Read the referenced card, declared skills, and `must_read` files only.
+3. Use focused searches for any additional context.
+4. Implement only the card scope and run its validations.
+5. Update status/progress as the card requires.
+6. Commit and push only if explicitly requested.
 
 ## Phase Context Rule
 

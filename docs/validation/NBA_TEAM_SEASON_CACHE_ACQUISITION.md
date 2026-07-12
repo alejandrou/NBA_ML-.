@@ -10,9 +10,6 @@ documents the handoff to `F4D-001`.
 ## Sources Reviewed
 
 - `reports/acquisition-2000-2025-20260530.json`
-- `progress/current.md`
-- `progress/review.md`
-- `docs/roadmap/CURRENT_PHASE.md`
 - `specs/features/F4D-ACQ-002-acquisition-report-and-cache-coverage-review.md`
 - `specs/phases/phase-4d-full-offline-database-preparation.md`
 

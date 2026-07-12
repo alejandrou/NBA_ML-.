@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by pointer-based task cards.
 
 ## Context
 
@@ -14,7 +14,8 @@ Use `tasks/feature-list.json` as the structured task list.
 
 ## Consequences
 
-Agents can select and update work consistently.
+The former JSON board is retired. Task cards are the editable source of truth;
+a generated index may be added later only when a real consumer needs one.
 
 ## Alternatives Considered
 

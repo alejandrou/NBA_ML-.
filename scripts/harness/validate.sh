@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "Running harness validation..."
 
-bash scripts/harness/init.sh
+python scripts/harness/validate_workflow.py
 
 if ! command -v uv >/dev/null 2>&1; then
   echo "uv not found. Install uv and run 'uv sync'."
@@ -12,5 +12,6 @@ fi
 
 uv run ruff check .
 uv run pytest
+git diff --check
 
 echo "Harness validation passed."

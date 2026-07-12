@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by pointer-based task cards.
 
 ## Context
 
@@ -14,7 +14,8 @@ Use `progress/` files to record current work, history, blockers, review, and res
 
 ## Consequences
 
-Agents and the owner can resume work from versioned project files.
+The former `progress/` workflow is retired. Active state, blockers, review, and
+handoff now live in the active task card; Git preserves historical chronology.
 
 ## Alternatives Considered
 

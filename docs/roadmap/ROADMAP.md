@@ -5,7 +5,7 @@
 | Phase ID | Status | Gate |
 |---|---|---|
 | phase-4e-official-wide-stats-persistence | done | Closed after final offline validation. |
-| maintenance | active | Complete WF-001 through WF-005. |
+| maintenance | done | WF-005 closed; workflow migration complete. |
 | phase-5-api | active | Explicit owner approval is required before activation. |
 | phase-6-frontend | planned | Starts only after Phase 5 closure. |
 | phase-7-features-ovr | planned | Starts only after Phase 6 closure. |
@@ -19,9 +19,8 @@ and ADRs rather than operational workflow documents.
 
 ## Maintenance gate
 
-The workflow migration is active. F5-001 is prepared but is not active until
-WF-005 completes. Phase 5 is now active; implementation remains gated by the
-active task card and its declared scope.
+The workflow migration is complete. F5-001 is closed. Phase 5 is active;
+implementation remains gated by the active task card and its declared scope.
 
 ## Future phases
 

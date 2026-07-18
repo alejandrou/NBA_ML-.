@@ -4,13 +4,20 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 
 from nba_data.api.routers.health import router as health_router
+from nba_data.db.session import create_db_engine, create_session_factory
 
 API_V1_PREFIX = "/api/v1"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    yield
+    engine = create_db_engine()
+    app.state.engine = engine
+    app.state.session_factory = create_session_factory(engine)
+    try:
+        yield
+    finally:
+        engine.dispose()
 
 
 def create_app() -> FastAPI:

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 
 from nba_data.api.routers.health import router as health_router
+from nba_data.api.routers.teams import router as teams_router
 from nba_data.db.session import create_db_engine, create_session_factory
 
 API_V1_PREFIX = "/api/v1"
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
 
     api_router = APIRouter()
     api_router.include_router(health_router)
+    api_router.include_router(teams_router)
     app.include_router(api_router, prefix=API_V1_PREFIX)
 
     return app

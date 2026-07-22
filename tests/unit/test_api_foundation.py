@@ -42,7 +42,11 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
 
     openapi = app.openapi()
 
-    assert set(openapi["paths"]) == {"/api/v1/health"}
+    assert set(openapi["paths"]) == {
+        "/api/v1/health",
+        "/api/v1/teams",
+        "/api/v1/teams/{team_id}",
+    }
     health_operation = openapi["paths"]["/api/v1/health"]["get"]
     assert health_operation["tags"] == ["health"]
     assert health_operation["responses"]["200"]["content"]["application/json"]["schema"] == {
@@ -52,6 +56,8 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
     assert "put" not in openapi["paths"]["/api/v1/health"]
     assert "patch" not in openapi["paths"]["/api/v1/health"]
     assert "delete" not in openapi["paths"]["/api/v1/health"]
+    assert set(openapi["paths"]["/api/v1/teams"]) == {"get"}
+    assert set(openapi["paths"]["/api/v1/teams/{team_id}"]) == {"get"}
 
 
 @pytest.mark.unit

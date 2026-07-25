@@ -57,13 +57,34 @@ apps/
 - API reads processed data only and never scrapes live.
 - Frontend consumes the API, not the database directly.
 
-## Phase 1 Scope
+## Loader Invariants
 
-Phase 1 adds project harness, settings, local Postgres compose, rate-limited
-client, HTML cache, parser pattern, SQLAlchemy/Alembic foundation, tests, and CI.
+The pipeline boundary is fixed:
 
-## Future Scope
+```text
+cached HTML -> pure parser -> normalizer -> validator -> idempotent loader
+```
 
-Future phases adapt legacy scrapers, expand parsers, add idempotent loaders,
-migrate Peewee progressively, build a read-only API, and later build the web UI
-and generated metrics.
+- Cached HTML is the raw source of truth for repeatable parsing.
+- Parsers receive HTML strings and touch neither network nor database.
+- Normalizers convert parser rows into canonical records with explicit source
+  metadata.
+- Validators check row shape, required identifiers, duplicates, and domain rules
+  before any database write.
+- Loaders write only validated records and must be safe to rerun: check natural
+  keys before writing, use portable select-then-insert/update logic, and leave
+  transaction control to the caller.
+
+## Planned Direction
+
+Work after the read-only API, in order:
+
+**Web frontend** — consumes the API only. It must never query the database
+directly or trigger scraping. See ADR 0008 for the stack decision.
+
+**Generated metrics, rankings, and OVR** — stored in the `features` schema,
+never mixed into `raw`, `core`, or official `stats` tables. Formula versions are
+recorded, assumptions and limitations documented, and metric generation must be
+leakage-safe and must never scrape live.
+
+Concrete work is tracked as cards in `tasks/backlog/`, not as phase documents.

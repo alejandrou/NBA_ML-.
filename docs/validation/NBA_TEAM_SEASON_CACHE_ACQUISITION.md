@@ -2,16 +2,15 @@
 
 ## Purpose
 
-This document reviews the controlled Phase 4D-A acquisition result before Phase
-4D continues to cached HTML inventory, offline processing, loading, and
-validation. It records the acquisition outcome, confirms cache coverage, and
-documents the handoff to `F4D-001`.
+This document records the outcome of the controlled 2000-2025 NBA team-season
+acquisition and confirms cache coverage before offline inventory, processing,
+loading, and validation. It is the operational record of that acquisition, kept
+because the run is not reproducible without contacting Basketball Reference
+again.
 
 ## Sources Reviewed
 
 - `reports/acquisition-2000-2025-20260530.json`
-- `specs/features/F4D-ACQ-002-acquisition-report-and-cache-coverage-review.md`
-- `specs/phases/phase-4d-full-offline-database-preparation.md`
 
 ## Acquisition Report Summary
 

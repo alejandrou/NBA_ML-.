@@ -1,35 +1,62 @@
 ---
-task_id: EXAMPLE-001
-title: Concise task title
-phase: maintenance
-task_type: docs
-status: planned
-mode: plan
-skills: []
-must_read: []
-allowed_paths: []
-forbidden_paths: []
-validation: []
-requires_owner_approval: false
-owner_approved: false
-approval_scope:
-next_task:
+id: XX-000
+title: Concise imperative title
+areas:
+  - api
+priority: 50
+depends_on: []
+read: []
+validation:
+  - uv run ruff check .
+  - uv run pytest
+critical_actions: []
 ---
 
 # Goal
 
-# Scope
+One or two sentences on what this task delivers and why.
 
 # Acceptance criteria
 
-# Constraints
+- Specific, checkable statements.
 
-# Review and handoff
+# Scope
 
-Validation:
+What this task touches.
 
-Review:
+# Out of scope
 
-Remaining risks:
+What it deliberately does not touch.
 
-Next task:
+# Implementation notes
+
+Constraints, patterns to follow, known pitfalls.
+
+# Review evidence
+
+Filled in before the card moves to `tasks/review/`.
+
+## Automated validation
+
+- Command:
+- Result:
+
+## Manual happy path
+
+1.
+2.
+3.
+
+Expected result:
+
+## Manual sad path
+
+1.
+2.
+3.
+
+Expected result:
+
+## Known limitations
+
+- None.

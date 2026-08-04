@@ -13,8 +13,12 @@ the **union** — read each file once.
 | `testing` | `testing` | — |
 | `review` | `review` + the card's own domain areas | the card and the current diff |
 | `documentation` | — | only the durable docs the change actually affects |
+| `planning` | `plan-task`, `prepare-task` + the card's own domain areas | the card, plus the real code and tests for the area in question |
 
 Anything in the card's `read:` list is loaded in addition to the above.
+
+Planning cards carry `areas: [planning, <domain areas>]`. `prepare-task` drops
+`planning` when it promotes the card to `tasks/backlog/`.
 
 ## On-demand only — never route by default
 
@@ -24,15 +28,20 @@ over a full read.
 
 | File | Lines | Open when |
 |---|---|---|
+| `docs/architecture/IMPACT_MAP.md` | 190 | a task spans several areas, or its blast radius is unclear |
 | `docs/architecture/OFFICIAL_STATS_SCHEMA.md` | 750 | changing `stats` schema, loaders, or stats validation |
 | `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` | 96 | changing player-page parsing or normalization |
 | `docs/validation/OFFLINE_DATABASE_PREPARATION.md` | 258 | running or changing the offline backfill path |
-| `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md` | 95 | performing an approved live acquisition |
+| `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md` | 95 | reviewing the completed team-season acquisition |
+| `docs/validation/PLAYER_PAGE_CACHE_ACQUISITION.md` | 120 | performing an approved player-page acquisition |
+
+`IMPACT_MAP.md` is an orientation map, not required reading. A small, isolated,
+single-file task does not need it.
 
 ## Never startup context
 
-`tasks/done/` · `specs/` · ADRs not relevant to the current change. Use `rg`
-before opening any of them.
+`tasks/done/` · `tasks/planning/` when implementing · ADRs not relevant to the
+current change. Use `rg` before opening any of them.
 
 ## Rules
 

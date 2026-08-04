@@ -20,6 +20,11 @@ git switch git branch -d  git branch -D  gh pr create
 that task's `feature/<id>-<slug>` branch. It authorizes nothing else — not
 staging, not committing, not pushing.
 
+`Plan this task: <description>` and `Prepare <TASK-ID> for implementation.`
+authorize **no** Git operation at all, not even a branch. They move card files
+between lifecycle folders with ordinary filesystem moves; use a plain move rather
+than `git mv`, which stages the change.
+
 A pull request always needs its own explicit instruction. Never `--no-verify`,
 never bypass signing.
 
@@ -93,3 +98,6 @@ contains unrelated work.
 the change set, moving the card from `tasks/review/` to `tasks/done/`, staging
 explicit paths, committing, and pushing the branch. It does not authorize opening
 a pull request.
+
+This is the only instruction that moves a card into `tasks/done/`. Run
+`uv run python scripts/validate_tasks.py` after the move and before staging.

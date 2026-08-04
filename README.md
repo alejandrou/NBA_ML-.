@@ -20,10 +20,16 @@ docker compose up -d postgres # local database
 ## Validation
 
 ```bash
+uv run python scripts/validate_tasks.py
 uv run ruff check .
 uv run pytest
 git diff --check
 ```
+
+`scripts/validate_tasks.py` checks the task lifecycle: one card at a time across
+`active/` and `review/`, unique IDs, required and forbidden frontmatter,
+dependencies that resolve, and no unresolved decisions in `backlog/`. It is
+standard-library only and `uv run pytest` runs the same checks.
 
 Database validation — starts PostgreSQL, applies migrations, runs the
 integration test. Local development only:
@@ -40,12 +46,15 @@ preflight equivalent for lint and tests.
 The folder a task card sits in **is** its status:
 
 ```text
-tasks/backlog/ → tasks/active/ → tasks/review/ → tasks/done/
+tasks/planning/ → tasks/backlog/ → tasks/active/ → tasks/review/ → tasks/done/
 ```
 
-`tasks/backlog/` is the roadmap — there is no separate roadmap document. At most
-one card exists across `active/` and `review/` at a time. `tasks/TEMPLATE.md` is
-the card format, and `tasks/README.md` explains the folders.
+`tasks/planning/` holds work that is not ready yet — it still needs research, a
+decision from you, resources, or splitting. `tasks/backlog/` holds only work that
+can be started immediately, and it is the roadmap; there is no separate roadmap
+document. At most one card exists across `active/` and `review/` at a time, and
+only you move a card from `review/` to `done/`. `tasks/TEMPLATE.md` is the card
+format, and `tasks/README.md` explains the folders.
 
 ## Working with an AI agent
 
@@ -54,8 +63,10 @@ the skills and documents it actually needs. Short commands:
 
 | Command | What happens |
 |---|---|
-| `Start the next task.` | Picks the next eligible backlog card, creates its branch, implements it, validates it, moves it to `review/`, and stops. |
-| `Refill the backlog.` | Writes three to five dependency-ordered cards. No branch, no code. |
+| `Plan this task: <description>` | Researches one idea and writes a card to `tasks/planning/`, recording evidence, unknowns, and any decision it needs from you. No branch, no code. |
+| `Prepare <TASK-ID> for implementation.` | Resolves a planning card's open questions from the code, splits it if oversized, and promotes it to `tasks/backlog/` — or reports what it still needs from you and leaves it in `planning/`. |
+| `Start the next task.` | Picks the next eligible **backlog** card, creates its branch, implements it, validates it, moves it to `review/`, and stops. Never picks from `planning/`. |
+| `Refill the backlog.` | Sweeps the repository for real gaps and writes cards: ready ones to `backlog/`, uncertain ones to `planning/`. No branch, no code. |
 | `Review the current task.` | Reviews the diff against acceptance criteria and prepares manual test steps. |
 | `Move the review task to done, commit it and push it.` | Closes the card and performs exactly those Git operations. |
 
@@ -97,6 +108,7 @@ legacy database.
 - `AGENTS.md` — agent entry point and repository guardrails
 - `.agents/index.md` — skill and document router
 - `docs/architecture/SYSTEM_DESIGN.md` — target architecture and loader invariants
+- `docs/architecture/IMPACT_MAP.md` — if I change this, what else must I check?
 - `docs/architecture/API_ARCHITECTURE.md`, `API_CONTRACT.md` — API layering and public contract
 - `docs/domain/BUSINESS_RULES.md` — NBA domain rules
 - `docs/specs/PROJECT_SPEC.md` — technical contract and validation rules

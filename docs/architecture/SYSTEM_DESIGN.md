@@ -75,6 +75,19 @@ cached HTML -> pure parser -> normalizer -> validator -> idempotent loader
   keys before writing, use portable select-then-insert/update logic, and leave
   transaction control to the caller.
 
+### Core Natural Keys
+
+The keys loaders match on before writing. Changing one changes idempotency:
+
+| Table | Natural key |
+|---|---|
+| `core.seasons` | `(league, season_year)` |
+| `core.team_aliases` | `(team_id, abbreviation, from_season_year, to_season_year)` |
+| `core.players` | `basketball_reference_player_id` |
+
+A row whose stable player identifier is unavailable is rejected or quarantined,
+never matched by name — `player_name` is not a stable key.
+
 ## Planned Direction
 
 Work after the read-only API, in order:

@@ -14,7 +14,20 @@ critical_actions: []
 
 # Goal
 
-One or two sentences on what this task delivers and why.
+What this task delivers and why.
+
+# Evidence and current state
+
+What exists today, what behaviour was observed, and the evidence that proves the
+problem or the need. Cite files and commands, not impressions.
+
+# Human decisions or resources
+
+- None.
+
+In `tasks/planning/` this may hold open questions as `- [ ]` checkboxes. In
+`tasks/backlog/` it must read `- None.` or contain only resolved `- [x]` items —
+a card with an unresolved decision is not ready to start.
 
 # Acceptance criteria
 
@@ -22,15 +35,25 @@ One or two sentences on what this task delivers and why.
 
 # Scope
 
-What this task touches.
+Files, layers, or behaviours this task may change.
 
 # Out of scope
 
 What it deliberately does not touch.
 
+# Impact
+
+Components, commands, tables, schemas, documents, interfaces, and tests this
+change affects.
+
 # Implementation notes
 
-Constraints, patterns to follow, known pitfalls.
+Constraints, patterns to follow, references, known risks.
+
+# Durable knowledge updates
+
+Permanent documents to update if the implementation confirms new knowledge.
+`- None.` when the change teaches nothing durable.
 
 # Review evidence
 

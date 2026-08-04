@@ -9,7 +9,8 @@ description: Use when the user says "Start the next task" or asks which task is 
 2. Inspect Git read-only: `git status --short`, `git branch --show-current`.
 3. If `tasks/active/` or `tasks/review/` holds a card, **stop** and report which
    one. Never start a second task.
-4. Read only the frontmatter of `tasks/backlog/*.md`.
+4. Read only the frontmatter of `tasks/backlog/*.md`. **Never read or select from
+   `tasks/planning/`** — those cards are unprepared by definition.
 5. Exclude cards with a `depends_on` ID that is not present in `tasks/done/`.
 6. Pick one: all dependencies done → highest `priority` → logical architectural
    order on ties → lowest ID as the final tie-breaker. Never pick a task because
@@ -21,7 +22,14 @@ If the backlog is empty, stop and report exactly:
 No backlog tasks remain. Run: Refill the backlog.
 ```
 
-Never invent product direction and immediately implement it.
+If `tasks/planning/` is not empty, add one line naming those cards:
+
+```text
+N card(s) wait in tasks/planning/. Run: Prepare <TASK-ID> for implementation.
+```
+
+Never invent product direction and immediately implement it. Never promote a
+planning card yourself to have something to do.
 
 ## Branch
 
@@ -63,12 +71,14 @@ requires it — report the change and avoid unrelated refactoring.
 
 Only the user moves a card from `review/` to `done/`.
 
-## Integrity checks
+## Integrity check
 
-Cheap, worth running when you touch the lifecycle:
+Run it after every card move:
 
-- at most one file across `tasks/active/` and `tasks/review/`
-- every `depends_on` ID resolves to a real card
-- no duplicate `id` values
-- no `status`, `phase`, `mode`, `owner_approved`, `requires_owner_approval`, or
-  `approval_scope` keys in any card
+```bash
+uv run python scripts/validate_tasks.py
+```
+
+It checks concurrency across `active/` and `review/`, unique IDs, required and
+forbidden frontmatter, dependency resolution, unresolved decisions in `backlog/`,
+filenames, and the five lifecycle folders. `uv run pytest` runs the same checks.

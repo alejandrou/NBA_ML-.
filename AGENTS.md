@@ -11,30 +11,48 @@ NBA data platform: Basketball Reference scraper → PostgreSQL → read-only Fas
 ## Task lifecycle
 
 ```text
-tasks/backlog/ → tasks/active/ → tasks/review/ → tasks/done/
+tasks/planning/ → tasks/backlog/ → tasks/active/ → tasks/review/ → tasks/done/
 ```
 
 **The folder is the status.** Cards carry no `status` field.
 
-- `backlog/` — planned work; this is the roadmap. There is no roadmap document.
+- `planning/` — work that is **not ready to start**: it still needs research, a
+  user decision, resources, splitting, or has ambiguous acceptance criteria or
+  unknown validation commands. Never implemented directly.
+- `backlog/` — work that **is** ready to start; this is the roadmap. There is no
+  roadmap document.
 - `active/` — the one task being implemented. At most one file.
 - `review/` — the one task awaiting the user's testing. At most one file.
 - `done/` — history. Never loaded by default.
 
 **At most one card may exist across `active/` and `review/` combined.** If either
-holds a card, do not start another task — stop and say which one.
+holds a card, do not start another task — stop and say which one. `planning/` and
+`backlog/` hold as many cards as they need.
+
+Only the user moves a card from `review/` to `done/`.
 
 `tasks/manifests/` is not part of the lifecycle. It holds approved live-acquisition
 manifests used by scraping code and tests. Leave it alone.
+
+Check the lifecycle after moving a card:
+
+```bash
+uv run python scripts/validate_tasks.py
+```
 
 ## Short commands
 
 | Command | Skill |
 |---|---|
+| `Plan this task: <description>` | `.agents/skills/plan-task/` |
+| `Prepare <TASK-ID> for implementation.` | `.agents/skills/prepare-task/` |
 | `Start the next task.` | `.agents/skills/start-task/` |
 | `Refill the backlog.` | `.agents/skills/backlog-planning/` |
 | `Review the current task.` | `.agents/skills/review/` |
 | Anything involving Git | `.agents/skills/git-control/` |
+
+`Start the next task.` selects only from `tasks/backlog/`. It never reads
+`tasks/planning/`.
 
 Route yourself to skills and durable documents through **`.agents/index.md`**,
 using the card's `areas`. Do not load all documentation for every task.
@@ -50,7 +68,8 @@ git switch git branch -d  git branch -D  gh pr create
 ```
 
 **One exception:** `Start the next task.` authorizes creating and switching to
-that task's `feature/<id>-<slug>` branch — nothing else.
+that task's `feature/<id>-<slug>` branch — nothing else. `Plan this task` and
+`Prepare <TASK-ID> for implementation.` authorize no Git operation at all.
 
 Inspecting Git (`status`, `diff`, `log`, `branch --show-current`) is always fine.
 Never stage with `git add .` or `-A`. Never discard or hide unrelated user

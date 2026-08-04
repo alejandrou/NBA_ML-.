@@ -13,7 +13,8 @@ description: Use when reviewing a diff, a task's completeness, or a pull request
    assumptions.
 4. Report findings ordered by severity, with file and rationale.
 5. Fix ordinary implementation defects in place. Anything larger becomes a new
-   backlog card, not scope creep.
+   card, not scope creep: `tasks/backlog/` when the work is already clear,
+   `tasks/planning/` when it still needs investigation or a user decision.
 6. Write the card's `# Review evidence`: commands and results, numbered manual
    happy-path and sad-path steps with expected results, known limitations.
 7. If the work is complete, move the card to `tasks/review/` and stop.
@@ -42,3 +43,9 @@ Do not perform broad refactors or implement substantial new work during review.
 **Never move a card to `tasks/done/`.** Only the user authorizes `review → done`,
 by saying so explicitly. Reporting that a task looks complete is not the same as
 closing it.
+
+After any card move:
+
+```bash
+uv run python scripts/validate_tasks.py
+```

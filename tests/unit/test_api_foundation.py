@@ -1,6 +1,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.routing import Route
 
 from nba_data.api import create_app
 
@@ -62,6 +63,42 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
     assert set(openapi["paths"]["/api/v1/teams/{team_id}"]) == {"get"}
     assert set(openapi["paths"]["/api/v1/seasons"]) == {"get"}
     assert set(openapi["paths"]["/api/v1/seasons/{season_year}"]) == {"get"}
+
+
+@pytest.mark.unit
+def test_only_approved_documentation_routes_exist_outside_the_versioned_api() -> None:
+    """The versioned routes live behind the API router; assert what sits outside it."""
+    app = create_app()
+
+    outside_the_api_router = {
+        route.path: sorted(route.methods) for route in app.routes if isinstance(route, Route)
+    }
+
+    assert outside_the_api_router == {
+        "/openapi.json": ["GET", "HEAD"],
+        "/docs": ["GET", "HEAD"],
+        "/docs/oauth2-redirect": ["GET", "HEAD"],
+        "/redoc": ["GET", "HEAD"],
+    }
+    assert all(path.startswith("/api/v1/") for path in app.openapi()["paths"])
+
+
+@pytest.mark.unit
+def test_unexpected_failures_return_the_documented_error_body() -> None:
+    app = create_app()
+
+    @app.get("/boom", include_in_schema=False)
+    def boom() -> None:
+        raise RuntimeError("forced failure with a /secret/path and a password")
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/boom")
+
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {"detail": "Internal Server Error"}
+    assert "secret" not in response.text
+    assert "password" not in response.text
 
 
 @pytest.mark.unit

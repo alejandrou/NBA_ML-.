@@ -15,6 +15,7 @@ def session() -> Iterator[Session]:
         connection.exec_driver_sql("ATTACH DATABASE ':memory:' AS core")
         Team.__table__.create(connection)
         with Session(bind=connection) as session:
+            # These rows mirror production, so franchise_id is null: no loader writes it.
             session.add_all(
                 [
                     Team(
@@ -22,14 +23,14 @@ def session() -> Iterator[Session]:
                         basketball_reference_team_id="BBB",
                         current_abbreviation="BBB",
                         current_name="Bulls",
-                        franchise_id="bulls",
+                        franchise_id=None,
                     ),
                     Team(
                         id=1,
                         basketball_reference_team_id="AAA",
                         current_abbreviation="AAA",
                         current_name="Bulls",
-                        franchise_id="bulls",
+                        franchise_id=None,
                     ),
                     Team(
                         id=2,

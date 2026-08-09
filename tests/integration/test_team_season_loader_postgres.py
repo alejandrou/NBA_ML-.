@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from uuid import uuid4
 
 import pytest
@@ -19,6 +20,9 @@ from nba_data.db.models import (
 from nba_data.db.session import create_db_engine
 from nba_data.scraping.loaders import TeamSeasonLoadBatch, load_team_season_core
 
+_REQUIRE_POSTGRES_INTEGRATION_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
+_REQUIRED_VALUES = {"1", "true", "yes", "on"}
+
 
 @pytest.mark.integration
 def test_postgres_team_season_loader_rerun_is_idempotent() -> None:
@@ -27,20 +31,27 @@ def test_postgres_team_season_loader_rerun_is_idempotent() -> None:
         connection = engine.connect()
     except SQLAlchemyError as exc:
         engine.dispose()
-        pytest.skip(f"PostgreSQL is unavailable: {exc}")
+        _skip_or_fail(f"PostgreSQL is unavailable: {exc}")
 
     try:
         current_revision = connection.execute(text("select version_num from alembic_version")).scalar()
     except SQLAlchemyError as exc:
         connection.close()
         engine.dispose()
-        pytest.skip(f"PostgreSQL schema is not migrated: {exc}")
+        _skip_or_fail(f"PostgreSQL schema is not migrated: {exc}")
 
-    compatible_revisions = {"0002_core_team_player_season", "0003_stats_wide_tables"}
+    compatible_revisions = {
+        "0002_core_team_player_season",
+        "0003_stats_wide_tables",
+        "0004_player_season_src_team",
+        "0005_postseason_stats_tables",
+    }
     if current_revision not in compatible_revisions:
         connection.close()
         engine.dispose()
-        pytest.skip(f"PostgreSQL schema is at {current_revision!r}, not a core-loader test head")
+        _skip_or_fail(
+            f"PostgreSQL schema is at {current_revision!r}, not a core-loader test head"
+        )
 
     connection.rollback()
     transaction = connection.begin()
@@ -151,3 +162,9 @@ def _player_team_season_count(session, team_abbreviation: str) -> int:
         .where(TeamSeason.team_abbreviation == team_abbreviation)
     )
     return session.scalar(statement) or 0
+
+
+def _skip_or_fail(message: str) -> None:
+    if os.getenv(_REQUIRE_POSTGRES_INTEGRATION_ENV, "").strip().lower() in _REQUIRED_VALUES:
+        pytest.fail(message, pytrace=False)
+    pytest.skip(message)

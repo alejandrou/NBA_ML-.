@@ -6,6 +6,7 @@ on:
 
 jobs:
   test:
+    name: Offline unit tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,5 +26,79 @@ jobs:
       - name: Ruff
         run: uv run ruff check .
 
-      - name: Pytest
-        run: uv run pytest
+      - name: Pytest (offline)
+        run: uv run pytest -m "not integration and not live"
+
+  postgres-integration:
+    name: PostgreSQL integration
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+psycopg://nba:nba@localhost:5432/nba
+      NBA_DATA_REQUIRE_POSTGRES_INTEGRATION: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nba
+          POSTGRES_PASSWORD: nba
+          POSTGRES_DB: nba
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U nba -d nba"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Wait for PostgreSQL
+        run: |
+          uv run python - <<'PY'
+          import os
+          import time
+
+          from sqlalchemy import create_engine, text
+          from sqlalchemy.exc import SQLAlchemyError
+
+          engine = create_engine(
+              os.environ["DATABASE_URL"],
+              connect_args={"connect_timeout": 2},
+          )
+          try:
+              for attempt in range(30):
+                  try:
+                      with engine.connect() as connection:
+                          connection.execute(text("SELECT 1"))
+                      print("PostgreSQL is ready.")
+                      break
+                  except SQLAlchemyError as exc:
+                      if attempt == 29:
+                          raise RuntimeError(
+                              "PostgreSQL did not become ready in time."
+                          ) from exc
+                      time.sleep(1)
+          finally:
+              engine.dispose()
+          PY
+
+      - name: Apply Alembic migrations
+        run: uv run alembic upgrade head
+
+      - name: Check Alembic migrations
+        run: uv run alembic check
+
+      - name: Run PostgreSQL loader integration test
+        run: uv run pytest tests/integration/test_team_season_loader_postgres.py

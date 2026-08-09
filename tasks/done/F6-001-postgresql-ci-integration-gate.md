@@ -94,24 +94,46 @@ change production tables or application contracts.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run python scripts/validate_tasks.py`
+  Result: Task validation passed.
+- Command: `uv run pytest tests/unit/test_validate_tasks.py`
+  Result: 33 passed.
+- Command: `uv run ruff check .`
+  Result: All checks passed.
+- Command: `uv run pytest`
+  Result: 387 passed, 1 skipped, 7 warnings in 273.10 seconds. The single
+  skip is the expected local PostgreSQL-unavailable path.
+- Command: `uv run pytest -rs -q tests/integration/test_team_season_loader_postgres.py`
+  with `DATABASE_URL` set to an unreachable loopback port and
+  `connect_timeout=1`
+  Result: 1 skipped with the local PostgreSQL-unavailable reason.
+- Command: The same focused test with `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`
+  and the unreachable loopback `DATABASE_URL`
+  Result: 1 failed with the PostgreSQL connection error; the wrapper confirmed
+  this strict failure was expected rather than a skip.
+- Command: `git diff --check`
+  Result: Clean.
 
 ## Manual happy path
 
 1. Open the CI run for a branch containing the workflow change.
-2. Confirm the PostgreSQL service becomes ready and migrations reach head.
-3. Confirm the loader integration test passes without a skip.
+2. Confirm the existing `test` job runs the offline suite without a PostgreSQL
+   service.
+3. Confirm the `postgres-integration` job's PostgreSQL 16 service becomes ready,
+   migrations reach head, and `alembic check` passes.
+4. Confirm the loader integration test passes without a skip.
 
-Expected result: the dedicated database lane is green and the unit lane remains
-independent of PostgreSQL.
+Expected result: both CI jobs are green; the dedicated database lane proves the
+migrated PostgreSQL loader path and the offline lane remains independent of
+PostgreSQL.
 
 ## Manual sad path
 
-1. Temporarily point the integration lane at an unavailable database or remove
-   the migration step in a local test branch.
-2. Run the integration lane.
-3. Inspect the result rather than relying on the unit job.
+1. Set `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1` and temporarily point
+   `DATABASE_URL` at an unavailable database, or remove the migration step in a
+   local test branch.
+2. Run `uv run pytest tests/integration/test_team_season_loader_postgres.py`.
+3. Inspect the database-lane result rather than relying on the unit job.
 
 Expected result: the database lane fails with a connection or migration error;
 it does not pass by skipping the integration test.
@@ -120,3 +142,6 @@ it does not pass by skipping the integration test.
 
 - The gate validates the existing loader integration scenario, not the full
   production data volume or live acquisition path.
+- The PostgreSQL service job itself requires a GitHub Actions run or a local
+  disposable PostgreSQL service; the offline validation above does not replace
+  that CI execution.

@@ -24,11 +24,22 @@ DATABASE_URL=postgresql+psycopg://nba:nba@localhost:5432/nba
 
 The job waits for a successful database connection, runs `uv run alembic
 upgrade head`, verifies migration drift with `uv run alembic check`, and then
-runs `uv run pytest tests/integration/test_team_season_loader_postgres.py`.
-The job sets `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`; with that flag, a
-connection failure, missing migration table, or incompatible revision fails
-the test instead of being reported as a skip. Local runs without the flag
-retain the skip path for developers who have not started PostgreSQL.
+runs `uv run pytest tests/integration/test_team_season_loader_postgres.py`
+and `uv run pytest tests/integration/test_api_postgres.py`. The job sets
+`NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`; with that flag, a connection
+failure, missing migration table, or incompatible revision fails the test
+instead of being reported as a skip. Local runs without the flag retain the
+skip path for developers who have not started PostgreSQL.
+
+`test_api_postgres.py` additionally requires `core.teams`/`core.seasons` to be
+empty before and after it runs, and fails (rather than skipping) if it finds
+existing rows, so it must never be pointed at a populated database.
+`scripts/validate_database.sh` only exercises the loader test against the
+developer's regular local database. To run `test_api_postgres.py` locally
+without risking real data, use `uv run python
+scripts/validate_postgres_local.py`, which migrates and tests a disposable,
+uniquely named database on the same PostgreSQL server and always drops it
+afterward.
 
 ## Test rules
 

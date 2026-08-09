@@ -102,3 +102,6 @@ jobs:
 
       - name: Run PostgreSQL loader integration test
         run: uv run pytest tests/integration/test_team_season_loader_postgres.py
+
+      - name: Run PostgreSQL API integration test
+        run: uv run pytest tests/integration/test_api_postgres.py

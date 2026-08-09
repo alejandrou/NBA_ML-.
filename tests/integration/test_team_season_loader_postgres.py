@@ -4,10 +4,11 @@ import os
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
+from nba_data.config.settings import get_settings
 from nba_data.db.models import (
     Player,
     PlayerSeason,
@@ -17,7 +18,6 @@ from nba_data.db.models import (
     TeamAlias,
     TeamSeason,
 )
-from nba_data.db.session import create_db_engine
 from nba_data.scraping.loaders import TeamSeasonLoadBatch, load_team_season_core
 
 _REQUIRE_POSTGRES_INTEGRATION_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
@@ -26,7 +26,11 @@ _REQUIRED_VALUES = {"1", "true", "yes", "on"}
 
 @pytest.mark.integration
 def test_postgres_team_season_loader_rerun_is_idempotent() -> None:
-    engine = create_db_engine()
+    engine = create_engine(
+        get_settings().database_url,
+        connect_args={"connect_timeout": 2},
+        pool_pre_ping=True,
+    )
     try:
         connection = engine.connect()
     except SQLAlchemyError as exc:

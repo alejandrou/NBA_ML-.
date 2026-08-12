@@ -33,6 +33,8 @@ FastAPI/Pydantic path and query validation returns 422. A missing resource retur
 
 This applies to unexpected failures too. An unhandled exception returns `application/json` with `{"detail": "Internal Server Error"}` — a fixed string that never varies with the underlying cause. The exception itself is logged server-side, never returned. Without this, Starlette's default would answer `text/plain` with a bare `Internal Server Error` body and break the rule above.
 
+One route additionally returns **503**: the readiness route below uses it to report that the database is not ready to serve data. 503 is confined to that route. No data route returns it, and a data route that cannot reach the database still returns 500, because from a client's perspective that is an unexpected failure of a request that should have succeeded. The three readiness `detail` strings are fixed in the same sense the 500 body is fixed: they distinguish causes an operator needs to tell apart, but no one of them ever varies with the underlying exception.
+
 ## Health
 
 `GET /api/v1/health` returns:
@@ -43,7 +45,35 @@ This applies to unexpected failures too. An unhandled exception returns `applica
 }
 ```
 
-It is liveness only: it does not verify the database, scraping, or external services.
+It is liveness only: it does not verify the database, scraping, or external services. Readiness is the separate route below, and this route never takes on any part of its job.
+
+## Readiness
+
+`GET /api/v1/health/ready` reports whether the database is reachable, migrated, and carrying the tables the data routes read. It answers `GET` only.
+
+Ready returns 200:
+
+```json
+{
+  "status": "ready"
+}
+```
+
+Not ready returns 503 with one of exactly three `detail` strings:
+
+| Cause | Body |
+|---|---|
+| The database could not be reached | `{"detail": "Database unavailable"}` |
+| The readiness check exceeded its time bound | `{"detail": "Database readiness check timed out"}` |
+| Connected, but the Alembic revision is not at head or a required table is missing | `{"detail": "Database schema not ready"}` |
+
+These strings are fixed. They never interpolate the exception, the driver message, a SQL statement, the connection string, a credential, or a filesystem path — the underlying cause is logged server-side, exactly as it is for a 500. If a fourth cause is ever needed it gets its own fixed string; the existing three are never reshaped into a template.
+
+**Required tables** are those backing the data routes currently served: `core.teams` and `core.seasons`. This list grows with each new data resource — a resource whose table is not checked can still 500 against a partially migrated database, so adding a data resource means adding its table here.
+
+**Readiness is evaluated per request and never cached.** The check runs on every call, and the result of one call says nothing about the next. A cached verdict is deliberately rejected: a database that dies after startup would keep reporting ready, which is worse than having no readiness route at all, because it is confidently wrong. The check is time-bounded, so an unreachable or unresponsive database produces a 503 rather than a hanging request.
+
+**Readiness and liveness never merge.** `GET /api/v1/health` remains liveness only and is unaffected by everything above: it stays 200 `{"status": "ok"}` whenever the process is running, including while `GET /api/v1/health/ready` returns 503. The two answer different questions — "is this process alive" and "can this process serve data" — and collapsing them would make a restart look like a fix for an un-migrated database.
 
 ## Teams
 

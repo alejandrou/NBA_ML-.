@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = "postgresql+psycopg://nba:nba@localhost:5432/nba"
+    database_connect_timeout_seconds: float = Field(default=5.0, gt=0)
     app_env: str = "local"
     log_level: str = "INFO"
+    api_readiness_timeout_seconds: float = Field(default=2.0, gt=0)
     scraper_user_agent: str = "nba-data-project/0.1 contact:your-email@example.com"
     scraper_max_requests_per_minute: int = Field(default=10, ge=1, le=20)
     scraper_min_delay_seconds: float = Field(default=6.0, ge=0)

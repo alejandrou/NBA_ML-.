@@ -45,6 +45,7 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
 
     assert set(openapi["paths"]) == {
         "/api/v1/health",
+        "/api/v1/health/ready",
         "/api/v1/teams",
         "/api/v1/teams/{team_id}",
         "/api/v1/seasons",

@@ -104,6 +104,17 @@ def test_postgres_api_reads_teams_and_filtered_seasons(
     assert non_nba_season.json() == {"detail": "Season not found"}
 
 
+@pytest.mark.integration
+def test_postgres_api_reports_the_database_as_ready() -> None:
+    _postgres_engine_or_skip().dispose()
+
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
 def _postgres_engine_or_skip() -> Engine:
     settings = get_settings()
     engine = create_engine(

@@ -10,9 +10,12 @@ from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_postseason
 from nba_data.scraping.offline_player_stats_backfill import (
+    PlayerCacheDiscoveryStatus,
     _discover_player_cache_entries,
     _required_html,
     _validate_inputs,
+    discovery_status_for,
+    resolve_player_cache_root,
 )
 from nba_data.scraping.parsers.player_page import parse_player_page_postseason
 
@@ -62,6 +65,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
     rows_skipped: int
     unresolved_players_or_seasons_or_team_stints: int
     unsupported_synthetic_or_tot_rows: int
+    cache_root: str
+    discovery_status: PlayerCacheDiscoveryStatus
     elapsed_seconds: float
     entries: tuple[OfflinePlayerPostseasonStatsBackfillEntry, ...]
 
@@ -74,6 +79,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
             "rows_skipped": self.rows_skipped,
             "unresolved_players_or_seasons_or_team_stints": self.unresolved_players_or_seasons_or_team_stints,
             "unsupported_synthetic_or_tot_rows": self.unsupported_synthetic_or_tot_rows,
+            "cache_root": self.cache_root,
+            "discovery_status": self.discovery_status,
             "elapsed_seconds": self.elapsed_seconds,
             "entries": [entry.to_dict() for entry in self.entries],
         }
@@ -101,7 +108,9 @@ def run_offline_player_postseason_stats_backfill(
     normalized_player = player.strip().lower() if player else None
     started = perf_counter()
 
-    cache_entries = _discover_player_cache_entries(cache.root_dir, player_identifier=normalized_player)
+    cache_root = resolve_player_cache_root(cache.root_dir)
+    cache_entries = _discover_player_cache_entries(cache_root, player_identifier=normalized_player)
+    discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
 
@@ -126,6 +135,8 @@ def run_offline_player_postseason_stats_backfill(
         rows_skipped=sum(entry.rows_skipped for entry in entries),
         unresolved_players_or_seasons_or_team_stints=sum(entry.unresolved_rows for entry in entries),
         unsupported_synthetic_or_tot_rows=sum(entry.unsupported_rows for entry in entries),
+        cache_root=str(cache_root),
+        discovery_status=discovery_status,
         elapsed_seconds=perf_counter() - started,
         entries=entries,
     )

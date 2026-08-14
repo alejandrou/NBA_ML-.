@@ -35,9 +35,14 @@ from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.offline_player_postseason_stats_backfill import (
     run_offline_player_postseason_stats_backfill,
 )
+from nba_data.scraping.offline_player_stats_backfill import PlayerCacheRootNotFoundError
+from nba_data.scraping.player_page_acquisition import build_player_page_url
 
 HARDEN_FIXTURE = Path("tests/fixtures/html/player_page_harden_postseason.html")
 BROWN_FIXTURE = Path("tests/fixtures/html/player_page_brown_postseason.html")
+# One id per accepted length: 6 and 7 are the lengths discovery used to drop.
+PLAYER_IDS_BY_LENGTH = ("abcde1", "abcdef1", "abcdefg1", "abcdefgh1", "abcdefghi1")
+MINIMAL_PLAYER_PAGE_HTML = "<html><body><div id='content'></div></body></html>"
 PLAYER_URLS = {
     "hardeja01": "https://www.basketball-reference.com/players/h/hardeja01.html",
     "brownja02": "https://www.basketball-reference.com/players/b/brownja02.html",
@@ -257,6 +262,109 @@ def test_offline_player_postseason_stats_backfill_source_has_no_network_or_clien
             ".rollback(",
         ):
             assert forbidden not in source
+
+
+@pytest.mark.unit
+def test_offline_player_postseason_backfill_discovers_every_accepted_player_id_length(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    for player_id in PLAYER_IDS_BY_LENGTH:
+        _write_gzip(cache.path_for_url(build_player_page_url(player_id)), MINIMAL_PLAYER_PAGE_HTML)
+
+    report = run_offline_player_postseason_stats_backfill(session, cache=cache)
+
+    assert report.player_pages_processed == len(PLAYER_IDS_BY_LENGTH)
+    assert report.discovery_status == "ok"
+    assert {entry.player_identifier for entry in report.entries} == set(PLAYER_IDS_BY_LENGTH)
+
+
+@pytest.mark.unit
+def test_offline_player_postseason_backfill_raises_when_cache_root_is_missing(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    missing_root = tmp_path / "not-created"
+
+    with pytest.raises(PlayerCacheRootNotFoundError) as error:
+        run_offline_player_postseason_stats_backfill(session, cache=HtmlCache(missing_root))
+
+    assert str(missing_root.resolve()) in str(error.value)
+
+
+@pytest.mark.unit
+def test_cli_player_postseason_stats_reports_a_missing_cache_root_without_a_traceback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The postseason command has its own copy of `except ValueError`, so it needs its
+    # own guard: the shared helpers do not protect it if that handler is edited away.
+    missing_root = tmp_path / "not-created"
+    output_path = tmp_path / "player-postseason-stats.json"
+    monkeypatch.setenv("SCRAPER_CACHE_DIR", str(missing_root))
+    monkeypatch.setenv("COLUMNS", "240")
+    get_settings.cache_clear()
+
+    class FakeEngine:
+        def dispose(self) -> None:
+            return None
+
+    class FakeTransaction:
+        def __enter__(self) -> FakeTransaction:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+    class FakeSession:
+        def __enter__(self) -> FakeSession:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+        def begin(self) -> FakeTransaction:
+            return FakeTransaction()
+
+    monkeypatch.setattr(cli_main, "create_db_engine", lambda settings: FakeEngine())
+    monkeypatch.setattr(cli_main, "create_session_factory", lambda engine: lambda: FakeSession())
+
+    try:
+        result = CliRunner().invoke(
+            app,
+            [
+                "backfill",
+                "player-postseason-stats",
+                "--execute-approved-player-postseason-stats-backfill",
+                "--output",
+                str(output_path),
+            ],
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, SystemExit)
+    assert "Player-page cache root does not exist" in result.output
+    assert str(missing_root.resolve()) in result.output
+    assert not output_path.exists()
+
+
+@pytest.mark.unit
+def test_offline_player_postseason_backfill_reports_an_existing_but_unmatched_cache_root(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    empty_root = tmp_path / "cache"
+    empty_root.mkdir()
+
+    report = run_offline_player_postseason_stats_backfill(session, cache=HtmlCache(empty_root))
+
+    assert report.player_pages_processed == 0
+    assert report.discovery_status == "no_matching_pages"
+    assert report.cache_root == str(empty_root.resolve())
+    assert report.to_dict()["discovery_status"] == "no_matching_pages"
 
 
 def _create_player_team_season(

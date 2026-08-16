@@ -10,6 +10,7 @@ priority: 100
 depends_on:
   - F5-005
   - F5-006
+  - F4E-021
 read:
   - docs/architecture/API_CONTRACT.md
   - docs/domain/BUSINESS_RULES.md
@@ -53,11 +54,33 @@ team-stint, regular-season, and postseason data into one contract.
       deterministic ordering.
 - [ ] Decide which official-stat families and grains are public first: aggregate
       player-season, team stints, regular season, postseason, or a staged subset.
-- [ ] Define how `source_team_code` values such as `2TM`/`3TM`/`4TM` appear in
-      responses without becoming public teams, and how rows with missing stats
-      are represented.
+- [ ] Define how **multi-team source markers** appear in responses without
+      becoming public teams, and how rows with missing stats are represented.
+      State the rule semantically — "a numeric team-count marker with a count of
+      at least 2" — rather than enumerating `2TM`/`3TM`/`4TM`, which is the
+      closed-set mistake F4E-014 is correcting everywhere else. The archive
+      already contains a `5TM` season, so an enumerated contract would be wrong
+      on publication.
 - [ ] Confirm how the settled F5-006 team identity and NBA season scope apply to
       player/team-season resources.
+- [ ] Decide whether the public player resource **exposes** a `slug`, given
+      whatever F4E-021 decides a slug is. **This card does not decide what
+      generates a slug or whether `core.players.slug` is populated** — F4E-021
+      owns both, including the generation rule, and this card consumes its
+      answer. An earlier revision of the pair split the question so that each
+      card deferred the generation rule to the other, leaving it unowned.
+
+      If F4E-021 concludes that the only rebuild-stable slug source is the
+      Basketball Reference player id, then "expose a slug" and "expose the
+      Basketball Reference id" are the same decision wearing two names, and this
+      card should say so rather than publishing both.
+- [ ] Decide whether the API exposes `player_name_display` from the stats
+      tables. F4E-019 fixes its source semantics — *the name as printed in this
+      source row*, NULL where the source prints none — and deliberately records
+      that in `OFFICIAL_STATS_SCHEMA.md` rather than `API_CONTRACT.md`, because
+      exposure is this card's call. Note it is populated on only 8 of the 32
+      stats tables carrying it; the 24 player-page-fed tables are NULL by
+      design.
 
 # Acceptance criteria
 

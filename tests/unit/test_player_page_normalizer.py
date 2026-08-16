@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from nba_data.scraping.normalizers.player_page import (
+    _season_end_year,
     normalize_player_page_postseason,
     normalize_player_page_regular_season,
 )
@@ -13,6 +14,11 @@ from nba_data.scraping.parsers.player_page import (
 
 REGULAR_FIXTURE = Path("tests/fixtures/html/player_page_harden_regular_season.html")
 POSTSEASON_FIXTURE = Path("tests/fixtures/html/player_page_harden_postseason.html")
+
+# The archive opens on `1999-00`, the one label in it that crosses a century.
+ARCHIVE_SEASON_LABELS = tuple(
+    (f"{start}-{(start + 1) % 100:02d}", start + 1) for start in range(1999, 2025)
+)
 
 
 @pytest.mark.unit
@@ -190,3 +196,101 @@ def test_normalize_player_page_postseason_supports_real_cache_column_aliases() -
     assert len(team_rows) == 1
     assert team_rows[0]["team_abbreviation"] == "BRK"
     assert team_rows[0]["values"] == {"games": 9, "pts": 180}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("label", "expected"), ARCHIVE_SEASON_LABELS)
+@pytest.mark.parametrize("key", ["season", "year_id"])
+def test_season_end_year_covers_every_archive_label(key: str, label: str, expected: int) -> None:
+    assert _season_end_year({key: label}) == expected
+
+
+@pytest.mark.unit
+def test_archive_season_labels_span_the_full_archive_range() -> None:
+    labels = [label for label, _ in ARCHIVE_SEASON_LABELS]
+
+    assert len(labels) == 26
+    assert labels[0] == "1999-00"
+    assert labels[-1] == "2024-25"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        # The century-crossing label the archive opens on.
+        ("1999-00", 2000),
+        # The same season written in the four-digit form.
+        ("1999-2000", 2000),
+        # A plain four-digit season year, not a range.
+        ("2000", 2000),
+        # A label that does not cross a century.
+        ("2000-01", 2001),
+        # The archive's current final label.
+        ("2024-25", 2025),
+        # The rule is a comparison, not a hard-coded 1900/2000 pivot.
+        ("2099-00", 2100),
+        ("2099-2100", 2100),
+        ("1899-00", 1900),
+    ],
+)
+def test_season_end_year_resolves_boundary_forms(label: str, expected: int) -> None:
+    assert _season_end_year({"season": label}) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "label",
+    [
+        "",
+        "   ",
+        "99-00",
+        "2020-",
+        "2020-2",
+        "2020-021",
+        "2020/21",
+        "20202021",
+        "Career",
+        "2020-21 (partial)",
+    ],
+)
+def test_season_end_year_returns_none_for_malformed_labels(label: str) -> None:
+    assert _season_end_year({"season": label}) is None
+
+
+@pytest.mark.unit
+def test_season_end_year_returns_none_when_no_season_key_is_present() -> None:
+    assert _season_end_year({"team_id": "BOS", "games": "70"}) is None
+
+
+@pytest.mark.unit
+def test_normalize_player_page_regular_season_resolves_century_crossing_season() -> None:
+    parsed = {
+        "totals": [
+            {"season": "1999-00", "team_id": "LAL", "games": "82", "pts": "2344"},
+        ],
+    }
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="oneassh01",
+    )
+
+    assert result.rows_selected == 1
+    assert result.selected_rows[0]["season_year"] == 2000
+
+
+@pytest.mark.unit
+def test_normalize_player_page_postseason_resolves_century_crossing_season() -> None:
+    parsed = {
+        "totals": [
+            {"year_id": "1999-00", "team_name_abbr": "LAL", "games": "23", "pts": "707"},
+        ],
+    }
+
+    result = normalize_player_page_postseason(
+        parsed,
+        basketball_reference_player_id="oneassh01",
+    )
+
+    assert {row["season_year"] for row in result.selected_rows} == {2000}

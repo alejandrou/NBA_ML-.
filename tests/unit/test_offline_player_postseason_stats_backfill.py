@@ -201,7 +201,7 @@ def test_cli_player_postseason_stats_runs_and_writes_report(tmp_path: Path, monk
         assert player == "hardeja01"
         assert start_year == 2021
         assert end_year == 2021
-        assert parser_version == "player-page-postseason-parser-v1"
+        assert parser_version == "player-page-postseason-parser-v2"
         events.append("player_postseason_stats_backfill_run")
         return FakeReport()
 

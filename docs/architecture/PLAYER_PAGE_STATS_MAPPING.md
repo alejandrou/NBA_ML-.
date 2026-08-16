@@ -6,6 +6,36 @@ This document maps Basketball Reference player-page table IDs to planned Phase
 4E database tables. It is documentation only and does not implement parsers,
 loaders, models, migrations, or backfills.
 
+## Season Labels And The Century Rollover
+
+Player-page rows label a season as `YYYY-YY` (`1999-00`, `2024-25`), and
+occasionally as `YYYY-YYYY` or as a plain four-digit year. Every stats row is
+keyed on the **season end year**, so the label has to be resolved to one.
+
+A `YYYY-YY` label may cross a century. `1999-00` ends in **2000**, not 1900, and
+the archive opens on exactly that label. Derive the end year by comparison, not
+by a hard-coded pivot:
+
+- Start from the start year's century.
+- If the two-digit suffix is numerically **below** the start year's last two
+  digits, the label crossed a century — add 100.
+
+So `1999-00` → 2000, `2000-01` → 2001, `2024-25` → 2025, `2099-00` → 2100. A
+"two-digit years below 50 mean the 2000s" rule is wrong for this archive and
+wrong again for the next one; do not reintroduce it.
+
+Only `YYYY-YY`, `YYYY-YYYY`, and `YYYY` are accepted. Anything else — including a
+three-digit suffix — resolves to no season year at all rather than to a guessed
+one, and the row is skipped rather than keyed wrongly.
+
+`_season_end_year` in `scraping/normalizers/player_page.py` owns this rule for
+player pages. Team-season pages do not use it: their season end year comes from
+the page URL.
+
+Rows written before this rule was fixed carry `parser_version`
+`player-page-parser-v1` / `player-page-postseason-parser-v1`; rows written after
+carry `-v2`. Lineage queries must filter on the version they mean.
+
 ## Regular Season
 
 | Player-page table ID | Player-season table | Team-stint relationship |

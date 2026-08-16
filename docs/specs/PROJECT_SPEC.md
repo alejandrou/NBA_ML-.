@@ -21,8 +21,10 @@
 - Players and teams should use Basketball Reference identifiers when available.
 - Team aliases capture name and abbreviation changes.
 - Roster stints represent player-team-season membership.
-- `TOT`, `2TM`, `3TM`, and `4TM` are not teams.
-- `2TM`, `3TM`, and `4TM` may appear as official player-page source markers.
+- `TOT` and every multi-team marker are not teams.
+- A multi-team marker is a numeric team count of at least two followed by `TM`
+  (`2TM`, `5TM`, and so on); the set is open-ended. Markers may appear as
+  official player-page source markers. See ADR 0007.
 - Historical seasons may have unavailable metrics.
 
 ## C. Validation

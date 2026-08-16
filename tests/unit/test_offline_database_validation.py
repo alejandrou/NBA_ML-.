@@ -172,9 +172,9 @@ def test_validate_offline_database_detects_tot_as_real_team(session: Session) ->
 
     assert report.passed is False
     assert {
-        "teams_tot_rows",
-        "team_aliases_tot_rows",
-        "team_seasons_tot_rows",
+        "teams_synthetic_code_rows",
+        "team_aliases_synthetic_code_rows",
+        "team_seasons_synthetic_code_rows",
     } <= _issue_codes(report)
 
 

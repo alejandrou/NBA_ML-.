@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from nba_data.domain.team_codes import is_synthetic_team_code
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_manifest
 
@@ -147,11 +148,11 @@ def _inventory_one_path(
             error_message=_metadata_error_message(status),
         )
 
-    if metadata.team_abbreviation == "TOT":
+    if is_synthetic_team_code(metadata.team_abbreviation):
         return _unsupported_metadata_entry(
             cache_path=cache_path,
             metadata=metadata,
-            error_message="TOT is an aggregate marker, not a real team.",
+            error_message=f"{metadata.team_abbreviation} is an aggregate marker, not a real team.",
         )
 
     if metadata.source_url not in approved_urls:

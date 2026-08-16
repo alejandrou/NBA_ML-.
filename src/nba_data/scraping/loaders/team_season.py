@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from nba_data.db.repositories import CoreRepository
+from nba_data.domain.team_codes import is_multi_team_marker, is_synthetic_team_code
 from nba_data.validation.team_season import assert_valid_normalized_team_season_rows
 
 
@@ -106,8 +107,8 @@ def load_team_season_core(session: Session, batch: TeamSeasonLoadBatch) -> TeamS
 
 
 def _validate_before_writes(batch: TeamSeasonLoadBatch, normalized_team: str) -> None:
-    if normalized_team == "TOT":
-        msg = "F4-002 loader cannot load TOT as the batch team."
+    if is_synthetic_team_code(normalized_team):
+        msg = f"F4-002 loader cannot load synthetic marker {normalized_team} as the batch team."
         raise ValueError(msg)
 
     assert_valid_normalized_team_season_rows(batch.rows, require_stable_player_id=True)
@@ -124,6 +125,12 @@ def _validate_before_writes(batch: TeamSeasonLoadBatch, normalized_team: str) ->
             raise ValueError(msg)
         if row_season_year != batch.season_year:
             msg = f"Row {index} season_year does not match batch season_year."
+            raise ValueError(msg)
+        # `TOT` is the team page's own aggregate marker and is allowed below.
+        # A team-count marker belongs to player pages and is never a valid
+        # team-season row, whatever it claims to be classified as.
+        if is_multi_team_marker(row_team):
+            msg = f"Row {index} uses multi-team marker {row_team} as a team."
             raise ValueError(msg)
         if row_team == "TOT":
             if team_context != "aggregate" or stat_scope != "player_season_aggregate":

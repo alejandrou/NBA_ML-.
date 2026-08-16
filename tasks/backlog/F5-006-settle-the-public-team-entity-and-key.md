@@ -64,7 +64,10 @@ the migrations:
   is a contract statement this card must make; `F5-007` enforces it.
 - `TOT` is already excluded at the database level by
   `ck_core_teams_bref_id_not_tot` (`0002:26-31`), consistent with the existing
-  rule that `TOT` is never a real team.
+  rule that `TOT` is never a real team. **Superseded by F4E-014:** revision
+  `0006_synthetic_team_codes` replaces that constraint with
+  `ck_core_teams_bref_id_not_synthetic`, which excludes `TOT` *and* any
+  multi-team marker. Use the new name — the old one no longer exists at head.
 
 # Human decisions or resources
 

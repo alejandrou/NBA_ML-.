@@ -12,6 +12,7 @@ from nba_data.db.models import (
     TeamAlias,
     TeamSeason,
 )
+from nba_data.domain.team_codes import is_synthetic_team_code
 
 
 class CoreRepository:
@@ -47,11 +48,15 @@ class CoreRepository:
             basketball_reference_team_id,
             field_name="basketball_reference_team_id",
         ).upper()
-        if team_id == "TOT":
-            msg = "TOT must not be loaded as a real team."
+        if is_synthetic_team_code(team_id):
+            msg = f"{team_id} is a synthetic marker and must not be loaded as a real team."
             raise ValueError(msg)
 
         abbreviation = _clean_required(current_abbreviation, field_name="current_abbreviation").upper()
+        if is_synthetic_team_code(abbreviation):
+            msg = f"{abbreviation} is a synthetic marker and must not be a team abbreviation."
+            raise ValueError(msg)
+
         name = _clean_optional(current_name)
         creation_name = name or abbreviation
 
@@ -84,8 +89,8 @@ class CoreRepository:
         season_year: int,
     ) -> TeamAlias:
         alias_abbreviation = _clean_required(abbreviation, field_name="abbreviation").upper()
-        if alias_abbreviation == "TOT":
-            msg = "TOT must not be loaded as a team alias."
+        if is_synthetic_team_code(alias_abbreviation):
+            msg = f"{alias_abbreviation} is a synthetic marker and must not be loaded as a team alias."
             raise ValueError(msg)
 
         alias = self.session.scalar(
@@ -122,8 +127,8 @@ class CoreRepository:
         team_abbreviation: str,
     ) -> TeamSeason:
         abbreviation = _clean_required(team_abbreviation, field_name="team_abbreviation").upper()
-        if abbreviation == "TOT":
-            msg = "TOT must not be loaded as a real team-season."
+        if is_synthetic_team_code(abbreviation):
+            msg = f"{abbreviation} is a synthetic marker and must not be loaded as a real team-season."
             raise ValueError(msg)
 
         team_season = self.session.scalar(

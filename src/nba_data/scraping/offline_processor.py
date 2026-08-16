@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
+from nba_data.domain.team_codes import is_synthetic_team_code
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.normalizers.team_season import normalize_team_season_page
 from nba_data.scraping.parsers.team_season import parse_team_season_page
@@ -322,8 +323,8 @@ def _normalize_team_abbreviation(team_abbreviation: str) -> str:
     if _TEAM_ABBREVIATION_RE.fullmatch(team) is None:
         msg = "team_abbreviation must be a three-letter team code"
         raise ValueError(msg)
-    if team == "TOT":
-        msg = "TOT is an aggregate marker, not a real team"
+    if is_synthetic_team_code(team):
+        msg = f"{team} is an aggregate marker, not a real team"
         raise ValueError(msg)
     return team
 

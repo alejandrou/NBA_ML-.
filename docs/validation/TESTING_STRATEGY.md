@@ -23,9 +23,12 @@ DATABASE_URL=postgresql+psycopg://nba:nba@localhost:5432/nba
 ```
 
 The job waits for a successful database connection, runs `uv run alembic
-upgrade head`, verifies migration drift with `uv run alembic check`, and then
-runs `uv run pytest tests/integration/test_team_season_loader_postgres.py`
-and `uv run pytest tests/integration/test_api_postgres.py`. The job sets
+upgrade head`, verifies migration drift with `uv run alembic check`, then
+round-trips the newest revision (`downgrade -1`, `upgrade head`, `check`) so a
+revision that cannot be undone fails the build, and then runs
+`uv run pytest` against `tests/integration/test_team_season_loader_postgres.py`,
+`tests/integration/test_api_postgres.py`, and
+`tests/integration/test_synthetic_team_code_constraints_postgres.py`. The job sets
 `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`; with that flag, a connection
 failure, missing migration table, or incompatible revision fails the test
 instead of being reported as a skip. Local runs without the flag retain the
@@ -39,7 +42,16 @@ developer's regular local database. To run `test_api_postgres.py` locally
 without risking real data, use `uv run python
 scripts/validate_postgres_local.py`, which migrates and tests a disposable,
 uniquely named database on the same PostgreSQL server and always drops it
-afterward.
+afterward. That script mirrors the CI job, round trip included, and is the way
+to validate a new migration locally — never `alembic upgrade head` against the
+developer's real database, which is an owner-approved operation.
+
+`test_synthetic_team_code_constraints_postgres.py` exercises the four
+`ck_core_*_not_synthetic` check constraints on PostgreSQL itself, because the
+conditions are generated SQL and the unit tests only prove them against SQLite.
+It rolls back every insert, and it skips on a database below the migration head
+— the constraints do not exist there — which the require-flag turns into a
+failure in CI.
 
 ## Test rules
 

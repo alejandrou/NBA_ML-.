@@ -9,6 +9,12 @@ from typing import Any, Literal
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
 
+from nba_data.domain.team_codes import (
+    is_aggregate_only_team_code,
+    is_multi_team_marker,
+    is_synthetic_team_code,
+)
+
 _NON_DATA_COLUMNS = {
     "id",
     "player_team_season_id",
@@ -31,8 +37,6 @@ _BANNED_GENERATED_NAME_TOKENS = (
     "prediction",
     "feature",
 )
-_SYNTHETIC_TEAM_CODES = ("TOT", "2TM", "3TM", "4TM")
-_ALLOWED_AGGREGATE_SOURCE_CODES = ("2TM", "3TM", "4TM")
 _POSTSEASON_MARKERS = ("postseason", "playoff", "_post")
 _ADVANCED_PERCENTAGE_COLUMNS = {
     "orb_pct",
@@ -431,20 +435,20 @@ def _core_synthetic_code_issues(
 
     issues: list[OfficialStatsValidationIssue] = []
 
-    team_rows = list(
-        session.execute(
+    # The marker set is open-ended, so it cannot be pushed into a SQL `IN`.
+    # `core` identity tables are small enough to classify in Python instead.
+    team_rows = [
+        row
+        for row in session.execute(
             select(
                 teams.c.id,
                 teams.c.basketball_reference_team_id,
                 teams.c.current_abbreviation,
-            ).where(
-                or_(
-                    teams.c.basketball_reference_team_id.in_(_SYNTHETIC_TEAM_CODES),
-                    teams.c.current_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
-                )
             )
         )
-    )
+        if is_synthetic_team_code(row.basketball_reference_team_id)
+        or is_synthetic_team_code(row.current_abbreviation)
+    ]
     if team_rows:
         issues.append(
             OfficialStatsValidationIssue(
@@ -466,13 +470,13 @@ def _core_synthetic_code_issues(
         )
 
     if core_team_aliases is not None:
-        alias_rows = list(
-            session.execute(
-                select(core_team_aliases.c.id, core_team_aliases.c.abbreviation).where(
-                    core_team_aliases.c.abbreviation.in_(_SYNTHETIC_TEAM_CODES)
-                )
+        alias_rows = [
+            row
+            for row in session.execute(
+                select(core_team_aliases.c.id, core_team_aliases.c.abbreviation)
             )
-        )
+            if is_synthetic_team_code(row.abbreviation)
+        ]
         if alias_rows:
             issues.append(
                 OfficialStatsValidationIssue(
@@ -486,13 +490,11 @@ def _core_synthetic_code_issues(
                 )
             )
 
-    team_season_rows = list(
-        session.execute(
-            select(team_seasons.c.id, team_seasons.c.team_abbreviation).where(
-                team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES)
-            )
-        )
-    )
+    team_season_rows = [
+        row
+        for row in session.execute(select(team_seasons.c.id, team_seasons.c.team_abbreviation))
+        if is_synthetic_team_code(row.team_abbreviation)
+    ]
     if team_season_rows:
         issues.append(
             OfficialStatsValidationIssue(
@@ -509,17 +511,18 @@ def _core_synthetic_code_issues(
             )
         )
 
-    pts_rows = list(
-        session.execute(
+    pts_rows = [
+        row
+        for row in session.execute(
             select(
                 player_team_seasons.c.id,
                 team_seasons.c.team_abbreviation,
             )
             .select_from(player_team_seasons)
             .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
-            .where(team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES))
         )
-    )
+        if is_synthetic_team_code(row.team_abbreviation)
+    ]
     if pts_rows:
         issues.append(
             OfficialStatsValidationIssue(
@@ -548,7 +551,34 @@ def _team_stint_synthetic_code_issues(
     team_seasons = core_tables["team_seasons"]
     teams = core_tables["teams"]
 
+    # Classify the core chain once, in Python, because the marker set is
+    # open-ended; the per-table scans then filter on plain grain ids.
+    synthetic_grains = {
+        row.id: {
+            "team_abbreviation": row.team_abbreviation,
+            "basketball_reference_team_id": row.basketball_reference_team_id,
+            "current_abbreviation": row.current_abbreviation,
+        }
+        for row in session.execute(
+            select(
+                player_team_seasons.c.id,
+                team_seasons.c.team_abbreviation,
+                teams.c.basketball_reference_team_id,
+                teams.c.current_abbreviation,
+            )
+            .select_from(player_team_seasons)
+            .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
+            .join(teams, team_seasons.c.team_id == teams.c.id)
+        )
+        if is_synthetic_team_code(row.team_abbreviation)
+        or is_synthetic_team_code(row.basketball_reference_team_id)
+        or is_synthetic_team_code(row.current_abbreviation)
+    }
+
     issues: list[OfficialStatsValidationIssue] = []
+    if not synthetic_grains:
+        return issues
+
     for spec in STATS_TABLE_SPECS:
         if spec.family != "team_stint":
             continue
@@ -556,27 +586,12 @@ def _team_stint_synthetic_code_issues(
         if table is None or spec.grain_column not in table.c:
             continue
         grain = table.c[spec.grain_column]
-        rows = list(
-            session.execute(
-                select(
-                    grain,
-                    team_seasons.c.team_abbreviation,
-                    teams.c.basketball_reference_team_id,
-                    teams.c.current_abbreviation,
-                )
-                .select_from(table)
-                .join(player_team_seasons, grain == player_team_seasons.c.id)
-                .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
-                .join(teams, team_seasons.c.team_id == teams.c.id)
-                .where(
-                    or_(
-                        team_seasons.c.team_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
-                        teams.c.basketball_reference_team_id.in_(_SYNTHETIC_TEAM_CODES),
-                        teams.c.current_abbreviation.in_(_SYNTHETIC_TEAM_CODES),
-                    )
-                )
+        rows = [
+            {spec.grain_column: value, **synthetic_grains[value]}
+            for value in session.scalars(
+                select(grain).select_from(table).where(grain.in_(synthetic_grains))
             )
-        )
+        ]
         if rows:
             issues.append(
                 OfficialStatsValidationIssue(
@@ -585,15 +600,7 @@ def _team_stint_synthetic_code_issues(
                     context={
                         "table": spec.full_name,
                         "count": len(rows),
-                        "examples": [
-                            {
-                                spec.grain_column: row[0],
-                                "team_abbreviation": row.team_abbreviation,
-                                "basketball_reference_team_id": row.basketball_reference_team_id,
-                                "current_abbreviation": row.current_abbreviation,
-                            }
-                            for row in rows[:10]
-                        ],
+                        "examples": rows[:10],
                     },
                 )
             )
@@ -663,10 +670,10 @@ def _aggregate_source_team_code_issues(
             if raw_code is None:
                 continue
             code = str(raw_code).strip().upper()
-            if code == "TOT":
+            if is_aggregate_only_team_code(code):
                 invalid_rows.append({spec.grain_column: row[0], "source_team_code": code, "reason": "tot_not_supported"})
                 continue
-            if code in _ALLOWED_AGGREGATE_SOURCE_CODES or code in known_real_codes:
+            if is_multi_team_marker(code) or code in known_real_codes:
                 continue
             invalid_rows.append({spec.grain_column: row[0], "source_team_code": code, "reason": "unknown_team_code"})
 

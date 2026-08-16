@@ -33,8 +33,8 @@ outside this repository.
 
 | Key | Defect | Status | Owning card |
 |---|---|---|---|
-| DB-01 † | `_season_end_year` rolls `1999-00` to **1900**, so season-2000 rows never resolve a grain and are silently dropped | confirmed, planned | [F4E-013](../../tasks/backlog/F4E-013-fix-season-century-rollover-in-player-page-parsing.md) |
-| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | confirmed, planned | [F4E-014](../../tasks/backlog/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md) |
+| DB-01 † | `_season_end_year` rolls `1999-00` to **1900**, so season-2000 rows never resolve a grain and are silently dropped | fixed | [F4E-013](../../tasks/done/F4E-013-fix-season-century-rollover-in-player-page-parsing.md) |
+| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | fixed at the parser; persisted rows not yet repaired | [F4E-014](../../tasks/review/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md) |
 | DB-03 † | `core.teams.current_name` and `core.team_aliases.name` hold abbreviations; no loader ever supplies a real team name | confirmed, planned | [F4E-015](../../tasks/backlog/F4E-015-populate-real-team-names-from-cached-team-pages.md) |
 | DB-04 † | `validate official-stats` reconciles one backfill report against all stats tables; backfill commands exit 0 on partial row failure | confirmed, planned | [F4E-016](../../tasks/backlog/F4E-016-consolidate-backfill-report-validation.md) |
 | DB-05 | `player_name_display` is NULL across the player-page-fed stats tables, with nothing documenting why | confirmed as a documentation defect, planned | [F4E-019](../../tasks/backlog/F4E-019-document-player-name-display-source-semantics.md) |
@@ -44,6 +44,11 @@ outside this repository.
 | DB-09 | Boxscores are absent from the archive | accepted | — |
 
 † DB-nn key provisional; see the provenance caveat.
+
+Owning-card links point at the card's **current lifecycle folder**, which moves
+as the card advances (`planning/` → `backlog/` → `active/` → `review/` →
+`done/`). A link that 404s means the card moved, not that it vanished; the card
+ID is the stable handle.
 
 ### Defects found while verifying the audit, which the audit did not report
 
@@ -265,7 +270,9 @@ They are recorded here so they are not reintroduced.
    `get_or_create_team_season`, and the four `ck_*_not_tot` check constraints — so
    a `5TM` value reaching any of them is treated as a real team. Six durable
    documents also enumerate the closed set. F4E-014's scope was corrected to
-   cover all of it.
+   cover all of it. (Those constraint names describe the pre-0006 state audited
+   here; revision `0006_synthetic_team_codes` replaced them with
+   `ck_*_not_synthetic`.)
 
 Additionally, the caveat that `nba_postgres` was unavailable is **stale**: the
 container is running and every database figure above was queried directly.

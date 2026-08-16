@@ -34,7 +34,28 @@ the page URL.
 
 Rows written before this rule was fixed carry `parser_version`
 `player-page-parser-v1` / `player-page-postseason-parser-v1`; rows written after
-carry `-v2`. Lineage queries must filter on the version they mean.
+carry `-v2`. Rows written after the multi-team marker became semantic (F4E-014)
+carry `-v3`. Lineage queries must filter on the version they mean.
+
+## Multi-Team Markers
+
+A multi-team marker is a numeric team count of at least two followed by `TM`.
+The set is open-ended, not the fixed list `{2TM, 3TM, 4TM}`. Measured over the
+2,551 cached player pages, counting distinct `(player, season)` pairs whose
+source team cell matches a numeric marker:
+
+| Marker | Distinct player-seasons | Raw row occurrences |
+| --- | --- | --- |
+| `2TM` | 1,695 | 13,402 |
+| `3TM` | 110 | 870 |
+| `4TM` | 4 | 30 |
+| `5TM` | 1 | 8 |
+
+The single `5TM` is Bobby Jones (`jonesbo02`), 2007-08. No `0TM` and no `1TM`
+appear anywhere in the cache, which is why the rule is a count of at least two
+rather than "any digits". `is_multi_team_marker` in
+`src/nba_data/domain/team_codes.py` owns this rule for every layer; `TOT` is
+handled separately and is not a multi-team marker.
 
 ## Regular Season
 
@@ -55,19 +76,21 @@ accepted `F4E-007` as `done`, and `F4E-009` validates the final routing and
 source-team-code safety rules.
 
 `source_team_code` on `stats.player_season_*` is metadata only. Valid source
-examples include `BOS`, `HOU`, `BRK`, `2TM`, `3TM`, and `4TM`. Synthetic codes
-must not create `core` team rows or team-stint stats rows.
+examples include `BOS`, `HOU`, `BRK`, and any multi-team marker such as `2TM`
+or `5TM`. Synthetic codes must not create `core` team rows or team-stint stats
+rows.
 
 For each player-season and supported regular-season stat table, load exactly
 one full-season row into `stats.player_season_*`.
 
-- If a `2TM`, `3TM`, or `4TM` row exists, use that synthetic multi-team row.
-- If no synthetic multi-team row exists, use the single real-team row.
+- If a multi-team row exists, use that row.
+- If no multi-team row exists, use the single real-team row.
 - For traded seasons, ignore player-page real-team stint rows for
   `stats.player_season_*`; those belong only to `stats.player_team_season_*`.
-- Never insert `TOT`, `2TM`, `3TM`, or `4TM` into `core.teams`,
-  `core.team_seasons`, `core.player_team_seasons`, or
-  `stats.player_team_season_*`.
+- Never insert `TOT` or any multi-team marker into `core.teams`,
+  `core.team_aliases`, `core.team_seasons`, `core.player_team_seasons`, or
+  `stats.player_team_season_*`. The `ck_core_*_not_synthetic` check constraints
+  enforce this in the database as well as in code.
 
 Examples:
 
@@ -99,13 +122,12 @@ regular-season and postseason table families.
 For each player-season and supported postseason stat table, load exactly one
 aggregate row into `stats.player_postseason_*`.
 
-- If a `2TM`, `3TM`, or `4TM` row exists, use that synthetic multi-team row
-  for `stats.player_postseason_*`.
-- If no synthetic multi-team row exists, use the single real-team row for
+- If a multi-team row exists, use that row for `stats.player_postseason_*`.
+- If no multi-team row exists, use the single real-team row for
   `stats.player_postseason_*`.
 - Load each real team row into `stats.player_team_postseason_*`.
-- Never insert `TOT`, `2TM`, `3TM`, or `4TM` into `core.teams`,
-  `core.team_seasons`, `core.player_team_seasons`, or
+- Never insert `TOT` or any multi-team marker into `core.teams`,
+  `core.team_aliases`, `core.team_seasons`, `core.player_team_seasons`, or
   `stats.player_team_postseason_*`.
 
 ## Out Of Scope

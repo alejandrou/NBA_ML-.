@@ -100,8 +100,19 @@ jobs:
       - name: Check Alembic migrations
         run: uv run alembic check
 
+      # A revision that cannot be undone is a one-way door. The database here is
+      # a throwaway service container, so the round trip is free.
+      - name: Round-trip the newest Alembic revision
+        run: |
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+          uv run alembic check
+
       - name: Run PostgreSQL loader integration test
         run: uv run pytest tests/integration/test_team_season_loader_postgres.py
 
       - name: Run PostgreSQL API integration test
         run: uv run pytest tests/integration/test_api_postgres.py
+
+      - name: Run PostgreSQL check-constraint integration test
+        run: uv run pytest tests/integration/test_synthetic_team_code_constraints_postgres.py

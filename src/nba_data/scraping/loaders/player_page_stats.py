@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from nba_data.db.models import Player, PlayerSeason, PlayerTeamSeason, Season, TeamSeason
 from nba_data.db.repositories import StatsRepository
+from nba_data.domain.team_codes import is_aggregate_only_team_code, is_synthetic_team_code
 from nba_data.scraping.loaders.team_season_stats import (
     PLAYER_SEASON_ROUTES,
     POSTSEASON_PLAYER_SEASON_ROUTES,
@@ -213,7 +214,7 @@ def _prepare_row(
     if route.aggregate:
         if source_team_code is None:
             return _entry_from_row(row, row_index, "failed", "missing_source_team_code")
-        if source_team_code.upper() == "TOT":
+        if is_aggregate_only_team_code(source_team_code):
             return _entry_from_row(row, row_index, "skipped", "invalid_source_team_code")
         stats_values["source_team_code"] = source_team_code
         grain_id_or_entry = _resolve_player_season_id(session, row=row, row_index=row_index)
@@ -236,7 +237,7 @@ def _prepare_row(
 
     if team_abbreviation is None:
         return _entry_from_row(row, row_index, "failed", "missing_team_abbreviation")
-    if team_abbreviation.upper() in {"TOT", "2TM", "3TM", "4TM"}:
+    if is_synthetic_team_code(team_abbreviation):
         return _entry_from_row(row, row_index, "skipped", "invalid_team_stint_source_team_code")
     grain_id_or_entry = _resolve_player_team_season_id(session, row=row, row_index=row_index)
     if isinstance(grain_id_or_entry, PlayerPageStatsLoadEntry):

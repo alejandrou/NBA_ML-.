@@ -52,6 +52,7 @@ from nba_data.db.models import (
     TeamSeason,
 )
 from nba_data.db.repositories import StatsRepository
+from nba_data.domain.team_codes import is_multi_team_marker
 
 StatsLoadStatus = Literal["loaded", "skipped", "failed"]
 StatsModel = type[Any]
@@ -849,8 +850,13 @@ def _route_for_row(
             return _entry_from_row(row, row_index, "skipped", reason)
         return route
 
-    if _normalize_team_abbreviation(row.get("team_abbreviation")) == "TOT":
+    team_abbreviation = _normalize_team_abbreviation(row.get("team_abbreviation"))
+    if team_abbreviation == "TOT":
         return _entry_from_row(row, row_index, "skipped", "invalid_tot_routing")
+    # Without this, a team-count marker reaching a stint route would resolve a
+    # real `core.team_seasons` row for itself.
+    if is_multi_team_marker(team_abbreviation):
+        return _entry_from_row(row, row_index, "skipped", "invalid_multi_team_marker_routing")
     if source_table == "roster" and stat_scope != "team_roster":
         return _entry_from_row(row, row_index, "skipped", "unsupported_stat_scope")
     if source_table != "roster" and stat_scope != "player_team_season":

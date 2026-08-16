@@ -116,7 +116,7 @@ schema.
 - **Tests:** `test_offline_database_validation.py`, `test_official_stats_validation.py`, `test_team_season_validation.py`
 - **Docs:** `docs/architecture/OFFICIAL_STATS_SCHEMA.md` (large — open on demand)
 - **Critical actions:** none; read-only
-- **Invariants:** `TOT` is never a real team; `2TM`/`3TM`/`4TM` are aggregate source markers, not teams; regular season and postseason never mix
+- **Invariants:** `TOT` is never a real team; a multi-team marker (any team count of at least two followed by `TM`) is an aggregate source marker, not a team; regular season and postseason never mix
 
 ### Player-page acquisition
 

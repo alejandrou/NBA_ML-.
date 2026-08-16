@@ -7,6 +7,7 @@ from typing import Literal
 
 from sqlalchemy.orm import Session
 
+from nba_data.domain.team_codes import is_synthetic_team_code
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.cache_inventory import (
     CachedHtmlInventoryEntry,
@@ -189,8 +190,8 @@ def _normalize_team_filter(team: str | None) -> str | None:
     if not normalized:
         msg = "team must be a non-empty three-letter team code"
         raise ValueError(msg)
-    if normalized == "TOT":
-        msg = "TOT is an aggregate marker, not a real team"
+    if is_synthetic_team_code(normalized):
+        msg = f"{normalized} is an aggregate marker, not a real team"
         raise ValueError(msg)
     if _TEAM_ABBREVIATION_RE.fullmatch(normalized) is None:
         msg = "team must be a three-letter team code"

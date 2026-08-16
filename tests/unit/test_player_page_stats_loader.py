@@ -204,6 +204,68 @@ def test_player_page_stats_loader_rejects_tot_and_synthetic_team_stint_codes(ses
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("marker", ["2TM", "3TM", "4TM", "5TM", "6TM", "10TM"])
+def test_player_page_stats_loader_rejects_any_multi_team_marker_as_a_stint(
+    session: Session, marker: str
+) -> None:
+    _create_player_team_season(
+        session,
+        player_id="jonesbo02",
+        season_year=2008,
+        full_name="Bobby Jones",
+        team_abbreviation="DEN",
+    )
+
+    report = load_player_page_stats(
+        session,
+        [
+            _postseason_team_row(
+                team_abbreviation=marker,
+                season_year=2008,
+                basketball_reference_player_id="jonesbo02",
+                stable_player_key="jonesbo02",
+                player_name="Bobby Jones",
+            )
+        ],
+        **_lineage(),
+    )
+
+    assert report.loaded_rows == 0
+    assert report.skipped_rows == 1
+    assert report.entries[0].reason == "invalid_team_stint_source_team_code"
+    assert _count(session, PlayerTeamPostseasonTotals) == 0
+
+
+@pytest.mark.unit
+def test_player_page_stats_loader_accepts_a_five_team_marker_as_an_aggregate_source(
+    session: Session,
+) -> None:
+    """ADR 0007: a marker is a valid aggregate source and an invalid stint."""
+
+    _create_player_season(
+        session, player_id="jonesbo02", season_year=2008, full_name="Bobby Jones"
+    )
+
+    report = load_player_page_stats(
+        session,
+        [
+            _regular_row(
+                source_team_code="5TM",
+                season_year=2008,
+                basketball_reference_player_id="jonesbo02",
+                stable_player_key="jonesbo02",
+                player_name="Bobby Jones",
+            )
+        ],
+        **_lineage(),
+    )
+
+    assert report.loaded_rows == 1
+    assert report.skipped_rows == 0
+    assert session.scalar(select(PlayerSeasonTotals.source_team_code)) == "5TM"
+
+
+@pytest.mark.unit
 def test_player_page_stats_loader_source_has_no_network_or_parser_boundaries() -> None:
     module_source = inspect.getsource(player_stats_loader_module)
 

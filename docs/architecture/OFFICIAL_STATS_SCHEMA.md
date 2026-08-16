@@ -49,8 +49,9 @@ not the source of full player-season stats.
 
 Future player-page parsing will populate `stats.player_season_*` from official
 Basketball Reference player pages. Player-page rows use `source_team_code`
-metadata such as `BOS`, `HOU`, `2TM`, `3TM`, or `4TM`; synthetic multi-team
-codes are source markers only and must not become `core` teams.
+metadata such as `BOS`, `HOU`, or a multi-team marker (`2TM`, `5TM`, or any
+other team count of at least two); multi-team markers are source markers only
+and must not become `core` teams.
 
 ## Global Contract
 
@@ -112,8 +113,8 @@ duplicate non-unique FK index unless a later review finds a real query need.
 
 `F4E-007` adds `source_team_code` to `stats.player_season_*` tables as
 metadata only. It is not a foreign key and may contain either a real
-Basketball Reference team code for single-team seasons or a synthetic
-multi-team source marker such as `2TM`, `3TM`, or `4TM`.
+Basketball Reference team code for single-team seasons or a multi-team
+source marker: a numeric team count of at least two followed by `TM`.
 
 `F4E-008` extends the schema with separate postseason `stats` tables while
 keeping regular season and postseason rows fully separate.
@@ -144,17 +145,21 @@ report or quarantine them until the schema is reviewed.
 
 ## Source Team Code Rules
 
-`TOT`, `2TM`, `3TM`, and `4TM` are not real teams.
+`TOT` and every multi-team marker are not real teams. A multi-team marker is
+a numeric team count of at least two followed by `TM` (`2TM`, `5TM`, and so on);
+the set is open-ended, not the fixed list `{2TM, 3TM, 4TM}`. The rule lives in
+`src/nba_data/domain/team_codes.py` and is enforced in the database by the four
+`ck_core_*_not_synthetic` check constraints as well as in code. See ADR 0007.
 
 - Team-season pages load real team rows only into `player_team_season_*`
   tables.
 - Player pages load full player-season rows into `player_season_*` tables.
 - For each player-season and supported stat table, load exactly one full-season
   row into `player_season_*`.
-- Player-page `2TM`, `3TM`, and `4TM` rows load only into `player_season_*`
-  tables as official full-season rows when present.
-- If no `2TM`, `3TM`, or `4TM` row exists, the single real-team player-page
-  row is the official full-season row.
+- Player-page multi-team rows load only into `player_season_*` tables as
+  official full-season rows when present.
+- If no multi-team row exists, the single real-team player-page row is the
+  official full-season row.
 - For traded seasons, do not load the player-page real-team stint rows into
   `player_season_*`; those real-team stint rows belong only to
   `player_team_season_*`.

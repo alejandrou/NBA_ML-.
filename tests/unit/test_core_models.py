@@ -25,11 +25,11 @@ def test_core_relationship_tables_are_registered_in_core_schema() -> None:
 
 def test_core_identifier_constraints_are_explicit() -> None:
     assert "uq_core_teams_bref_id" in _constraint_names(Team, UniqueConstraint)
-    assert "ck_core_teams_bref_id_not_tot" in _constraint_names(Team, CheckConstraint)
-    assert "ck_core_teams_current_abbreviation_not_tot" in _constraint_names(
+    assert "ck_core_teams_bref_id_not_synthetic" in _constraint_names(Team, CheckConstraint)
+    assert "ck_core_teams_current_abbreviation_not_synthetic" in _constraint_names(
         Team, CheckConstraint
     )
-    assert "ck_core_team_aliases_abbreviation_not_tot" in _constraint_names(
+    assert "ck_core_team_aliases_abbreviation_not_synthetic" in _constraint_names(
         TeamAlias, CheckConstraint
     )
     assert "uq_core_players_bref_id" in _constraint_names(Player, UniqueConstraint)
@@ -43,7 +43,7 @@ def test_team_season_constraints_reject_tot_as_real_team() -> None:
     assert "uq_core_team_seasons_season_abbrev" in _constraint_names(
         TeamSeason, UniqueConstraint
     )
-    assert "ck_core_team_seasons_abbrev_not_tot" in _constraint_names(
+    assert "ck_core_team_seasons_abbrev_not_synthetic" in _constraint_names(
         TeamSeason, CheckConstraint
     )
 

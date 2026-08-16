@@ -16,6 +16,7 @@ from nba_data.db.models import (
     TeamAlias,
     TeamSeason,
 )
+from nba_data.domain.team_codes import is_synthetic_team_code
 
 DEFAULT_PHASE_4D_TABLE_COUNTS = {
     "core.seasons": 26,
@@ -102,7 +103,7 @@ def validate_offline_database(
     issues.extend(_duplicate_issues(session))
     issues.extend(_orphan_issues(session))
     issues.extend(_team_season_player_issues(session, resolved_expectations))
-    issues.extend(_tot_issues(session))
+    issues.extend(_synthetic_team_code_issues(session))
     issues.extend(_player_identifier_issues(session))
     issues.extend(_backfill_report_issues(backfill_report, backfill_summary, resolved_expectations))
 
@@ -387,32 +388,33 @@ def _team_season_player_issues(
     ]
 
 
-def _tot_issues(session: Session) -> list[OfflineDatabaseValidationIssue]:
+def _synthetic_team_code_issues(session: Session) -> list[OfflineDatabaseValidationIssue]:
+    # `TOT` and the team-count markers are an open-ended set, so they are
+    # classified in Python rather than enumerated in a SQL predicate. The three
+    # `core` identity tables are small enough to scan.
     checks = {
-        "teams_tot_rows": session.scalar(
-            select(func.count())
-            .select_from(Team)
-            .where(
-                (Team.basketball_reference_team_id == "TOT")
-                | (Team.current_abbreviation == "TOT")
+        "teams_synthetic_code_rows": sum(
+            1
+            for row in session.execute(
+                select(Team.basketball_reference_team_id, Team.current_abbreviation)
             )
-        )
-        or 0,
-        "team_aliases_tot_rows": session.scalar(
-            select(func.count()).select_from(TeamAlias).where(TeamAlias.abbreviation == "TOT")
-        )
-        or 0,
-        "team_seasons_tot_rows": session.scalar(
-            select(func.count())
-            .select_from(TeamSeason)
-            .where(TeamSeason.team_abbreviation == "TOT")
-        )
-        or 0,
+            if is_synthetic_team_code(row[0]) or is_synthetic_team_code(row[1])
+        ),
+        "team_aliases_synthetic_code_rows": sum(
+            1
+            for value in session.scalars(select(TeamAlias.abbreviation))
+            if is_synthetic_team_code(value)
+        ),
+        "team_seasons_synthetic_code_rows": sum(
+            1
+            for value in session.scalars(select(TeamSeason.team_abbreviation))
+            if is_synthetic_team_code(value)
+        ),
     }
     return [
         OfflineDatabaseValidationIssue(
             code=code,
-            message=f"{count} real-team rows incorrectly use TOT.",
+            message=f"{count} real-team rows incorrectly use a synthetic team code.",
             context={"count": count},
         )
         for code, count in checks.items()

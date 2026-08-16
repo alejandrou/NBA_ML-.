@@ -154,9 +154,10 @@ requires `[a-z0-9]{8,10}`, which cannot match a six- or seven-character id:
 
 Their pages are cached and parseable, so the data is fully recoverable; their
 `core.player_seasons` rows exist because those come from **team** pages, which
-discovery handles correctly. This defect is owned by the card on the unmerged
-`feature/f4e-012-fix-player-page-cache-discovery-contract` branch, which is why
-F4E-017 cannot be started yet.
+discovery handles correctly. This defect is owned by the
+[F4E-012 review card](../../tasks/review/F4E-012-fix-player-page-cache-discovery-contract.md).
+Its implementation is merged, but the card remains in review pending the user's
+testing decision, which is why F4E-017 cannot be started yet.
 
 ### Q1 resolved: the repair is in-place, and this is now verified
 
@@ -271,9 +272,10 @@ container is running and every database figure above was queried directly.
 
 ## Not yet filed
 
-Two pieces of work are deliberately **not** in `tasks/`, because they depend on
-the unmerged `feature/f4e-012-fix-player-page-cache-discovery-contract` branch
-and `scripts/validate_tasks.py` requires every `depends_on` to resolve:
+Two pieces of work are deliberately **not** in `tasks/` yet. They are downstream
+of the discovery repair recorded by the [F4E-012 review
+card](../../tasks/review/F4E-012-fix-player-page-cache-discovery-contract.md)
+and should be assigned only after that review is accepted:
 
 - **Rebuild and diff** — rebuild the archive into a scratch database and diff it
   against the target, with a re-runnable cache digest over sorted paths and
@@ -287,9 +289,10 @@ reader cannot tell an unfiled card from a lost one, and the ids may not be the
 ones eventually issued. The cards that reference this work now name it
 descriptively instead.
 
-File both when the F4E-012 card merges, and assign real ids then. A destructive
-replacement card is filed **only if** the rebuild diff falsifies the Q1 finding
-above — which the direct database evidence now makes unlikely.
+File both after the F4E-012 review card moves to `tasks/done/`, and assign real
+ids then. A destructive replacement card is filed **only if** the rebuild diff
+falsifies the Q1 finding above — which the direct database evidence now makes
+unlikely.
 
 ## Related
 

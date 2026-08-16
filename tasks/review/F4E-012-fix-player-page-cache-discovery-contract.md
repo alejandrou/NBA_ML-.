@@ -171,6 +171,8 @@ part of this card's automated validation.
 - Result: 37 passed.
 - Command: `uv run ruff check .`
 - Result: All checks passed.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
 - Command: `uv run pytest`
 - Result: 443 passed, 1 error — `tests/integration/test_api_postgres.py::test_postgres_api_reads_teams_and_filtered_seasons`
   errors at setup with "PostgreSQL database is not isolated (before seeding):

@@ -8,6 +8,7 @@ areas:
   - testing
 priority: 70
 depends_on:
+  - F4E-012
   - F4E-013
   - F4E-014
   - F4E-022
@@ -33,14 +34,16 @@ the database.
 
 Three blockers, all of which must clear before this card can start.
 
-1. **It needs a dependency that does not exist in this lifecycle yet.** The
-   classifier must enumerate player pages using the *corrected* discovery
-   contract from the card on the unmerged branch
-   `feature/f4e-012-fix-player-page-cache-discovery-contract`. Built on today's
+1. **It depends on the F4E-012 review card.** The classifier must enumerate
+   player pages using the *corrected* discovery contract recorded in
+   [F4E-012](../review/F4E-012-fix-player-page-cache-discovery-contract.md).
+   Its implementation is merged, but the card remains in `tasks/review/`
+   pending the user's testing decision. Built on today's
    discovery it would silently omit 36 players — see below — and would then
    certify their absence as correct, which is the exact failure this card exists
    to prevent. `scripts/validate_tasks.py` requires every `depends_on` to
-   resolve, so the dependency cannot be declared until that card is filed.
+   resolve, and `depends_on` now records this lifecycle dependency. F4E-017
+   remains in planning until the other blockers below are resolved.
 2. **The artifact interface it shares with F4E-018 is not yet agreed.** The
    open questions are enumerated below. Starting before they are answered would
    produce an artifact F4E-018 cannot consume.
@@ -262,9 +265,6 @@ discovery-bug seasons.
       artifact is produced by the validation surface that consumes it, rather
       than by a backfill command. This command must be named in **F4E-018's**
       scope too, which it currently is not.
-- [ ] **The F4E-012 dependency.** Confirm that this card declares `depends_on`
-      the merged discovery-contract card, and that this card returns to backlog
-      only after that card exists in `tasks/`.
 - [ ] **Independence from the normalizer.** Does the classifier read normalized
       output, raw parsed tables, or both with a disagreement between them treated
       as an issue? Reading normalized output is the cheapest and gives the

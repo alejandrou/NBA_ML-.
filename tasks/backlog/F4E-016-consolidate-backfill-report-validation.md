@@ -5,7 +5,8 @@ areas:
   - data-quality
   - testing
 priority: 75
-depends_on: []
+depends_on:
+  - F4E-012
 read:
   - src/nba_data/cli/main.py
   - src/nba_data/validation/official_stats.py
@@ -66,6 +67,16 @@ both reachable today:
 
 The expected reconciled total across the three stats reports is **306,392** rows
 (129,000 + 96,336 + 40,528 + 40,528). No command computes it.
+
+## Discovery metadata is additive on both player-report shapes
+
+F4E-012 adds `cache_root` and `discovery_status` to both the regular
+`player-stats` report and the postseason `player-postseason-stats` report.
+`cache_root` is the resolved cache-root path; `discovery_status` is `ok` or
+`no_matching_pages`. These fields describe cache discovery, not persisted stats
+rows, so this card must preserve them while keeping them out of row-count
+reconciliation. The report readers and validation fixtures must treat the
+fields as additive metadata on both player-report shapes.
 
 Summing `count(*)` over all 33 `stats` tables in the live `nba` database gives
 **306,392** — the reports and the database agree exactly. The **row-count
@@ -138,6 +149,10 @@ that produce their input do not.
   to the persisted total. If a report does not contain the key its flag implies,
   that is a named issue — the reader validates the expected key rather than
   searching for any key it recognizes.
+- Both player-report shapes retain and validate the additive `cache_root` and
+  `discovery_status` metadata from F4E-012. The fields are documented as a
+  resolved path and the `ok`/`no_matching_pages` discovery status, respectively,
+  and neither contributes to the stats-row total.
 - Supplying an incomplete set is itself reported — a partial set must not look
   like a reconciled archive. The report names which producers are missing.
 - **Each of the three producers emits explicit top-level failure counters** —
@@ -154,6 +169,8 @@ that produce their input do not.
   table counts; one report missing; a report passed under the wrong flag, so the
   expected key is absent; a report with nonzero `rows_failed`; a report missing
   the new counters entirely; and each backfill command's non-zero exit path.
+  The regular and postseason player-report fixtures also assert the additive
+  `cache_root` and `discovery_status` fields are accepted and preserved.
 - **The old `--stats-backfill-report` flag is removed**, and supplying it exits
   non-zero with a message naming `--team-stats-report` as its replacement. It is
   not silently accepted and not silently re-interpreted: its current meaning —

@@ -187,29 +187,165 @@ its `-v3`.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## What changed
+
+- `src/nba_data/scraping/normalizers/player_page.py` — `_season_end_year` now
+  rolls the century forward when the two-digit suffix is numerically below the
+  start year's last two digits. `_SEASON_RANGE_RE` was also tightened from
+  `\d{2,4}` to `\d{2}|\d{4}`, because a three-digit suffix was previously
+  accepted and silently *guessed* at (`2020-021` returned `2021`), which the
+  "malformed labels still return `None`" criterion forbids. This is one line
+  outside the stated `_season_end_year`-only scope; it is the regex that
+  function owns, and no cached page contains a three-digit suffix, so it
+  changes nothing on real data.
+- Both parser-version constants bumped to `-v2`, with the reason recorded at
+  the constant.
+- `scripts/recount_player_page_candidates.py` — new cache-only recount.
+- `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` — new "Season Labels And The
+  Century Rollover" section.
+- `tests/unit/test_player_page_normalizer.py` — parametrized label tests.
+- The two CLI-default `-v1` assertions updated to `-v2`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_player_page_normalizer.py`
+- Result: **82 passed**.
+
+- Command: `uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py`
+- Result: **119 passed** (run together with the normalizer tests).
+
+- Command: `uv run ruff check .`
+- Result: **All checks passed.**
+
+- Command: `uv run pytest`
+- Result: **517 passed, 1 error.** The error is `tests/integration/test_api_postgres.py`
+  refusing to run against the developer's populated local `nba` database
+  ("found 37 team row(s) and 26 season row(s)"). It is an environment guard,
+  not a code failure, it is unrelated to this card, and it reproduces on `main`.
+  `uv run python scripts/validate_postgres_local.py` is the isolated-database
+  path for that test.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **Task validation passed.**
+
+## Recount evidence
+
+- Command: `uv run python scripts/recount_player_page_candidates.py --progress`
+- Output: `reports/player_page_candidate_recount.json` (`reports/` is
+  gitignored and `AGENTS.md` forbids committing it — see Known limitations).
+- Result: **2,551 pages enumerated, 2,551 processed, 0 unreadable, 0 unparseable
+  filenames**, 1,336 s. `player_pages_match_expected: true`.
+
+Season 2000 — the `1999-00` label this card fixes:
+
+| Scope | `stat_scope` | Candidates |
+|---|---|---|
+| regular season | `player_season_aggregate` | 3,872 |
+| postseason | `player_postseason_aggregate` | 1,448 |
+| postseason | `player_team_postseason` | 1,448 |
+| | **total** | **6,768** |
+
+This independently reproduces the card's prior 6,768 measurement exactly, from a
+glob-driven enumeration rather than the discovery helper. It is evidence, not an
+acceptance threshold, and it counts candidates — not persisted rows.
+
+Whole-archive totals, with every non-emitted input row carrying a reason:
+
+| Scope | Input rows | Candidates | Not emitted | Unattributed |
+|---|---|---|---|---|
+| regular season | 161,586 | 131,900 | 29,686 | **0** |
+| postseason | 63,250 | 105,096 (52,548 aggregate + 52,548 stint) | 10,702 | **0** |
+
+Reasons for rows that produce no candidate:
+
+- regular season — `superseded_by_full_season_selection` 29,534,
+  `ignored_invalid_or_unsupported_rows` 88,
+  `ambiguous_multiple_real_team_rows` 64.
+- postseason — `invalid_season_row` 10,702 (career/summary rows, whose season
+  cell Basketball Reference leaves blank).
+
+The 64 `ambiguous_multiple_real_team_rows` are **fully owned by existing cards**,
+not an unattributed category and not a general "traded player with no multi-team
+marker" class:
+
+| Cause | Rows | Owner |
+|---|---|---|
+| Oliver Miller (`milleol01`) 2003-04 DNP-placeholder collision — 2 rows × 8 tables | 16 | F4E-022 |
+| Bobby Jones (`jonesbo02`) 2007-08 `5TM` season — 6 rows × 8 tables | 48 | F4E-014 |
+| | **64** | |
+
+This matches F4E-022's own census, which records `jonesbo02` 2008 as the only
+ambiguous entry that is not the placeholder collision.
+
+`invalid_season_row` is the correct outcome for a blank-season career/summary
+row, but the name reads like a parse failure rather than a deliberate skip. A
+clearer name (`non_season_summary_row`) belongs with whatever card formalizes
+the selection-reason vocabulary, not here — renaming it in this card would
+change reason strings that are out of scope.
+
+`balanced: true` and `anomalies: []` for both scopes: every parsed input row is
+either attributed to at least one emitted candidate or to a named reason.
+Postseason candidates exceed input rows by design — a single real-team row is
+emitted both as the season aggregate and as its own team stint.
+
+Resolved season years span **1983–2026** with no pre-1950 value, which is the
+signature the century bug would have left.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv run python -c "from nba_data.scraping.normalizers.player_page import _season_end_year; print(_season_end_year({'season': '1999-00'}))"`
+2. `uv run python -c "from nba_data.scraping.normalizers.player_page import _season_end_year; print(_season_end_year({'season': '2024-25'}))"`
+3. `uv run python scripts/recount_player_page_candidates.py --limit 25 --output /tmp/recount.json`
 
-Expected result:
+Expected result: step 1 prints `2000` (not `1900`); step 2 prints `2025`;
+step 3 reports `player_pages_enumerated: 2551`, `match=True`, and
+`input_rows_unattributed: 0` for both scopes.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `uv run python -c "from nba_data.scraping.normalizers.player_page import _season_end_year; print(_season_end_year({'season': '2020-021'}))"`
+2. `uv run python -c "from nba_data.scraping.normalizers.player_page import _season_end_year; print(_season_end_year({'season': 'Career'}))"`
+3. `uv run python scripts/recount_player_page_candidates.py --cache-root /does/not/exist`
 
-Expected result:
+Expected result: steps 1 and 2 print `None` — a malformed label is never
+guessed at; step 3 exits `1` with
+`Player-page cache root does not exist: ...` rather than silently reporting a
+zero-page run.
 
 ## Known limitations
 
-- None.
+- **The recount JSON is not committed.** The card scopes "the JSON breakdown it
+  writes" under `scripts/`, but `AGENTS.md` lists `reports/` and `data/` as
+  never-commit and takes precedence. The script therefore writes to
+  `reports/player_page_candidate_recount.json`, which is gitignored. The
+  committed deliverable is the script; the JSON is reproducible by running it.
+  Flagging the conflict rather than resolving it silently.
+- The recount measures **normalized candidates**, not persisted rows, and makes
+  no claim about grain resolution. The JSON says so in three explicit fields
+  (`measures`, `measures_persisted_rows`, `claims_grain_resolution`).
+- The archive's player pages cover full careers, so the recount reports
+  candidates for seasons well before 1999 that `core.seasons` (2000–2025) will
+  never resolve. That is expected and is not a defect this card introduces.
+- `-v1` string literals remain in `tests/unit/test_official_stats_validation.py`
+  and `tests/unit/test_player_page_stats_loader.py`. Those supply an arbitrary
+  lineage string as test *input*; they do not assert the parser-version
+  contract, so they were left alone. The regular/postseason separation
+  validator keys on the substring `postseason`, not on the version number, so
+  `-v2` needs no validator change.
+- **The postseason multi-team bookkeeping is proven by inspection, not by cache
+  coverage.** The script reconciles *input rows*, not emitted candidates, since
+  a real-team postseason row is emitted twice (aggregate and stint), and it
+  attributes a per-group residual to `superseded_multi_team_marker_row`.
+  Residuals are computed per player/table/season group, so a positive and a
+  negative residual in different groups cannot cancel, and a negative residual
+  is recorded as an anomaly. But the archive never exercises that path: the
+  postseason outcomes are exactly 52,548 `selected_single_team_row` groups and
+  10,702 blank-season rows, with no synthetic-marker and no ambiguous groups, so
+  the observed balance is simply 63,250 = 52,548 + 10,702. If this script is
+  ever promoted to a reusable validation tool — F4E-017 or F4E-018 are the
+  plausible consumers — it needs synthetic unit fixtures for the marker path
+  first, plus a schema and a cache digest if its JSON becomes a versioned input.
+- The **rebuild-and-diff** and **in-place remediation** cards this card's Out of
+  scope defers to do not exist yet under `planning/`, `backlog/`, or `review/`.
+  That does not block this card, but the deferral currently points at nothing.
+- Nothing was loaded, backfilled, or migrated. No database was read or written.

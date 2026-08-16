@@ -277,7 +277,7 @@ def test_cli_player_stats_runs_and_writes_report(
         assert player == "hardeja01"
         assert start_year == 2021
         assert end_year == 2021
-        assert parser_version == "player-page-parser-v1"
+        assert parser_version == "player-page-parser-v2"
         events.append("player_stats_backfill_run")
         return FakeReport()
 

@@ -17,7 +17,9 @@ from nba_data.scraping.normalizers.player_page import normalize_player_page_regu
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
 from nba_data.scraping.player_page_acquisition import PLAYER_ID_PATTERN
 
-DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v1"
+# v2 fixes the `YYYY-YY` century rollover in `_season_end_year` (F4E-013). Rows
+# written under v1 carry the wrong `season_year` for century-crossing labels.
+DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v2"
 # The player-id fragment is imported from acquisition on purpose: discovery must
 # accept every id acquisition is allowed to write. Only the id range is shared —
 # the rest of the cache filename shape stays strict.

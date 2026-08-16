@@ -10,7 +10,9 @@ from nba_data.scraping.normalizers.team_season import _clean_string, _safe_numbe
 
 MULTI_TEAM_CODES = frozenset({"2TM", "3TM", "4TM"})
 IGNORED_TEAM_CODES = frozenset({"TOT"})
-_SEASON_RANGE_RE = re.compile(r"^(?P<start>\d{4})-(?P<end>\d{2,4})$")
+# Only the two forms Basketball Reference actually uses: `1999-00` and `1999-2000`.
+# A three-digit suffix is malformed, not a short year, and must not be guessed at.
+_SEASON_RANGE_RE = re.compile(r"^(?P<start>\d{4})-(?P<end>\d{2}|\d{4})$")
 
 
 @dataclass(frozen=True)
@@ -431,8 +433,15 @@ def _season_end_year(row: Mapping[str, str]) -> int | None:
     end_suffix = match.group("end")
     if len(end_suffix) == 4:
         return int(end_suffix)
+
+    # A `YYYY-YY` label may cross a century: `1999-00` ends in 2000, not 1900.
+    # Roll the century forward by comparison rather than by a hard-coded pivot,
+    # so the rule holds for any archive range instead of only this one.
     century = (start_year // 100) * 100
-    return century + int(end_suffix)
+    end_year = century + int(end_suffix)
+    if int(end_suffix) < start_year % 100:
+        end_year += 100
+    return end_year
 
 
 def _team_code(row: Mapping[str, str]) -> str | None:

@@ -6,10 +6,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from nba_data.domain.team_codes import is_aggregate_only_team_code, is_multi_team_marker
 from nba_data.scraping.normalizers.team_season import _clean_string, _safe_number, _snake_case
 
-MULTI_TEAM_CODES = frozenset({"2TM", "3TM", "4TM"})
-IGNORED_TEAM_CODES = frozenset({"TOT"})
 # Only the two forms Basketball Reference actually uses: `1999-00` and `1999-2000`.
 # A three-digit suffix is malformed, not a short year, and must not be guessed at.
 _SEASON_RANGE_RE = re.compile(r"^(?P<start>\d{4})-(?P<end>\d{2}|\d{4})$")
@@ -141,12 +140,13 @@ def normalize_player_page_postseason(
                 )
                 continue
 
-            synthetic_rows = [row for row in season_rows if _team_code(row) in MULTI_TEAM_CODES]
-            tot_rows = [row for row in season_rows if _team_code(row) in IGNORED_TEAM_CODES]
+            synthetic_rows = [row for row in season_rows if is_multi_team_marker(_team_code(row))]
+            tot_rows = [row for row in season_rows if is_aggregate_only_team_code(_team_code(row))]
             real_team_rows = [
                 row
                 for row in season_rows
-                if _team_code(row) not in MULTI_TEAM_CODES | IGNORED_TEAM_CODES
+                if not is_multi_team_marker(_team_code(row))
+                and not is_aggregate_only_team_code(_team_code(row))
             ]
 
             if tot_rows:
@@ -226,7 +226,7 @@ def normalize_player_page_postseason(
                 )
             )
 
-            if synthetic_rows and aggregate_row is not None and _team_code(aggregate_row) in MULTI_TEAM_CODES:
+            if synthetic_rows and aggregate_row is not None and is_multi_team_marker(_team_code(aggregate_row)):
                 rows_skipped += max(len(synthetic_rows) - 1, 0)
 
     return PlayerPageNormalizationResult(
@@ -264,7 +264,7 @@ def _normalize_player_page_aggregate_only(
         for parsed_row in parsed_rows:
             season_year = _season_end_year(parsed_row)
             team_code = _team_code(parsed_row)
-            if season_year is None or team_code in IGNORED_TEAM_CODES:
+            if season_year is None or is_aggregate_only_team_code(team_code):
                 invalid_rows += 1
                 continue
             grouped_rows[season_year].append(parsed_row)
@@ -375,11 +375,16 @@ def _required_player_id(value: str) -> str:
 def _select_full_season_row(
     season_rows: list[dict[str, str]],
 ) -> tuple[dict[str, str] | None, str]:
-    synthetic_rows = [row for row in season_rows if _team_code(row) in MULTI_TEAM_CODES]
+    synthetic_rows = [row for row in season_rows if is_multi_team_marker(_team_code(row))]
     if synthetic_rows:
         return synthetic_rows[0], "selected_multi_team_aggregate"
 
-    real_team_rows = [row for row in season_rows if _team_code(row) not in MULTI_TEAM_CODES | IGNORED_TEAM_CODES]
+    real_team_rows = [
+        row
+        for row in season_rows
+        if not is_multi_team_marker(_team_code(row))
+        and not is_aggregate_only_team_code(_team_code(row))
+    ]
     if len(real_team_rows) == 1:
         return real_team_rows[0], "selected_single_team_row"
     if not real_team_rows:
@@ -487,8 +492,6 @@ def _normalized_values(row: Mapping[str, str], *, source_table: str) -> dict[str
 
 
 __all__ = [
-    "IGNORED_TEAM_CODES",
-    "MULTI_TEAM_CODES",
     "PlayerPageNormalizationResult",
     "PlayerPageSelectionEntry",
     "normalize_player_page_postseason",

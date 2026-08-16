@@ -294,3 +294,87 @@ def test_normalize_player_page_postseason_resolves_century_crossing_season() -> 
     )
 
     assert {row["season_year"] for row in result.selected_rows} == {2000}
+
+
+# Bobby Jones's 2007-08 season is the one `5TM` in the cached archive. It was
+# lost outright while the marker set was the literal `{2TM, 3TM, 4TM}`: the
+# season yielded zero aggregate rows instead of one per source table.
+AGGREGATE_SOURCE_TABLES = (
+    "totals",
+    "per_game",
+    "per_minute",
+    "per_poss",
+    "advanced",
+    "shooting",
+    "adj_shooting",
+    "pbp",
+)
+BOBBY_JONES_TEAMS = ("DEN", "MEM", "HOU", "SAS", "DAL")
+
+
+def _bobby_jones_2008_parsed() -> dict[str, list[dict[str, str]]]:
+    return {
+        source_table: [
+            {"season": "2007-08", "team_id": "5TM", "games": "50", "pts": "185"},
+            *(
+                {"season": "2007-08", "team_id": team, "games": "10", "pts": "37"}
+                for team in BOBBY_JONES_TEAMS
+            ),
+        ]
+        for source_table in AGGREGATE_SOURCE_TABLES
+    }
+
+
+@pytest.mark.unit
+def test_normalize_player_page_regular_season_selects_a_five_team_aggregate_row() -> None:
+    result = normalize_player_page_regular_season(
+        _bobby_jones_2008_parsed(),
+        basketball_reference_player_id="jonesbo02",
+    )
+
+    assert result.rows_selected == 8
+    assert {row["season_year"] for row in result.selected_rows} == {2008}
+    assert {row["source_team_code"] for row in result.selected_rows} == {"5TM"}
+    assert all(row["team_abbreviation"] is None for row in result.selected_rows)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("marker", ["2TM", "3TM", "4TM", "5TM", "6TM", "10TM"])
+def test_normalize_player_page_regular_season_selects_any_multi_team_marker(marker: str) -> None:
+    parsed = {
+        "totals": [
+            {"season": "2007-08", "team_id": marker, "games": "50", "pts": "185"},
+            {"season": "2007-08", "team_id": "DEN", "games": "10", "pts": "37"},
+            {"season": "2007-08", "team_id": "MEM", "games": "10", "pts": "37"},
+        ],
+    }
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="jonesbo02",
+    )
+
+    assert result.rows_selected == 1
+    assert result.selected_rows[0]["source_team_code"] == marker
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("value", ["0TM", "1TM", "02TM"])
+def test_normalize_player_page_regular_season_does_not_treat_near_markers_as_aggregates(
+    value: str,
+) -> None:
+    parsed = {
+        "totals": [
+            {"season": "2007-08", "team_id": value, "games": "50", "pts": "185"},
+            {"season": "2007-08", "team_id": "DEN", "games": "10", "pts": "37"},
+        ],
+    }
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="jonesbo02",
+    )
+
+    # Two real-looking team rows and no marker: the season is ambiguous, not aggregated.
+    assert result.rows_selected == 0
+    assert result.selection_entries[0].reason == "ambiguous_multiple_real_team_rows"

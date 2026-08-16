@@ -33,6 +33,7 @@ _REQUIRE_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
 _INTEGRATION_TESTS = (
     "tests/integration/test_team_season_loader_postgres.py",
     "tests/integration/test_api_postgres.py",
+    "tests/integration/test_synthetic_team_code_constraints_postgres.py",
 )
 
 
@@ -72,6 +73,12 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     child_env[_REQUIRE_ENV] = "1"
 
     steps = [
+        ["uv", "run", "alembic", "upgrade", "head"],
+        ["uv", "run", "alembic", "check"],
+        # Prove the newest revision is reversible on real PostgreSQL, not only
+        # that it applies. A revision that cannot be undone is a one-way door,
+        # and the offline SQLite tests never exercise `downgrade` at all.
+        ["uv", "run", "alembic", "downgrade", "-1"],
         ["uv", "run", "alembic", "upgrade", "head"],
         ["uv", "run", "alembic", "check"],
         *([["uv", "run", "pytest", test_path] for test_path in _INTEGRATION_TESTS]),

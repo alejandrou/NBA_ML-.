@@ -45,8 +45,10 @@ mixed into normalized scraped stats.
 ## Domain Rules
 
 - Team-season pages handle real team rows only.
-- Synthetic codes such as `TOT`, `2TM`, `3TM`, and `4TM` must not be emitted
-  as real team-season rows.
+- Synthetic codes — `TOT` and any multi-team marker, meaning a numeric team
+  count of at least two followed by `TM` — must not be emitted as real
+  team-season rows. The check constraints on `core.teams`,
+  `core.team_aliases`, and `core.team_seasons` reject them in the database too.
 - Full player-season aggregate rows are future player-page scope, not
   team-season page scope.
 - `player_name` is descriptive only and must not be used as a stable key.

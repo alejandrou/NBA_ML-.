@@ -266,29 +266,144 @@ decision each layer makes with it is not.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_team_codes.py`
+- Result: **71 passed.** New file. Covers the predicate, the `TOT` distinction,
+  a 37-value corpus driven through a real SQLite check constraint to prove the
+  Python and SQL forms agree, counts from 1 to 20 digits, and a 2,000-value
+  random sweep over the characters that can confuse the rule.
+
+- Command: `uv run pytest tests/unit/test_migration_snapshots.py`
+- Result: **10 passed.** New file. Revision 0006 carries its check-constraint
+  conditions as frozen literal text and imports nothing from `nba_data`, so an
+  applied revision cannot change retroactively. These tests assert the frozen
+  text still equals what `team_codes.py` generates today, and fail if the rule
+  moves on without a follow-up revision.
+
+- Command: `uv run pytest tests/unit/test_player_page_normalizer.py`
+- Result: **92 passed.** Includes the Bobby Jones 2007-08 regression: the `5TM`
+  season now selects **8** aggregate rows where it selected **0**.
+
+- Command: `uv run pytest tests/unit/test_multi_team_marker_guards.py`
+- Result: **68 passed.** New file. Drives a marker at every `TOT`-only guard
+  and at the four check constraints.
+
+- Command: `uv run ruff check .`
+- Result: **All checks passed.**
+
+- Command: `uv run pytest`
+- Result: **689 passed, 17 skipped, 1 failed, 1 error.** The failure and the
+  error are both in `tests/integration/test_api_postgres.py` and have one cause:
+  `PostgreSQL schema is at ['0005_postseason_stats_tables'], not the migration
+  head ['0006_synthetic_team_codes']`. The 17 skips are the new PostgreSQL
+  constraint tests, which are not applicable before revision 0006 is applied and
+  which CI turns into failures via `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`.
+  Revision 0006 exists but has **not** been applied to the persistent `nba`
+  database — that is a critical action and needs the owner's direct instruction.
+  Every other test passes.
+
+- Command: `uv run alembic check`
+- Result: **FAILED: Target database is not up to date.** Same single cause as
+  above. `uv run alembic heads` reports `0006_synthetic_team_codes (head)` and
+  `uv run alembic history` shows one linear chain, so the revision graph is
+  well-formed.
+
+- Command: `uv run python scripts/validate_postgres_local.py`
+- Result: **PostgreSQL validation passed.** This is the evidence that matters
+  for the migration, and it runs against a uniquely named **disposable** database
+  that the script creates and drops — never the persistent `nba` database. The
+  script now runs `upgrade head` → `check` → `downgrade -1` → `upgrade head` →
+  `check` before the tests, so revision 0006 is proven **reversible** on real
+  PostgreSQL rather than only forward-applicable. All three integration files
+  then pass: 1 + 2 + **17** tests, the last being the new
+  `test_synthetic_team_code_constraints_postgres.py`, which drives `TOT`, `2TM`,
+  `5TM`, `10TM`, `999TM` and `99999999TM` at all four constrained columns and
+  confirms `BOS`, `0TM`, `1TM`, `02TM`, `TM`, `1T2M`, `T2M` and `2MT` are still
+  accepted. Every insert is rolled back.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **Task validation passed.**
+
+- Read-only pre-flight against the persistent database (no writes): every value
+  in `core.teams.basketball_reference_team_id` (37), `core.teams.
+  current_abbreviation` (37), `core.team_aliases.abbreviation` (775), and
+  `core.team_seasons.team_abbreviation` (775) was checked against the new
+  predicate. **0 violating rows in all four columns**, so revision 0006 would
+  apply without a constraint violation whenever the owner authorizes it.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_player_page_normalizer.py -k five_team -v`.
+2. Confirm `test_normalize_player_page_regular_season_selects_a_five_team_aggregate_row`
+   passes: 8 rows selected for season 2008, all with `source_team_code == "5TM"`.
+3. Run `uv run pytest tests/unit/test_player_page_stats_loader.py -k marker -v`
+   and confirm the `5TM` aggregate row loads while every `5TM` **stint** row is
+   skipped with `invalid_team_stint_source_team_code`.
 
-Expected result:
+Expected result: the marker is accepted as a full-season aggregate source and
+rejected as a team stint — the split ADR 0007 requires. The season that was
+silently lost is recovered at the normalizer.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_multi_team_marker_guards.py -v`.
+2. Confirm `get_or_create_team`, `get_or_create_team_alias`, and
+   `get_or_create_team_season` each raise `ValueError` for `2TM` through `10TM`,
+   and still raise for `TOT`.
+3. Confirm `test_check_constraints_reject_a_marker_written_around_the_repository`
+   raises `IntegrityError` for a `5TM` written by raw SQL into all four
+   constrained columns.
 
-Expected result:
+Expected result: a multi-team marker cannot become a team, an alias, or a
+team-season through the writer or around it. `TOT` behaviour is unchanged.
 
 ## Known limitations
 
-- None.
+- **The migration is written but not applied.** Revision
+  `0006_synthetic_team_codes` renames the four `ck_core_*_not_tot` constraints
+  to `ck_core_*_not_synthetic` and replaces their expressions. Until the owner
+  authorizes `uv run alembic upgrade head`, `alembic check` and the two
+  PostgreSQL integration tests fail on the version mismatch alone.
+- **The rule is still expressed twice, in Python and in SQL.** A check
+  constraint cannot call Python, so this is unavoidable; what is avoidable is
+  drift. `multi_team_marker_sql` generates the SQL form from the same constants,
+  the model constraints call it, the migration froze its output, and three
+  layers of test hold the pieces together: a corpus and a random sweep through
+  SQLite, a snapshot-equality test against the frozen migration text, and the
+  constraints themselves exercised on real PostgreSQL. The SQL form is exact for
+  a count of any length — it recognizes `<digits>TM` by deleting digits and
+  checking what is left, so unlike an expression that enumerates digit positions
+  it needs no arbitrary bound, and widening a constrained column cannot open a
+  gap.
+- **Two of the eleven listed sites cannot be reached by a marker, so their
+  guards are defence in depth, not fixes.** `cache_inventory.py` takes its team
+  code from a cache filename matched by `[a-z]{3}`, and
+  `offline_processor._normalize_team_abbreviation` applies a three-letter shape
+  check before the synthetic-code guard. Both now reject markers, and both facts
+  are pinned by tests so a future change to either pattern is caught.
+- **Two sites where `TOT` is a permission rather than a prohibition were
+  deliberately not widened.** `loaders/team_season.py` treats `TOT` as the
+  team-page aggregate row and `loaders/team_season_stats._is_aggregate_row`
+  routes on it; granting markers the same permission would be wrong. Markers are
+  rejected there by explicit new checks instead — `Row N uses multi-team marker`
+  and the `invalid_multi_team_marker_routing` skip reason — both covered by
+  tests.
+- Already-persisted rows are not repaired. Bobby Jones's 2008 season stays empty
+  until a backfill is authorized; that is out of scope here, as the card states.
+  The recovery is now owned by a card — `tasks/planning/F4E-024`.
+- **The `5TM` census in `PLAYER_PAGE_STATS_MAPPING.md` was reproduced from the
+  archive audit, not re-measured.** Re-measuring means re-scanning 2,551 cached
+  pages, which this card did not do. If the cache has changed since the audit,
+  those figures are stale — the semantic rule they illustrate is not.
+- **The `-v3` bump makes `stats.player_season_*` a three-generation table**
+  (`-v1`, `-v2`, `-v3`), and F4E-022 will add a fourth. The comments beside both
+  constants now document what each generation means, which is better than
+  nothing and is not where someone querying the table will look. Making the
+  column legible is owned by `tasks/planning/F4E-025`.
+- **Three issue codes were renamed and two are new**, so any consumer reading
+  validator output needs to know: `teams_tot_rows` → `teams_synthetic_code_rows`,
+  `team_aliases_tot_rows` → `team_aliases_synthetic_code_rows`,
+  `team_seasons_tot_rows` → `team_seasons_synthetic_code_rows`, plus the new
+  `multi_team_marker_not_a_team` and `invalid_multi_team_marker_routing`.
+  Nothing in this repository consumes them programmatically today.

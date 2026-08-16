@@ -52,6 +52,9 @@ On the database side, verified against the migrations:
 - The column is still nullable: `0001_initial_raw_core.py:80` and
   `db/models/core.py:43` (`Mapped[str | None]`).
 - `TOT` is already rejected by `ck_core_teams_bref_id_not_tot` (`0002:26-31`).
+  **Superseded by F4E-014:** revision `0006_synthetic_team_codes` replaces it
+  with `ck_core_teams_bref_id_not_synthetic`, which rejects `TOT` and every
+  multi-team marker. Use the new name — the old one no longer exists at head.
 - The loader always writes the code
   (`src/nba_data/scraping/loaders/team_season.py:46`), so null rows are not
   expected in practice — but nothing prevents one.

@@ -137,6 +137,54 @@ def test_validate_official_stats_detects_synthetic_team_code_misuse(session: Ses
 
 
 @pytest.mark.unit
+def test_validate_official_stats_detects_a_marker_outside_the_old_literal_set(
+    session: Session,
+) -> None:
+    """`5TM` exists in the cached archive; the validator must not wave it through."""
+
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "insert into core.teams "
+            "(id, basketball_reference_team_id, current_abbreviation, current_name) "
+            "values (9, '5TM', '5TM', 'Synthetic Team')"
+        )
+    )
+    session.execute(
+        text(
+            "insert into core.team_seasons "
+            "(id, team_id, season_id, team_abbreviation) values (9, 9, 1, '5TM')"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert {
+        "synthetic_code_in_core_teams",
+        "synthetic_code_in_core_team_seasons",
+    } <= _issue_codes(report)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("marker", ["2TM", "3TM", "4TM", "5TM", "6TM", "10TM"])
+def test_validate_official_stats_accepts_any_marker_as_an_aggregate_source(
+    session: Session, marker: str
+) -> None:
+    """A marker is a legitimate aggregate `source_team_code`, per ADR 0007."""
+
+    _insert_clean_dataset(session)
+    session.execute(
+        text("update stats.player_season_totals set source_team_code = :code"),
+        {"code": marker},
+    )
+
+    report = validate_official_stats(session)
+
+    assert "invalid_aggregate_source_team_code" not in _issue_codes(report)
+
+
+@pytest.mark.unit
 def test_validate_official_stats_accepts_basketball_reference_numeric_scales(session: Session) -> None:
     _insert_clean_dataset(session)
     session.execute(

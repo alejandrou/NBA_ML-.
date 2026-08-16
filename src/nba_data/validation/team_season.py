@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from nba_data.domain.team_codes import is_aggregate_only_team_code, is_multi_team_marker
+
 
 @dataclass(frozen=True)
 class DataQualityIssue:
@@ -35,7 +37,7 @@ def validate_normalized_team_season_rows(
             table_counts[source_table] = table_counts.get(source_table, 0) + 1
 
         issues.extend(_context_issues(row, index, source_table))
-        issues.extend(_tot_issues(row, index, source_table))
+        issues.extend(_synthetic_team_code_issues(row, index, source_table))
 
         if require_stable_player_id and _is_player_row(row):
             player_id = _string(row.get("basketball_reference_player_id"))
@@ -117,10 +119,27 @@ def _context_issues(
     return issues
 
 
-def _tot_issues(
+def _synthetic_team_code_issues(
     row: dict[str, Any], row_index: int, source_table: str | None
 ) -> list[DataQualityIssue]:
-    if _string(row.get("team_abbreviation")) != "TOT":
+    team_abbreviation = _string(row.get("team_abbreviation"))
+
+    # A team-count marker belongs to player pages, never to a team-season row,
+    # so it is wrong in every classification rather than only outside aggregates.
+    if is_multi_team_marker(team_abbreviation):
+        return [
+            DataQualityIssue(
+                code="multi_team_marker_not_a_team",
+                message=(
+                    f"'{team_abbreviation}' is a multi-team marker, not a team; "
+                    "it must never appear as team_abbreviation."
+                ),
+                row_index=row_index,
+                source_table=source_table,
+            )
+        ]
+
+    if not is_aggregate_only_team_code(team_abbreviation):
         return []
 
     if row.get("team_context") == "aggregate" and row.get("stat_scope") == "player_season_aggregate":

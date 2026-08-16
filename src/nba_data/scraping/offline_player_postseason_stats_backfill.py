@@ -19,9 +19,12 @@ from nba_data.scraping.offline_player_stats_backfill import (
 )
 from nba_data.scraping.parsers.player_page import parse_player_page_postseason
 
-# v2 fixes the `YYYY-YY` century rollover in `_season_end_year` (F4E-013). Rows
-# written under v1 carry the wrong `season_year` for century-crossing labels.
-DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION = "player-page-postseason-parser-v2"
+# The version stamped on rows this backfill writes. Tracks the regular-season
+# lineage in `offline_player_stats_backfill.py`, which documents each bump:
+#
+#   v2  fixes the `YYYY-YY` century rollover in `_season_end_year` (F4E-013).
+#   v3  treats any multi-team marker semantically (F4E-014).
+DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION = "player-page-postseason-parser-v3"
 
 
 @dataclass(frozen=True)

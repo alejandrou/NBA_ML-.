@@ -4,6 +4,7 @@ from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Uniq
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nba_data.db.base import Base
+from nba_data.domain.team_codes import reject_synthetic_team_code_sql
 
 
 class Season(Base):
@@ -27,12 +28,12 @@ class Team(Base):
     __table_args__ = (
         UniqueConstraint("basketball_reference_team_id", name="uq_core_teams_bref_id"),
         CheckConstraint(
-            "basketball_reference_team_id IS NULL OR basketball_reference_team_id <> 'TOT'",
-            name="ck_core_teams_bref_id_not_tot",
+            reject_synthetic_team_code_sql("basketball_reference_team_id", nullable=True),
+            name="ck_core_teams_bref_id_not_synthetic",
         ),
         CheckConstraint(
-            "current_abbreviation IS NULL OR current_abbreviation <> 'TOT'",
-            name="ck_core_teams_current_abbreviation_not_tot",
+            reject_synthetic_team_code_sql("current_abbreviation", nullable=True),
+            name="ck_core_teams_current_abbreviation_not_synthetic",
         ),
         Index("ix_core_teams_bref_id", "basketball_reference_team_id"),
         {"schema": "core"},
@@ -51,7 +52,10 @@ class Team(Base):
 class TeamAlias(Base):
     __tablename__ = "team_aliases"
     __table_args__ = (
-        CheckConstraint("abbreviation <> 'TOT'", name="ck_core_team_aliases_abbreviation_not_tot"),
+        CheckConstraint(
+            reject_synthetic_team_code_sql("abbreviation", nullable=False),
+            name="ck_core_team_aliases_abbreviation_not_synthetic",
+        ),
         UniqueConstraint(
             "team_id",
             "abbreviation",
@@ -96,7 +100,10 @@ class TeamSeason(Base):
             "team_abbreviation",
             name="uq_core_team_seasons_season_abbrev",
         ),
-        CheckConstraint("team_abbreviation <> 'TOT'", name="ck_core_team_seasons_abbrev_not_tot"),
+        CheckConstraint(
+            reject_synthetic_team_code_sql("team_abbreviation", nullable=False),
+            name="ck_core_team_seasons_abbrev_not_synthetic",
+        ),
         {"schema": "core"},
     )
 

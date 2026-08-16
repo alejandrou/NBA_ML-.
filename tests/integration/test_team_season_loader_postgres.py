@@ -44,11 +44,15 @@ def test_postgres_team_season_loader_rerun_is_idempotent() -> None:
         engine.dispose()
         _skip_or_fail(f"PostgreSQL schema is not migrated: {exc}")
 
+    # Every revision from the one that created `core` onward. A new revision
+    # that leaves the core loader's tables usable belongs here; one that does
+    # not is what this guard exists to catch.
     compatible_revisions = {
         "0002_core_team_player_season",
         "0003_stats_wide_tables",
         "0004_player_season_src_team",
         "0005_postseason_stats_tables",
+        "0006_synthetic_team_codes",
     }
     if current_revision not in compatible_revisions:
         connection.close()

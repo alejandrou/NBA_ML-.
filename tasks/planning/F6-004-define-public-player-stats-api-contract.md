@@ -45,6 +45,14 @@ team-stint, regular-season, and postseason data into one contract.
   key, route shapes, filters, or missing-stat behavior.
 - The team identity decision in F5-006 can affect how public player stints link
   to teams, so this contract should not silently bypass that decision.
+- **F5-006 is now settled** (2026-08-13) and sits in `tasks/backlog/`, with
+  `F5-007` implementing it. The answers this card must build on: a public team is
+  a **code-era identity** (one Basketball Reference team code per row, SEA and
+  OKC are two teams with no link between them); the public team key is
+  **`basketball_reference_team_id`**; `franchise_id` is withdrawn from v1; and
+  the teams resource is deliberately **not** league-scoped, unlike seasons. A
+  player's team stints must therefore link to team codes, not to clubs or
+  franchises, and must not assume a lineage the team contract does not provide.
 
 # Human decisions or resources
 
@@ -61,8 +69,12 @@ team-stint, regular-season, and postseason data into one contract.
       closed-set mistake F4E-014 is correcting everywhere else. The archive
       already contains a `5TM` season, so an enumerated contract would be wrong
       on publication.
-- [ ] Confirm how the settled F5-006 team identity and NBA season scope apply to
-      player/team-season resources.
+- [x] Confirm how the settled F5-006 team identity and NBA season scope apply to
+      player/team-season resources. **Answered by F5-006:** team stints reference
+      the code-era identity by `basketball_reference_team_id`. Seasons keep their
+      permanent NBA scope; teams are league-agnostic, so a player/team-season
+      resource must state which of the two scopes it inherits rather than
+      assuming they agree.
 - [ ] Decide whether the public player resource **exposes** a `slug`, given
       whatever F4E-021 decides a slug is. **This card does not decide what
       generates a slug or whether `core.players.slug` is populated** — F4E-021
@@ -81,6 +93,9 @@ team-stint, regular-season, and postseason data into one contract.
       exposure is this card's call. Note it is populated on only 8 of the 32
       stats tables carrying it; the 24 player-page-fed tables are NULL by
       design.
+
+The six remaining decisions above are player- and stats-side and are not
+unblocked by F5-006. This card stays in `tasks/planning/` until they are answered.
 
 # Acceptance criteria
 

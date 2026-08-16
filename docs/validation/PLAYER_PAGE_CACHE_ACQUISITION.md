@@ -94,12 +94,19 @@ request; only the gap is fetched. Keep every JSON report under `reports/` —
 per-entry results. Compare `live_request_count` against the dry run's estimate;
 a large gap means the cache root or the filters were not what you expected.
 
-## Known contract mismatch
+## Player-id contract
 
-The acquisition-side id filter accepts 6-10 character player ids
-(`scraping/player_page_acquisition.py`), but offline discovery only matches 8-10
-(`scraping/offline_player_stats_backfill.py`). Pages acquired for shorter ids are
-cached and then never processed. Tracked in `tasks/planning/`.
+Acquisition and offline discovery accept the same 6-10 character player ids.
+`PLAYER_ID_PATTERN` in `scraping/player_page_acquisition.py` is the single source
+of truth; `_PLAYER_CACHE_FILE_RE` in `scraping/offline_player_stats_backfill.py`
+imports that fragment instead of restating a range, so the two ends cannot drift
+apart again. F4E-012 closed the earlier mismatch, where discovery matched only
+8-10 characters and 36 acquired pages were cached and never processed.
+
+A missing cache root is an error, not an empty result: both player backfills
+raise `PlayerCacheRootNotFoundError` naming the resolved absolute path. An
+existing root with no matching page still returns zero entries but reports
+`discovery_status: "no_matching_pages"`.
 
 ## Related
 

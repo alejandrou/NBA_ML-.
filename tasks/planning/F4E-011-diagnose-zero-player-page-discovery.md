@@ -36,12 +36,15 @@ file only when all three of these hold:
 `len(cache_entries)`, so a report of `0` means discovery itself returned nothing —
 not that parsing or loading failed.
 
-Measured against the working tree on 2026-08-03, from the repository root:
+Measured against the working tree on 2026-08-03 and re-measured unchanged on
+2026-08-13, from the repository root:
 
 - `data/raw/html/basketball-reference/` exists and holds 3326 `.html.gz` files;
-- 2551 are `players-*`, of which **2515 match the discovery regex**;
+- 2551 are `players-*`, of which **2515 match the discovery regex**
+  (213 with 8-character ids, 2302 with 9-character ids);
 - 775 are `teams-*`;
-- **36 player pages do not match**, all because their player id is 7 characters:
+- **36 player pages do not match** because their player id is shorter than 8
+  characters — 34 seven-character and 2 six-character ids:
   `players-a-acyqu01...`, `players-b-beysa01...`, `players-b-beyty01...`,
   `players-b-bolbo01...`, and 32 more.
 
@@ -114,21 +117,23 @@ Diagnose offline only. `_discover_player_cache_entries` decompresses every
 candidate file, so a full scan is I/O-heavy but harmless; scope it with a prefix
 when iterating.
 
-Proposed follow-up split, **named by boundary, ids deliberately not minted** —
-`prepare-task` mints them once this diagnosis confirms which pieces are real:
+Proposed follow-up split, named by boundary:
 
-1. *Diagnose* — this card.
-2. *Fix player-page cache discovery and diagnostics* — reconcile the player-id
-   contract between acquisition and discovery, and make an empty or missing cache
-   root report loudly instead of returning zero.
-3. *Acquire missing player-page cache* — the **only** step that would be a
-   critical action; it contacts Basketball Reference and needs the user's direct
-   instruction at the time it runs.
-4. *Validate a player stats smoke backfill* — a small bounded run proving the
-   pipeline end to end.
+1. *Diagnose* — this card. Still blocked on the failing run's report.
+2. *Fix player-page cache discovery and diagnostics* — **minted as `F4E-012`,
+   now in `tasks/backlog/`.** The player-id contract mismatch was re-measured
+   against the working tree on 2026-08-13 and is confirmed independently of this
+   card's open question, so it no longer waits on the diagnosis.
+3. *Acquire missing player-page cache* — **not minted.** Whether any acquisition
+   is needed depends on this card's answer. It would be the **only** step that is
+   a critical action; it contacts Basketball Reference and needs the user's
+   direct instruction at the time it runs.
+4. *Validate a player stats smoke backfill* — **not minted.** A small bounded run
+   proving the pipeline end to end, sized once the root cause is known.
 
-Minting ids 2-4 now would create cards for an unconfirmed hypothesis. If the root
-cause turns out to be only the working directory, steps 2 and 3 shrink or vanish.
+Ids 3 and 4 stay unminted because they are still cards for an unconfirmed
+hypothesis. If the root cause turns out to be only the working directory, step 3
+vanishes and step 4 shrinks.
 
 # Durable knowledge updates
 

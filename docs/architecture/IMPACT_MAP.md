@@ -49,22 +49,27 @@ schema.
    Change the slug, the digest length, or the extension and discovery silently
    returns zero entries instead of failing.
 
-2. **Player-id length disagrees across the acquire/discover boundary.**
-   Acquisition validates `^[a-z][a-z0-9]{5,9}$` (6-10 characters,
-   `scraping/player_page_acquisition.py`); discovery matches `[a-z0-9]{8,10}`
-   (8-10, `scraping/offline_player_stats_backfill.py`). Pages acquired for
-   shorter ids are cached and then never processed.
+2. **Player-id length is shared across the acquire/discover boundary.**
+   `PLAYER_ID_PATTERN` in `scraping/player_page_acquisition.py` (`[a-z][a-z0-9]{5,9}`,
+   6-10 characters) is the one definition. `_PLAYER_CACHE_FILE_RE` in
+   `scraping/offline_player_stats_backfill.py` interpolates it rather than
+   restating a range. Widen or narrow the accepted id there and both ends move
+   together; restate it anywhere else and the drift F4E-012 fixed comes back.
 
 3. **Postseason reaches into regular-season internals.**
    `scraping/offline_player_postseason_stats_backfill.py` imports the private
    `_discover_player_cache_entries`, `_required_html`, and `_validate_inputs`
-   from `scraping/offline_player_stats_backfill.py`. Any change to those three
+   from `scraping/offline_player_stats_backfill.py`, plus the public
+   `resolve_player_cache_root` and `discovery_status_for`. Any change to those
    changes both backfill commands.
 
 4. **`Settings.scraper_cache_dir` defaults to the relative `Path("data/raw/html")`**
    (`src/nba_data/config/settings.py`) and `get_settings()` is `@lru_cache`d.
    Every cache-reading flow resolves it against the process working directory,
-   and an env change after the first call is ignored.
+   and an env change after the first call is ignored. Both player backfills now
+   fail loudly on a missing root (`PlayerCacheRootNotFoundError`, naming the
+   resolved path) instead of reporting a successful run over zero pages; the
+   other cache-reading flows still do not.
 
 5. **Adding one `stats` table costs six edits:** the model in
    `db/models/stats.py`, the export in `db/models/__init__.py`, an Alembic
@@ -132,7 +137,7 @@ schema.
 - **Command:** `backfill player-stats --execute-approved-player-stats-backfill [--limit N] [--player ID] [--start-year YYYY] [--end-year YYYY] [--parser-version V] [--output PATH]`
 - **Inputs:** cached player pages discovered from the cache root
 - **Implementation:** `offline_player_stats_backfill.py` → `parsers/player_page.parse_player_page_regular_season` → `normalizers/player_page.normalize_player_page_regular_season` → `loaders/player_page_stats.load_player_page_stats` → `StatsRepository`
-- **Outputs:** `stats` rows; a JSON report
+- **Outputs:** `stats` rows; a JSON report carrying `cache_root` and `discovery_status` (`ok` / `no_matching_pages`)
 - **Tables:** the eight `stats.player_season_*` tables and the `stats.player_team_season_*` family
 - **Tests:** `test_offline_player_stats_backfill.py`, `test_player_page_parser.py`, `test_player_page_normalizer.py`, `test_player_page_stats_loader.py`, `test_stats_repositories.py`
 - **Docs:** `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md`

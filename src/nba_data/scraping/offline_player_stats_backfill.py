@@ -15,12 +15,22 @@ from nba_data.scraping.loaders.player_page_stats import (
 )
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
+from nba_data.scraping.player_page_acquisition import PLAYER_ID_PATTERN
 
 DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v1"
+# The player-id fragment is imported from acquisition on purpose: discovery must
+# accept every id acquisition is allowed to write. Only the id range is shared —
+# the rest of the cache filename shape stays strict.
 _PLAYER_CACHE_FILE_RE = re.compile(
-    r"^players-(?P<initial>[a-z])-(?P<player_id>[a-z0-9]{8,10})\.html-[0-9a-f]{16}\.html\.gz$",
+    rf"^players-(?P<initial>[a-z])-(?P<player_id>{PLAYER_ID_PATTERN})\.html-[0-9a-f]{{16}}\.html\.gz$",
     re.IGNORECASE,
 )
+
+PlayerCacheDiscoveryStatus = Literal["ok", "no_matching_pages"]
+
+
+class PlayerCacheRootNotFoundError(ValueError):
+    """Raised when the configured player-page cache root does not exist."""
 
 
 @dataclass(frozen=True)
@@ -59,6 +69,8 @@ class OfflinePlayerStatsBackfillReport:
     rows_skipped: int
     rows_loaded_or_updated: int
     unresolved_players_or_seasons: int
+    cache_root: str
+    discovery_status: PlayerCacheDiscoveryStatus
     elapsed_seconds: float
     entries: tuple[OfflinePlayerStatsBackfillEntry, ...]
 
@@ -70,6 +82,8 @@ class OfflinePlayerStatsBackfillReport:
             "rows_skipped": self.rows_skipped,
             "rows_loaded_or_updated": self.rows_loaded_or_updated,
             "unresolved_players_or_seasons": self.unresolved_players_or_seasons,
+            "cache_root": self.cache_root,
+            "discovery_status": self.discovery_status,
             "elapsed_seconds": self.elapsed_seconds,
             "entries": [entry.to_dict() for entry in self.entries],
         }
@@ -97,7 +111,9 @@ def run_offline_player_stats_backfill(
     normalized_player = player.strip().lower() if player else None
     started = perf_counter()
 
-    cache_entries = _discover_player_cache_entries(cache.root_dir, player_identifier=normalized_player)
+    cache_root = resolve_player_cache_root(cache.root_dir)
+    cache_entries = _discover_player_cache_entries(cache_root, player_identifier=normalized_player)
+    discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
 
@@ -121,6 +137,8 @@ def run_offline_player_stats_backfill(
         rows_skipped=sum(entry.rows_skipped for entry in entries),
         rows_loaded_or_updated=sum(entry.loaded_or_updated_rows for entry in entries),
         unresolved_players_or_seasons=sum(entry.unresolved_rows for entry in entries),
+        cache_root=str(cache_root),
+        discovery_status=discovery_status,
         elapsed_seconds=perf_counter() - started,
         entries=entries,
     )
@@ -148,14 +166,33 @@ def _validate_inputs(
         raise ValueError(msg)
 
 
+def resolve_player_cache_root(cache_root: Path) -> Path:
+    """Return the absolute cache root, refusing to treat a missing root as empty."""
+
+    root = cache_root.resolve(strict=False)
+    if not root.is_dir():
+        msg = (
+            "Player-page cache root does not exist or is not a directory: "
+            f"{root}. Check SCRAPER_CACHE_DIR and the working directory."
+        )
+        raise PlayerCacheRootNotFoundError(msg)
+    return root
+
+
+def discovery_status_for(
+    cache_entries: list[tuple[Path, str, str]],
+) -> PlayerCacheDiscoveryStatus:
+    """Report an existing-but-empty cache root distinctly from a normal run."""
+
+    return "ok" if cache_entries else "no_matching_pages"
+
+
 def _discover_player_cache_entries(
     cache_root: Path,
     *,
     player_identifier: str | None,
 ) -> list[tuple[Path, str, str]]:
-    root = cache_root.resolve(strict=False)
-    if not root.exists():
-        return []
+    root = resolve_player_cache_root(cache_root)
 
     entries: list[tuple[Path, str, str]] = []
     for path in sorted(root.rglob("*.html.gz"), key=lambda value: value.resolve(strict=False).as_posix().lower()):
@@ -288,5 +325,9 @@ __all__ = [
     "DEFAULT_PLAYER_STATS_PARSER_VERSION",
     "OfflinePlayerStatsBackfillEntry",
     "OfflinePlayerStatsBackfillReport",
+    "PlayerCacheDiscoveryStatus",
+    "PlayerCacheRootNotFoundError",
+    "discovery_status_for",
+    "resolve_player_cache_root",
     "run_offline_player_stats_backfill",
 ]

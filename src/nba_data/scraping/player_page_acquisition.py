@@ -19,7 +19,16 @@ from nba_data.scraping.client import RateLimitExceededError
 BASE_URL = "https://www.basketball-reference.com"
 PAGE_TYPE = "player_page"
 PLAYER_PAGE_MAX_REQUESTS_PER_MINUTE = 10
-_PLAYER_ID_RE = re.compile(r"^[a-z][a-z0-9]{5,9}$", re.IGNORECASE)
+
+# Single source of truth for the accepted basketball_reference_player_id shape.
+# Acquisition validation and offline cache discovery both build their patterns
+# from PLAYER_ID_PATTERN so the two ends of the pipeline cannot drift apart.
+PLAYER_ID_MIN_LENGTH = 6
+PLAYER_ID_MAX_LENGTH = 10
+PLAYER_ID_PATTERN = (
+    rf"[a-z][a-z0-9]{{{PLAYER_ID_MIN_LENGTH - 1},{PLAYER_ID_MAX_LENGTH - 1}}}"
+)
+_PLAYER_ID_RE = re.compile(rf"^{PLAYER_ID_PATTERN}$", re.IGNORECASE)
 
 
 class PlayerPageAcquisitionConfigurationError(ValueError):
@@ -584,6 +593,9 @@ def _build_acquisition_report(
 
 __all__ = [
     "PAGE_TYPE",
+    "PLAYER_ID_MAX_LENGTH",
+    "PLAYER_ID_MIN_LENGTH",
+    "PLAYER_ID_PATTERN",
     "PLAYER_PAGE_MAX_REQUESTS_PER_MINUTE",
     "PlayerPageAcquisitionClient",
     "PlayerPageAcquisitionConfigurationError",

@@ -12,6 +12,7 @@ from nba_data.scraping.normalizers.team_season import _clean_string, _safe_numbe
 # Only the two forms Basketball Reference actually uses: `1999-00` and `1999-2000`.
 # A three-digit suffix is malformed, not a short year, and must not be guessed at.
 _SEASON_RANGE_RE = re.compile(r"^(?P<start>\d{4})-(?P<end>\d{2}|\d{4})$")
+_DID_NOT_PLAY_MARKER = "Did not play -"
 
 
 @dataclass(frozen=True)
@@ -96,13 +97,18 @@ def normalize_player_page_postseason(
             if team_code is None:
                 rows_skipped += 1
                 unsupported_rows += 1
+                reason = (
+                    "did_not_play_season"
+                    if _is_did_not_play_placeholder(parsed_row)
+                    else "missing_team_code"
+                )
                 selection_entries.append(
                     PlayerPageSelectionEntry(
                         source_table=source_table,
                         season_year=season_year,
                         source_team_code=None,
                         status="skipped",
-                        reason="missing_team_code",
+                        reason=reason,
                         row_count=1,
                     )
                 )
@@ -382,14 +388,27 @@ def _select_full_season_row(
     real_team_rows = [
         row
         for row in season_rows
-        if not is_multi_team_marker(_team_code(row))
+        if _team_code(row) is not None
+        and not _is_did_not_play_placeholder(row)
+        and not is_multi_team_marker(_team_code(row))
         and not is_aggregate_only_team_code(_team_code(row))
     ]
     if len(real_team_rows) == 1:
         return real_team_rows[0], "selected_single_team_row"
     if not real_team_rows:
+        if any(_is_did_not_play_placeholder(row) for row in season_rows):
+            return None, "did_not_play_season"
         return None, "no_supported_team_row"
     return None, "ambiguous_multiple_real_team_rows"
+
+
+def _is_did_not_play_placeholder(row: Mapping[str, str]) -> bool:
+    """Return whether a parsed row is a no-team Did not play placeholder."""
+
+    if _team_code(row) is not None:
+        return False
+    age = _clean_string(row.get("age"))
+    return age is not None and age.startswith(_DID_NOT_PLAY_MARKER)
 
 
 def _build_row(

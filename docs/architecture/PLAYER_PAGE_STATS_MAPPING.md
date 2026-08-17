@@ -35,7 +35,9 @@ the page URL.
 Rows written before this rule was fixed carry `parser_version`
 `player-page-parser-v1` / `player-page-postseason-parser-v1`; rows written after
 carry `-v2`. Rows written after the multi-team marker became semantic (F4E-014)
-carry `-v3`. Lineage queries must filter on the version they mean.
+carry `-v3`. Rows written after Did not play placeholders stopped being treated
+as team rows (F4E-022) carry `-v4`. Lineage queries must filter on the version
+they mean.
 
 ## Multi-Team Markers
 
@@ -100,6 +102,44 @@ Examples:
 - Jaylen Brown 2023-24:
   `BOS` -> `stats.player_season_*` because there is no synthetic multi-team
   row.
+
+## Did Not Play Placeholders
+
+Basketball Reference emits a placeholder for a season in which a player did not
+play. In the parsed player-page row it has no team code, and the `age` field
+carries the reason instead of an age number:
+
+```python
+{'year_id': '2003-04', 'age': 'Did not play - other pro league'}
+```
+
+The placeholder is never a team row. The normalizer recognizes the marker
+`Did not play -` explicitly, excludes the placeholder from full-season team-row
+selection, and records a `did_not_play_season` selection entry when no regular-
+season team row exists. The cache contains these 22 reason strings:
+
+- `Did not play -`
+- `Did not play - COVID-19`
+- `Did not play - coaching staff`
+- `Did not play - contract bought out`
+- `Did not play - contractual issues`
+- `Did not play - dropped from roster`
+- `Did not play - holdout/back injury`
+- `Did not play - illness`
+- `Did not play - injury`
+- `Did not play - legal`
+- `Did not play - medical condition`
+- `Did not play - mental health`
+- `Did not play - military service`
+- `Did not play - other`
+- `Did not play - other pro league`
+- `Did not play - rehab`
+- `Did not play - retired`
+- `Did not play - retired/MiLB`
+- `Did not play - sat out`
+- `Did not play - suspended`
+- `Did not play - unsigned`
+- `Did not play - waived`
 
 ## Postseason
 

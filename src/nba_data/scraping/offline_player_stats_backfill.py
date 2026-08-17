@@ -29,7 +29,10 @@ from nba_data.scraping.player_page_acquisition import PLAYER_ID_PATTERN
 #       v1 or v2 are missing the full-season aggregate for a season whose
 #       marker fell outside the old `{2TM, 3TM, 4TM}` list — `5TM` in the
 #       cached archive.
-DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v3"
+#   v4  excludes `Did not play - ...` placeholder rows from full-season
+#       selection (F4E-022), recovering real rows that share their season and
+#       preventing placeholder values from reaching the stats loader.
+DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v4"
 # The player-id fragment is imported from acquisition on purpose: discovery must
 # accept every id acquisition is allowed to write. Only the id range is shared —
 # the rest of the cache filename shape stays strict.

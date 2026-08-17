@@ -109,24 +109,37 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run python scripts/validate_tasks.py`
+  Result: Task validation passed.
+- Command: `uv run pytest tests/integration`
+  Result: 23 passed, 1 existing Starlette deprecation warning.
+- Command: `uv run ruff check .`
+  Result: All checks passed.
+- Command: `uv run pytest`
+  Result: 736 passed, 7 existing deprecation warnings.
+- Command: `git diff --check`
+  Result: Passed; Git reported only its normal LF-to-CRLF working-copy warnings.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Inspect the `postgres-integration` job in `.github/workflows/ci.yml`.
+2. Run the workflow from a push or pull request.
+3. Review the PostgreSQL job log.
 
-Expected result:
+Expected result: Alembic upgrade/check and downgrade round-trip run first, then
+the single `uv run pytest tests/integration` step runs every integration module,
+including `test_api_unreachable_database.py`, with the PostgreSQL requirement
+flag enabled.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Add a temporary failing test module under `tests/integration/` in a disposable
+   branch or local checkout.
+2. Run the PostgreSQL integration job.
+3. Inspect the job result.
 
-Expected result:
+Expected result: the directory-based pytest step discovers the new module and
+fails the job; no workflow file edit is needed to include it.
 
 ## Known limitations
 

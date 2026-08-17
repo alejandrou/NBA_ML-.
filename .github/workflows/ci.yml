@@ -108,11 +108,6 @@ jobs:
           uv run alembic upgrade head
           uv run alembic check
 
-      - name: Run PostgreSQL loader integration test
-        run: uv run pytest tests/integration/test_team_season_loader_postgres.py
-
-      - name: Run PostgreSQL API integration test
-        run: uv run pytest tests/integration/test_api_postgres.py
-
-      - name: Run PostgreSQL check-constraint integration test
-        run: uv run pytest tests/integration/test_synthetic_team_code_constraints_postgres.py
+      # Run the directory so every integration test is included automatically.
+      - name: Run PostgreSQL integration tests
+        run: uv run pytest tests/integration

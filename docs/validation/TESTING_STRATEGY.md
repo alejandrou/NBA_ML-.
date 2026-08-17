@@ -26,9 +26,7 @@ The job waits for a successful database connection, runs `uv run alembic
 upgrade head`, verifies migration drift with `uv run alembic check`, then
 round-trips the newest revision (`downgrade -1`, `upgrade head`, `check`) so a
 revision that cannot be undone fails the build, and then runs
-`uv run pytest` against `tests/integration/test_team_season_loader_postgres.py`,
-`tests/integration/test_api_postgres.py`, and
-`tests/integration/test_synthetic_team_code_constraints_postgres.py`. The job sets
+`uv run pytest tests/integration` so every integration module runs. The job sets
 `NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1`; with that flag, a connection
 failure, missing migration table, or incompatible revision fails the test
 instead of being reported as a skip. Local runs without the flag retain the

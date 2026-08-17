@@ -216,25 +216,39 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_player_page_normalizer.py`
+- Result: **118 passed**.
+- Command: `uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py tests/unit/test_player_page_stats_loader.py`
+- Result: **51 passed**.
+- Command: `uv run ruff check .`
+- Result: **All checks passed**.
+- Command: `uv run pytest`
+- Result: **736 passed**, with 7 existing dependency deprecation warnings.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **Task validation passed** after moving the card to `tasks/active/`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_player_page_normalizer.py -k miller_fixture`.
+2. Confirm the test reports 8 selected `MIN` rows for season 2004, with `games=48`
+   and `pts=121`.
+3. Run `uv run pytest tests/unit/test_player_page_normalizer.py -k mcgrath_fixture`.
 
-Expected result:
+Expected result: the Miller fixture selects one real row per supported table and
+the McGrath fixture produces 0 regular-season rows and 16 postseason rows.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_player_page_normalizer.py -k did_not_play_only`.
+2. Confirm the placeholder-only season selects 0 rows and records
+   `did_not_play_season`.
+3. Run `uv run pytest tests/unit/test_player_page_normalizer.py -k missing_team_row`.
 
-Expected result:
+Expected result: a no-team row without a Did not play marker remains unselectable
+with `no_supported_team_row`, and no placeholder reason string reaches normalized
+values.
 
 ## Known limitations
 
-- None.
+- No live acquisition, backfill, or database write was performed; the tests use
+  checked-in HTML fixtures as required by the card.

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from nba_data.scraping.normalizers.player_page import (
+    _is_did_not_play_placeholder,
     _season_end_year,
     normalize_player_page_postseason,
     normalize_player_page_regular_season,
@@ -14,6 +15,33 @@ from nba_data.scraping.parsers.player_page import (
 
 REGULAR_FIXTURE = Path("tests/fixtures/html/player_page_harden_regular_season.html")
 POSTSEASON_FIXTURE = Path("tests/fixtures/html/player_page_harden_postseason.html")
+MILLER_FIXTURE = Path("tests/fixtures/html/player_page_miller_did_not_play.html")
+MCGRATH_FIXTURE = Path("tests/fixtures/html/player_page_mcgrath_did_not_play.html")
+
+DID_NOT_PLAY_REASONS = (
+    "Did not play -",
+    "Did not play - COVID-19",
+    "Did not play - coaching staff",
+    "Did not play - contract bought out",
+    "Did not play - contractual issues",
+    "Did not play - dropped from roster",
+    "Did not play - holdout/back injury",
+    "Did not play - illness",
+    "Did not play - injury",
+    "Did not play - legal",
+    "Did not play - medical condition",
+    "Did not play - mental health",
+    "Did not play - military service",
+    "Did not play - other",
+    "Did not play - other pro league",
+    "Did not play - rehab",
+    "Did not play - retired",
+    "Did not play - retired/MiLB",
+    "Did not play - sat out",
+    "Did not play - suspended",
+    "Did not play - unsigned",
+    "Did not play - waived",
+)
 
 # The archive opens on `1999-00`, the one label in it that crosses a century.
 ARCHIVE_SEASON_LABELS = tuple(
@@ -60,6 +88,106 @@ def test_normalize_player_page_regular_season_selects_single_real_team_row_when_
     assert result.rows_selected == 3
     assert {row["source_team_code"] for row in result.selected_rows} == {"BOS"}
     assert {row["season_year"] for row in result.selected_rows} == {2024}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("reason", DID_NOT_PLAY_REASONS)
+def test_did_not_play_placeholder_predicate_matches_all_cache_reasons(reason: str) -> None:
+    row = {"year_id": "2003-04", "age": reason}
+
+    assert _is_did_not_play_placeholder(row)
+    assert not _is_did_not_play_placeholder({**row, "team_id": "MIN"})
+
+
+@pytest.mark.unit
+def test_missing_team_row_without_did_not_play_reason_remains_unselectable() -> None:
+    result = normalize_player_page_regular_season(
+        {
+            "totals": [
+                {"year_id": "2003-04", "age": "33", "games": "48", "pts": "121"},
+            ]
+        },
+        basketball_reference_player_id="example01",
+    )
+
+    assert result.rows_selected == 0
+    assert result.selection_entries[0].reason == "no_supported_team_row"
+
+
+@pytest.mark.unit
+def test_did_not_play_only_season_has_distinct_selection_reason() -> None:
+    result = normalize_player_page_regular_season(
+        {
+            "totals": [
+                {"year_id": "2003-04", "age": "Did not play - injury"},
+            ]
+        },
+        basketball_reference_player_id="example01",
+    )
+
+    assert result.rows_selected == 0
+    assert result.selection_entries[0].reason == "did_not_play_season"
+    assert result.selection_entries[0].reason not in {
+        "selected_single_team_row",
+        "no_supported_team_row",
+    }
+
+
+@pytest.mark.unit
+def test_miller_fixture_selects_real_rows_and_never_emits_placeholder_values() -> None:
+    parsed = parse_player_page_regular_season(MILLER_FIXTURE.read_text(encoding="utf-8"))
+
+    result = normalize_player_page_regular_season(
+        parsed,
+        basketball_reference_player_id="milleol01",
+    )
+
+    assert result.rows_selected == 8
+    assert {row["source_team_code"] for row in result.selected_rows} == {"MIN"}
+    assert {row["season_year"] for row in result.selected_rows} == {2004}
+    assert {(row["values"]["games"], row["values"]["pts"]) for row in result.selected_rows} == {
+        (48, 121)
+    }
+    assert all(
+        not any(
+            isinstance(value, str) and value.startswith("Did not play -")
+            for value in row["values"].values()
+        )
+        for row in result.selected_rows
+    )
+
+
+@pytest.mark.unit
+def test_mcgrath_fixture_keeps_postseason_rows_and_drops_regular_placeholder_rows() -> None:
+    html = MCGRATH_FIXTURE.read_text(encoding="utf-8")
+
+    regular_result = normalize_player_page_regular_season(
+        parse_player_page_regular_season(html),
+        basketball_reference_player_id="mcgratr01",
+    )
+    postseason_result = normalize_player_page_postseason(
+        parse_player_page_postseason(html),
+        basketball_reference_player_id="mcgratr01",
+    )
+
+    assert regular_result.rows_selected == 0
+    assert {entry.reason for entry in regular_result.selection_entries} == {"did_not_play_season"}
+    assert postseason_result.rows_selected == 16
+    assert {row["season_year"] for row in postseason_result.selected_rows} == {2013}
+    aggregate_rows = [
+        row
+        for row in postseason_result.selected_rows
+        if row["stat_scope"] == "player_postseason_aggregate"
+    ]
+    team_rows = [
+        row
+        for row in postseason_result.selected_rows
+        if row["stat_scope"] == "player_team_postseason"
+    ]
+    assert len(aggregate_rows) == 8
+    assert len(team_rows) == 8
+    assert {row["source_team_code"] for row in aggregate_rows} == {"SAS"}
+    assert {row["team_abbreviation"] for row in team_rows} == {"SAS"}
 
 
 @pytest.mark.unit

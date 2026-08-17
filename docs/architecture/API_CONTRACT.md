@@ -77,29 +77,38 @@ These strings are fixed. They never interpolate the exception, the driver messag
 
 ## Teams
 
-`GET /api/v1/teams` returns the paginated collection. `GET /api/v1/teams/{team_id}` returns one team, or 404 when the identifier is unknown. `team_id` is the internal `core.teams` identifier and is the public key for this resource.
+`GET /api/v1/teams` returns the paginated collection. `GET /api/v1/teams/{basketball_reference_team_id}` returns one team, or 404 when the code is unknown.
 
 ```json
 {
-  "team_id": 7,
   "basketball_reference_team_id": "ATL",
   "current_abbreviation": "ATL",
-  "current_name": "Atlanta Hawks",
-  "franchise_id": null
+  "current_name": "Atlanta Hawks"
 }
 ```
 
-`basketball_reference_team_id`, `current_abbreviation`, and `franchise_id` are nullable. Ordering is `current_name ASC, team_id ASC`.
-
-**`franchise_id` is null for every row in current data.** No loader writes it: `CoreRepository.get_or_create_team` populates the Basketball Reference ID, the abbreviation, and the name, and nothing anywhere in `src/` sets `franchise_id`. The column exists in the schema and the field is served, but it carries no franchise lineage today. Clients must not treat a null here as "franchise unknown for this team" — it is null for all teams. Whether the field should be populated, redefined, or withdrawn is part of the F5-006 team-identity decision.
+`current_abbreviation` is nullable. Ordering is `current_name ASC, basketball_reference_team_id ASC`.
 
 ### Team identity
 
-`team_id` is the surrogate primary key of `core.teams`, assigned when the loader first sees a team. It is stable within one database but is not reproducible: a database rebuilt from scratch may hand the same franchise a different `team_id`. Clients must treat it as opaque — do not parse it, persist it across rebuilds, or compare it between deployments.
+**A public team is one Basketball Reference team code, and `basketball_reference_team_id` is its permanent v1 key.** `/api/v1/teams/ATL` means "the team Basketball Reference calls `ATL`" for the life of v1 and will never be redefined to mean anything else.
 
-Unlike season identity, this key carries **no permanent v1 guarantee**. Whether the public key should instead be the natural `basketball_reference_team_id` is an open decision, deliberately deferred rather than settled here. Resources built on teams should not assume the current key survives that decision.
+The code is the key because it is reproducible. Rebuilding the database from the same cached pages yields the same codes, so a client may persist `"ATL"`, compare it across deployments, and use it as a join key against its own data. `core.teams` already enforces uniqueness on the column through `uq_core_teams_bref_id`, and v1 additionally requires it to be **present on every team row**: a team without a code is not a team this API can serve. No response ever carries a null in this field, and a stored row lacking a code is a data defect rather than a served possibility.
 
-The open question is larger than which column to use. A row in `core.teams` is currently created per Basketball Reference team code: the loader passes the season's abbreviation as `basketball_reference_team_id`, and lookup matches on that exact code. Relocations therefore produce **separate, unlinked rows** — Seattle and Oklahoma City are two teams, New Jersey and Brooklyn are two teams — and no column joins them, since `franchise_id` is never written. So `GET /api/v1/teams` today enumerates code-era identities, not clubs and not franchises. Before the key can be settled, F5-006 must define which of those three a public team is meant to be.
+Codes are matched **exactly**, in the canonical uppercase Basketball Reference form. `/api/v1/teams/atl` is not `/api/v1/teams/ATL` and returns 404. Uppercase is the only form a stored code takes — the loader normalizes it before insert — so case-insensitive lookup would not reach a single row that exact matching misses. It is deliberately not offered: it would widen the spellings the key accepts without widening what the key can address, and `uq_core_teams_bref_id` is itself case-sensitive, so the route would be promising an equivalence the storage layer does not hold.
+
+**A code is an era, not a franchise.** One row exists per code, so a relocation produces separate, unlinked teams. Seattle (`SEA`, through 2008) and Oklahoma City (`OKC`, from 2009) are **two public teams** in v1: both are reachable at their own codes, neither references the other, and no field, link, or query joins them. The same holds for New Jersey (`NJN`) and Brooklyn (`BRK`), and for Charlotte's `CHH`, `NOH`, and `NOP`.
+
+That is what v1 promises, not a gap awaiting repair. Franchise lineage — the assertion that `SEA` and `OKC` are one club — is unmodeled and unpromised. Per-row name and abbreviation history is recorded in `core.team_aliases` with `from_season_year` and `to_season_year`, but that history is not served by this resource in v1.
+
+**The teams collection is not league-scoped.** `core.teams` carries no league column and the collection applies no league filter, so every team the loader has seen is enumerated regardless of competition. This is deliberate, and it is deliberately asymmetric with seasons: v1 fixes `/api/v1/seasons` to the NBA permanently and fixes teams to no league at all. Clients must therefore not infer NBA membership from a team's presence here: every team row the loader has written is enumerated, whatever competition it belongs to. How a non-NBA team would be published, should one ever be loaded, is not settled by v1 — what is settled is that this collection filters nothing.
+
+### Fields withdrawn from v1
+
+Two fields that earlier revisions of this contract described are withdrawn from the teams response. Both were removed by decision, not by oversight:
+
+- **`team_id`** — the surrogate primary key of `core.teams`. It is stable within one database but not reproducible: a rebuild may hand the same team a different value. That is precisely the property the natural key has and this one lacks, so publishing both would hand clients a second key the contract has to tell them not to rely on. The internal identifier is now private, matching how `core.seasons.id` has always been treated.
+- **`franchise_id`** — it was served on every team and was null on every team. Nothing in `src/` ever wrote it, so it promised lineage the data cannot back, and the identity rules above state that v1 makes no lineage promise at all. It may return only alongside a loader that populates it.
 
 ## Seasons
 

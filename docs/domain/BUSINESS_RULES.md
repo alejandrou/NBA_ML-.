@@ -11,8 +11,19 @@
 
 ## Teams
 
-- Teams can change name, city, abbreviation, and franchise history.
-- Future modeling should separate franchise, team, and aliases.
+- Real teams change name, city, abbreviation, and franchise affiliation over
+  time. The rules below settle how that history is modeled.
+- A `core.teams` row is a **code-era identity**: one row per Basketball Reference
+  team code. `SEA` and `OKC` are two rows, as are `NJN` and `BRK`, and `CHH`,
+  `NOH`, and `NOP`.
+- Aliases carry the per-row history. `core.team_aliases`, populated by the
+  team-season loader, holds the name and abbreviation a team used over a range of
+  seasons.
+- **Franchise lineage across codes is unmodeled.** Nothing links `SEA` to `OKC`,
+  `franchise_id` is never written by any loader, and neither the schema nor the
+  v1 API promises that lineage will exist.
+- `basketball_reference_team_id` is the public key for a team, and it is required
+  on every row. See `docs/architecture/API_CONTRACT.md` for the served contract.
 - Team aliases may have `from_season_year` and `to_season_year`.
 - `TOT` and every multi-team marker are not real teams and must not be inserted
   into `core.teams` or `core.team_seasons`.

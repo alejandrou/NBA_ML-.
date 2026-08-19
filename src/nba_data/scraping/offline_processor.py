@@ -78,6 +78,8 @@ class OfflineTeamSeasonSourceContext:
 class OfflineTeamSeasonEntryResult:
     source: OfflineTeamSeasonSourceContext
     status: Literal["validated", "failed"]
+    team_name: str | None = None
+    team_name_issues: tuple[DataQualityIssue, ...] = ()
     parsed_row_count: int = 0
     normalized_rows: tuple[dict[str, Any], ...] = ()
     quarantined_rows: tuple[dict[str, Any], ...] = ()
@@ -88,6 +90,8 @@ class OfflineTeamSeasonEntryResult:
         return {
             "source": self.source.to_dict(),
             "status": self.status,
+            "team_name": self.team_name,
+            "team_name_issues": [_issue_to_dict(issue) for issue in self.team_name_issues],
             "parsed_row_count": self.parsed_row_count,
             "validated_row_count": len(self.normalized_rows),
             "quarantined_row_count": len(self.quarantined_rows),
@@ -115,12 +119,26 @@ class OfflineTeamSeasonProcessingReport:
             for row in entry.normalized_rows
         )
 
+    @property
+    def team_name_issue_count(self) -> int:
+        return sum(len(entry.team_name_issues) for entry in self.entries)
+
+    @property
+    def team_name_issue_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for entry in self.entries:
+            for issue in entry.team_name_issues:
+                counts[issue.code] = counts.get(issue.code, 0) + 1
+        return dict(sorted(counts.items()))
+
     def to_dict(self) -> dict[str, object]:
         return {
             "total_inputs": self.total_inputs,
             "validated_entries": self.validated_entries,
             "failed_entries": self.failed_entries,
             "validated_row_count": self.validated_row_count,
+            "team_name_issue_count": self.team_name_issue_count,
+            "team_name_issue_counts": self.team_name_issue_counts,
             "entries": [entry.to_dict() for entry in self.entries],
         }
 
@@ -171,6 +189,8 @@ def _process_one_source(
             team_abbreviation=context.team_abbreviation,
             season_year=context.season_year,
         )
+        team_name = _normalized_team_name(normalized_rows)
+        team_name_issues = _normalized_team_name_issues(normalized_rows)
         validation_issues = validate_normalized_team_season_rows(
             normalized_rows,
             required_tables=required_tables,
@@ -180,6 +200,8 @@ def _process_one_source(
             return OfflineTeamSeasonEntryResult(
                 source=context,
                 status="failed",
+                team_name=team_name,
+                team_name_issues=team_name_issues,
                 parsed_row_count=len(normalized_rows),
                 quarantined_rows=tuple(normalized_rows),
                 validation_issues=tuple(validation_issues),
@@ -192,6 +214,8 @@ def _process_one_source(
         return OfflineTeamSeasonEntryResult(
             source=context,
             status="validated",
+            team_name=team_name,
+            team_name_issues=team_name_issues,
             parsed_row_count=len(normalized_rows),
             normalized_rows=tuple(normalized_rows),
         )
@@ -288,6 +312,23 @@ def _build_report(
         validated_row_count=sum(len(entry.normalized_rows) for entry in entries),
         entries=entries,
     )
+
+
+def _normalized_team_name(rows: list[dict[str, Any]]) -> str | None:
+    value = getattr(rows, "team_name", None)
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _normalized_team_name_issues(
+    rows: list[dict[str, Any]],
+) -> tuple[DataQualityIssue, ...]:
+    issues = getattr(rows, "team_name_issues", ())
+    if not isinstance(issues, tuple):
+        return ()
+    return tuple(issue for issue in issues if isinstance(issue, DataQualityIssue))
 
 
 def _fallback_context(source: OfflineTeamSeasonSource) -> OfflineTeamSeasonSourceContext:

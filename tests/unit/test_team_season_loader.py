@@ -145,6 +145,23 @@ def test_existing_meaningful_names_are_not_overwritten_by_fallback_or_empty(
 
 
 @pytest.mark.unit
+def test_real_team_name_upgrades_existing_abbreviation_fallback(session: Session) -> None:
+    load_team_season_core(session, _batch(team_name=None))
+
+    team = session.scalar(select(Team).where(Team.basketball_reference_team_id == "BOS"))
+    alias = session.scalar(select(TeamAlias).where(TeamAlias.abbreviation == "BOS"))
+    assert team is not None
+    assert team.current_name == "BOS"
+    assert alias is not None
+    assert alias.name == "BOS"
+
+    load_team_season_core(session, _batch(team_name="Boston Celtics"))
+
+    assert team.current_name == "Boston Celtics"
+    assert alias.name == "Boston Celtics"
+
+
+@pytest.mark.unit
 def test_player_name_is_not_used_as_identity(session: Session) -> None:
     batch = _batch(
         rows=[

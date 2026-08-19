@@ -2,7 +2,30 @@ from __future__ import annotations
 
 from typing import Any
 
+from nba_data.validation.team_season import DataQualityIssue
+
 PLAYER_NAME_FIELDS = ("player", "Player", "name_display")
+
+
+class NormalizedTeamSeasonRows(list[dict[str, Any]]):
+    """Normalized rows plus page-level metadata that is not a row field."""
+
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        team_name: str | None,
+        team_name_issues: tuple[DataQualityIssue, ...] = (),
+    ) -> None:
+        super().__init__(rows)
+        self.team_name = team_name
+        self.team_name_issues = team_name_issues
+
+    @property
+    def issues(self) -> tuple[DataQualityIssue, ...]:
+        """Expose page-level issues under the generic result name too."""
+
+        return self.team_name_issues
 
 
 def normalize_team_season_page(
@@ -40,7 +63,28 @@ def normalize_team_season_page(
                 }
             )
 
-    return rows
+    return NormalizedTeamSeasonRows(
+        rows,
+        team_name=_parsed_team_name(parsed),
+        team_name_issues=_parsed_team_name_issues(parsed),
+    )
+
+
+def _parsed_team_name(parsed: dict[str, list[dict[str, str]]]) -> str | None:
+    value = getattr(parsed, "team_name", None)
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _parsed_team_name_issues(
+    parsed: dict[str, list[dict[str, str]]],
+) -> tuple[DataQualityIssue, ...]:
+    issues = getattr(parsed, "team_name_issues", ())
+    if not isinstance(issues, tuple):
+        return ()
+    return tuple(issue for issue in issues if isinstance(issue, DataQualityIssue))
 
 
 def _row_team_abbreviation(row: dict[str, str], page_team: str) -> str:

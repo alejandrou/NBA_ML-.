@@ -6,6 +6,7 @@ from nba_data.scraping.normalizers.team_season import normalize_team_season_page
 from nba_data.scraping.parsers.team_season import parse_team_season_page
 
 FIXTURE = Path("tests/fixtures/html/team_season_phase3.html")
+TEAM_NAME_FIXTURE = Path("tests/fixtures/html/team_season_bos_2000_h1.html")
 
 
 @pytest.mark.unit
@@ -93,6 +94,17 @@ def test_parser_and_normalizer_remain_separate_steps() -> None:
 
     assert "league" not in parsed["per_game"][0]
     assert "values" in rows[0]
+
+
+@pytest.mark.unit
+def test_normalizer_carries_team_name_metadata_without_mixing_it_into_stat_rows() -> None:
+    parsed = parse_team_season_page(TEAM_NAME_FIXTURE.read_text(encoding="utf-8"))
+
+    rows = normalize_team_season_page(parsed, team_abbreviation="BOS", season_year=2000)
+
+    assert rows.team_name == "Boston Celtics"
+    assert rows.team_name_issues == ()
+    assert all("team_name" not in row for row in rows)
 
 
 def _first(rows: list[dict[str, object]], source_table: str) -> dict[str, object]:

@@ -87,6 +87,10 @@ These strings are fixed. They never interpolate the exception, the driver messag
 }
 ```
 
+This is the intended value after rebuilding from cached team pages with the
+team-name selector contract. Rows loaded before that rebuild may still contain
+the abbreviation in `current_name` until the future remediation run.
+
 `current_abbreviation` is nullable. Ordering is `current_name ASC, basketball_reference_team_id ASC`.
 
 ### Team identity

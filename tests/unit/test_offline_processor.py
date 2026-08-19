@@ -14,6 +14,7 @@ from nba_data.scraping.team_season_pages import build_team_season_games_url, bui
 
 PHASE3_FIXTURE = Path("tests/fixtures/html/team_season_phase3.html")
 MINIMAL_FIXTURE = Path("tests/fixtures/html/team_season_minimal.html")
+TEAM_NAME_FIXTURE = Path("tests/fixtures/html/team_season_bos_2000_h1.html")
 
 
 class NoWriteHtmlCache(HtmlCache):
@@ -77,6 +78,54 @@ def test_process_offline_team_season_explicit_path_under_cache_root(tmp_path) ->
     assert report.entries[0].source.source_type == "path"
     assert report.entries[0].source.url is None
     assert report.entries[0].source.team_abbreviation == "BOS"
+
+
+@pytest.mark.unit
+def test_processor_carries_derived_team_name_and_nonfatal_contract_issue(tmp_path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    malformed_path = cache.root_dir / "basketball-reference" / "malformed.html.gz"
+    _write_gzip(malformed_path, PHASE3_FIXTURE.read_text(encoding="utf-8"))
+
+    report = process_offline_team_season_sources(
+        [
+            OfflineTeamSeasonSource.from_path(
+                malformed_path,
+                team_abbreviation="BOS",
+                season_year=2024,
+            )
+        ],
+        cache=cache,
+    )
+
+    entry = report.entries[0]
+    assert entry.status == "validated"
+    assert entry.team_name is None
+    assert [issue.code for issue in entry.team_name_issues] == ["team_name_h1_missing"]
+    assert len(entry.normalized_rows) == 9
+
+
+@pytest.mark.unit
+def test_processor_carries_derived_team_name_from_normalized_page(tmp_path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    path = cache.root_dir / "basketball-reference" / "named.html.gz"
+    html = TEAM_NAME_FIXTURE.read_text(encoding="utf-8") + PHASE3_FIXTURE.read_text(
+        encoding="utf-8"
+    )
+    _write_gzip(path, html)
+
+    report = process_offline_team_season_sources(
+        [
+            OfflineTeamSeasonSource.from_path(
+                path,
+                team_abbreviation="BOS",
+                season_year=2000,
+            )
+        ],
+        cache=cache,
+    )
+
+    assert report.entries[0].team_name == "Boston Celtics"
+    assert report.entries[0].team_name_issues == ()
 
 
 @pytest.mark.unit

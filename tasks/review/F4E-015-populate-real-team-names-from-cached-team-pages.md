@@ -205,25 +205,51 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_team_season_parser.py tests/unit/test_team_season_normalizer.py`
+- Result: 17 passed.
+- Command: `uv run pytest tests/unit/test_offline_processor.py tests/unit/test_offline_backfill.py tests/unit/test_offline_loader.py`
+- Result: 30 passed.
+- Command: `uv run pytest tests/unit/test_team_season_loader.py`
+- Result: 10 passed.
+- Command: `uv run ruff check .`
+- Result: All checks passed.
+- Command: `uv run pytest`
+- Result: 727 passed, 22 skipped, 7 warnings. The skipped tests are the existing integration/service-gated cases.
+- Command: `uv run mypy src/nba_data`
+- Result: The same 8 pre-existing errors in 6 files; this task adds no new source typing errors.
+- Command: `uv run python scripts/validate_tasks.py` with the card in `tasks/review/`
+- Result: Task validation passed.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_team_season_parser.py -k three_span` to parse the checked-in Boston and Oklahoma City headings.
+2. Run `uv run pytest tests/unit/test_offline_backfill.py -k hands_derived_name` to process cached HTML through the backfill and loader.
+3. Run `uv run pytest tests/unit/test_team_season_loader.py -k upgrades_existing` to exercise a second load over abbreviation-valued team and alias rows.
 
 Expected result:
+
+The parser returns the second heading span as `team_name`, the processing report
+carries it, the core team plus alias rows contain the derived name, and an
+idempotent rerun upgrades both existing abbreviation fallbacks.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_team_season_parser.py -k contract_issues` against the no-heading, two-span, four-span, and empty-name fixtures.
+2. Run `uv run pytest tests/unit/test_offline_processor.py -k nonfatal_contract_issue` against the existing stats fixture with no `<h1>`.
+3. Run `uv run pytest tests/unit/test_offline_backfill.py -k "fallback_when_page_name_is_malformed or disagreement"` with a curated fallback and a stale caller mapping.
 
 Expected result:
 
+Each malformed shape records its named `team_name_*` issue and leaves the name
+unset; valid stats still validate/load; a curated value supplies the name only
+when parsing cannot; and a derived name wins over a stale caller value while
+recording both values in the disagreement issue. The serialized processing
+report includes total and per-code issue counts without making them fatal.
+
 ## Known limitations
 
-- None.
+- Existing rows already loaded with abbreviation-as-name are not remediated by
+  this card; a future rebuild/remediation run is still required.
+- `uv run mypy src/nba_data` remains outside this card and currently reports 8
+  source-wide pre-existing typing errors, including the known BeautifulSoup
+  typing issues in the team-season parser.

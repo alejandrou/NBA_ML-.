@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from nba_data.scraping.offline_loader import (
     load_offline_team_season_report,
 )
 from nba_data.scraping.offline_processor import (
+    OfflineTeamSeasonEntryResult,
     OfflineTeamSeasonProcessingReport,
     OfflineTeamSeasonSource,
     process_offline_team_season_sources,
@@ -20,6 +21,9 @@ from nba_data.scraping.offline_reporting import (
     OfflineTeamSeasonAuditReport,
     build_offline_team_season_audit_report,
 )
+from nba_data.validation.team_season import DataQualityIssue
+
+TEAM_NAME_OVERRIDE_DISAGREEMENT = "team_name_override_disagreement"
 
 
 @dataclass(frozen=True)
@@ -80,11 +84,15 @@ def run_full_offline_backfill(
         required_tables=required_tables,
         require_stable_player_id=require_stable_player_id,
     )
+    processing_report, effective_team_name_by_source = _resolve_team_names(
+        processing_report,
+        caller_team_name_by_source=team_name_by_source,
+    )
     load_report = load_offline_team_season_report(
         session,
         processing_report,
         league=league,
-        team_name_by_source=team_name_by_source,
+        team_name_by_source=effective_team_name_by_source,
     )
     audit_report = build_offline_team_season_audit_report(processing_report, load_report)
 
@@ -110,3 +118,50 @@ def _required_season_year(value: int | None) -> int:
         msg = "Valid inventory entries must include season_year."
         raise ValueError(msg)
     return value
+
+
+def _resolve_team_names(
+    processing_report: OfflineTeamSeasonProcessingReport,
+    *,
+    caller_team_name_by_source: Mapping[tuple[str, int], str] | None,
+) -> tuple[OfflineTeamSeasonProcessingReport, dict[tuple[str, int], str]]:
+    """Merge parsed names with curated values, giving parsed names authority."""
+
+    caller_values = dict(caller_team_name_by_source or {})
+    effective_values = dict(caller_values)
+    entries: list[OfflineTeamSeasonEntryResult] = []
+
+    for entry in processing_report.entries:
+        key = (entry.source.team_abbreviation, entry.source.season_year)
+        derived_name = _clean_team_name(entry.team_name)
+        caller_name = _clean_team_name(caller_values.get(key))
+        entry_issues = entry.team_name_issues
+
+        if derived_name and caller_name and derived_name != caller_name:
+            entry_issues = entry_issues + (
+                DataQualityIssue(
+                    code=TEAM_NAME_OVERRIDE_DISAGREEMENT,
+                    message=(
+                        f"Derived team name {derived_name!r} disagrees with caller-supplied "
+                        f"team name {caller_name!r} for {key[0]} {key[1]}; the derived "
+                        "value wins."
+                    ),
+                    source_table="team_name",
+                ),
+            )
+
+        if derived_name and entry.status == "validated":
+            effective_values[key] = derived_name
+        elif caller_name:
+            effective_values[key] = caller_name
+
+        entries.append(replace(entry, team_name_issues=entry_issues))
+
+    return replace(processing_report, entries=tuple(entries)), effective_values
+
+
+def _clean_team_name(value: object) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None

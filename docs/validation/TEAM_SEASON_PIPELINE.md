@@ -22,6 +22,31 @@ Missing supported tables return an empty list. Parsers read visible tables and
 tables hidden inside HTML comments, skip repeated `tbody` header rows, and
 extract `basketball_reference_player_id` from player links when present.
 
+## Team Name Selector Contract
+
+The parser also reads the display name from the page heading using the explicit
+selector contract `h1 > span:nth-of-type(2)`: the page must contain an `h1`
+with exactly three direct `span` elements, and the second span is the team name.
+The first span is the season label and the third is the page suffix (`Roster and
+Stats`) in the measured archive. The parsed and normalized page results expose
+`team_name` and `team_name_issues` metadata; the name is not mixed into a stat
+row.
+
+Missing headings, a span count other than three, and an empty second span each
+produce a named `team_name_*` issue and leave `team_name` unset. These are
+non-fatal page degradations: the team-season stats still proceed through
+validation and loading, so the loader's existing abbreviation fallback remains
+available while the issue stays visible in the offline processing report.
+
+When a caller supplies `team_name_by_source`, a valid name derived from the page
+takes precedence. A disagreement records `team_name_override_disagreement`
+with both values; a caller value is still available as a curated fallback when
+the page cannot provide a name.
+
+The serialized processing report summarizes these non-fatal warnings with
+`team_name_issue_count` and a deterministic `team_name_issue_counts` mapping by
+issue code. Full issue messages and source context remain on each entry.
+
 ## Normalized Row Shape
 
 `normalize_team_season_page(...)` returns rows with:

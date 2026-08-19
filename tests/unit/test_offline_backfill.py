@@ -38,6 +38,7 @@ from nba_data.scraping.offline_processor import (
 BOS_2024_URL = "https://www.basketball-reference.com/teams/BOS/2024.html"
 DEN_2023_URL = "https://www.basketball-reference.com/teams/DEN/2023.html"
 PHASE3_FIXTURE = Path("tests/fixtures/html/team_season_phase3.html")
+TEAM_NAME_FIXTURE = Path("tests/fixtures/html/team_season_bos_2000_h1.html")
 VALID_HTML = "<!doctype html><html><body>cached</body></html>"
 
 CORE_TABLES = (
@@ -96,6 +97,99 @@ def test_full_offline_backfill_loads_valid_inventory_entry_and_reports(
     assert _count(session, Player) == 1
     assert _count(session, PlayerSeason) == 1
     assert _count(session, PlayerTeamSeason) == 1
+
+
+@pytest.mark.unit
+def test_full_offline_backfill_hands_derived_name_to_core_loader(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    html = (
+        "<!doctype html><html><body>"
+        + TEAM_NAME_FIXTURE.read_text(encoding="utf-8")
+        + PHASE3_FIXTURE.read_text(encoding="utf-8")
+        + "</body></html>"
+    )
+    _write_gzip(cache.path_for_url(BOS_2024_URL), html)
+
+    report = run_full_offline_backfill(cache=cache, session=session)
+
+    team = session.scalar(select(Team).where(Team.basketball_reference_team_id == "BOS"))
+    alias = session.scalar(select(TeamAlias).where(TeamAlias.abbreviation == "BOS"))
+    assert report.processing_report.entries[0].team_name == "Boston Celtics"
+    assert team is not None
+    assert team.current_name == "Boston Celtics"
+    assert alias is not None
+    assert alias.name == "Boston Celtics"
+
+
+@pytest.mark.unit
+def test_derived_team_name_wins_over_caller_mapping_and_records_disagreement(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    html = (
+        "<!doctype html><html><body>"
+        + TEAM_NAME_FIXTURE.read_text(encoding="utf-8")
+        + PHASE3_FIXTURE.read_text(encoding="utf-8")
+        + "</body></html>"
+    )
+    _write_gzip(cache.path_for_url(BOS_2024_URL), html)
+
+    report = run_full_offline_backfill(
+        cache=cache,
+        session=session,
+        team_name_by_source={("BOS", 2024): "Stale Boston Celtics"},
+    )
+
+    entry = report.processing_report.entries[0]
+    team = session.scalar(select(Team).where(Team.basketball_reference_team_id == "BOS"))
+    assert [issue.code for issue in entry.team_name_issues] == [
+        "team_name_override_disagreement"
+    ]
+    assert "Boston Celtics" in entry.team_name_issues[0].message
+    assert "Stale Boston Celtics" in entry.team_name_issues[0].message
+    assert team is not None
+    assert team.current_name == "Boston Celtics"
+    assert report.processing_report.team_name_issue_count == 1
+    assert report.processing_report.team_name_issue_counts == {
+        "team_name_override_disagreement": 1
+    }
+    processing_report_data = report.to_dict()["processing_report"]
+    assert isinstance(processing_report_data, dict)
+    assert processing_report_data["team_name_issue_counts"] == {
+        "team_name_override_disagreement": 1
+    }
+
+
+@pytest.mark.unit
+def test_caller_team_name_is_fallback_when_page_name_is_malformed(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    _write_gzip(cache.path_for_url(BOS_2024_URL), PHASE3_FIXTURE.read_text(encoding="utf-8"))
+
+    report = run_full_offline_backfill(
+        cache=cache,
+        session=session,
+        team_name_by_source={("BOS", 2024): "Boston Celtics"},
+    )
+
+    entry = report.processing_report.entries[0]
+    team = session.scalar(select(Team).where(Team.basketball_reference_team_id == "BOS"))
+    alias = session.scalar(select(TeamAlias).where(TeamAlias.abbreviation == "BOS"))
+    assert entry.status == "validated"
+    assert entry.team_name is None
+    assert [issue.code for issue in entry.team_name_issues] == ["team_name_h1_missing"]
+    assert report.processing_report.team_name_issue_count == 1
+    assert report.processing_report.team_name_issue_counts == {"team_name_h1_missing": 1}
+    assert team is not None
+    assert team.current_name == "Boston Celtics"
+    assert alias is not None
+    assert alias.name == "Boston Celtics"
 
 
 @pytest.mark.unit

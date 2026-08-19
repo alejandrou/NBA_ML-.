@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from click import unstyle
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
@@ -514,7 +515,7 @@ def test_cli_validate_official_stats_rejects_removed_single_report_flag(
     )
 
     assert result.exit_code != 0
-    assert "--team-stats-report" in result.output
+    assert "--team-stats-report" in unstyle(result.output)
 
 
 @pytest.mark.unit
@@ -544,7 +545,7 @@ def test_cli_validate_official_stats_rejects_duplicate_producer_report_flag(
     )
 
     assert result.exit_code != 0
-    assert "--team-stats-report accepts at most one path" in result.output
+    assert "--team-stats-report accepts at most one path" in unstyle(result.output)
 
 
 @contextmanager

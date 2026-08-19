@@ -81,29 +81,37 @@ def app_reading_from(
 def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Serve requests through the real router, service, and query repository."""
     with offline_core_session() as session:
-        # These rows mirror production, so franchise_id is null: no loader writes it.
         session.add_all(
             [
                 Team(
                     id=3,
-                    basketball_reference_team_id="BBB",
-                    current_abbreviation="BBB",
-                    current_name="Bulls",
-                    franchise_id=None,
-                ),
-                Team(
-                    id=1,
                     basketball_reference_team_id="AAA",
                     current_abbreviation="AAA",
                     current_name="Bulls",
-                    franchise_id=None,
+                ),
+                Team(
+                    id=1,
+                    basketball_reference_team_id="BBB",
+                    current_abbreviation="BBB",
+                    current_name="Bulls",
                 ),
                 Team(
                     id=2,
                     basketball_reference_team_id="CCC",
                     current_abbreviation=None,
                     current_name="Celtics",
-                    franchise_id=None,
+                ),
+                Team(
+                    id=4,
+                    basketball_reference_team_id="SEA",
+                    current_abbreviation="SEA",
+                    current_name="Seattle SuperSonics",
+                ),
+                Team(
+                    id=5,
+                    basketball_reference_team_id="OKC",
+                    current_abbreviation="OKC",
+                    current_name="Oklahoma City Thunder",
                 ),
             ]
         )
@@ -114,20 +122,18 @@ def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 
 
 @pytest.mark.unit
-def test_list_teams_returns_the_approved_collection(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    # A populated franchise_id here tests serialization of a nullable field, not real data:
-    # the column is null on every production row. Tests that seed the database use null.
+def test_list_teams_returns_the_approved_collection(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         team_service,
         "list_teams",
         lambda session, *, page, page_size: TeamListResponse(
             items=[
                 TeamResponse(
-                    team_id=7,
                     basketball_reference_team_id="ATL",
                     current_abbreviation="ATL",
                     current_name="Atlanta Hawks",
-                    franchise_id="hawks",
                 )
             ],
             page=page,
@@ -142,11 +148,9 @@ def test_list_teams_returns_the_approved_collection(client: TestClient, monkeypa
     assert response.json() == {
         "items": [
             {
-                "team_id": 7,
                 "basketball_reference_team_id": "ATL",
                 "current_abbreviation": "ATL",
                 "current_name": "Atlanta Hawks",
-                "franchise_id": "hawks",
             }
         ],
         "page": 2,
@@ -177,20 +181,20 @@ def test_get_team_returns_existing_team_and_404_for_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     team = TeamResponse(
-        team_id=7,
-        basketball_reference_team_id=None,
+        basketball_reference_team_id="ATL",
         current_abbreviation=None,
         current_name="Atlanta Hawks",
-        franchise_id=None,
     )
     monkeypatch.setattr(
         team_service,
         "get_team",
-        lambda session, *, team_id: team if team_id == 7 else None,
+        lambda session, *, basketball_reference_team_id: (
+            team if basketball_reference_team_id == "ATL" else None
+        ),
     )
 
-    existing = client.get("/api/v1/teams/7")
-    missing = client.get("/api/v1/teams/8")
+    existing = client.get("/api/v1/teams/ATL")
+    missing = client.get("/api/v1/teams/UNKNOWN")
 
     assert existing.status_code == 200
     assert existing.json() == team.model_dump()
@@ -202,10 +206,13 @@ def test_get_team_returns_existing_team_and_404_for_missing(
 def test_team_routes_validate_inputs_and_expose_only_get(client: TestClient) -> None:
     assert client.get("/api/v1/teams?page=0").status_code == 422
     assert client.get("/api/v1/teams?page_size=101").status_code == 422
-    assert client.get("/api/v1/teams/not-an-integer").status_code == 422
-    assert client.get("/api/v1/teams/0").status_code == 422
+    assert client.get("/api/v1/teams/ABCDEFGHIJK").status_code == 422
+    empty_code = client.get("/api/v1/teams/")
+    assert empty_code.status_code == 404
+    assert empty_code.json() == {"detail": "Team not found"}
+    assert client.get("/api/v1/teams/ATL/extra").status_code == 404
     assert client.post("/api/v1/teams").status_code == 405
-    assert client.delete("/api/v1/teams/7").status_code == 405
+    assert client.delete("/api/v1/teams/ATL").status_code == 405
 
 
 @pytest.mark.unit
@@ -218,36 +225,60 @@ def test_team_routes_serve_real_rows_through_the_whole_stack(
     assert listed.json() == {
         "items": [
             {
-                "team_id": 1,
                 "basketball_reference_team_id": "AAA",
                 "current_abbreviation": "AAA",
                 "current_name": "Bulls",
-                "franchise_id": None,
             },
             {
-                "team_id": 3,
                 "basketball_reference_team_id": "BBB",
                 "current_abbreviation": "BBB",
                 "current_name": "Bulls",
-                "franchise_id": None,
             },
         ],
         "page": 1,
         "page_size": 2,
-        "total": 3,
+        "total": 5,
     }
 
-    detail = vertical_client.get("/api/v1/teams/2")
+    detail = vertical_client.get("/api/v1/teams/CCC")
 
     assert detail.status_code == 200
     assert detail.json() == {
-        "team_id": 2,
         "basketball_reference_team_id": "CCC",
         "current_abbreviation": None,
         "current_name": "Celtics",
-        "franchise_id": None,
     }
-    assert vertical_client.get("/api/v1/teams/999").status_code == 404
+    assert vertical_client.get("/api/v1/teams/UNKNOWN").status_code == 404
+
+
+@pytest.mark.unit
+def test_team_codes_are_exact_and_synthetic_codes_are_not_resolvable(
+    vertical_client: TestClient,
+) -> None:
+    assert vertical_client.get("/api/v1/teams/AAA").status_code == 200
+    assert vertical_client.get("/api/v1/teams/aaa").status_code == 404
+    assert vertical_client.get("/api/v1/teams/TOT").status_code == 404
+
+
+@pytest.mark.unit
+def test_relocated_teams_are_independently_reachable_without_lineage(
+    vertical_client: TestClient,
+) -> None:
+    sea = vertical_client.get("/api/v1/teams/SEA")
+    okc = vertical_client.get("/api/v1/teams/OKC")
+
+    assert sea.status_code == 200
+    assert sea.json() == {
+        "basketball_reference_team_id": "SEA",
+        "current_abbreviation": "SEA",
+        "current_name": "Seattle SuperSonics",
+    }
+    assert okc.status_code == 200
+    assert okc.json() == {
+        "basketball_reference_team_id": "OKC",
+        "current_abbreviation": "OKC",
+        "current_name": "Oklahoma City Thunder",
+    }
 
 
 @pytest.mark.unit
@@ -273,13 +304,17 @@ def test_a_failing_database_returns_the_documented_error_body(
 def test_team_routes_are_registered_with_approved_openapi_fields(client: TestClient) -> None:
     openapi = client.app.openapi()
 
-    assert set(openapi["paths"]) >= {"/api/v1/teams", "/api/v1/teams/{team_id}"}
+    detail_path = "/api/v1/teams/{basketball_reference_team_id}"
+    assert set(openapi["paths"]) >= {"/api/v1/teams", detail_path}
     assert set(openapi["paths"]["/api/v1/teams"]) == {"get"}
-    assert set(openapi["paths"]["/api/v1/teams/{team_id}"]) == {"get"}
+    assert set(openapi["paths"][detail_path]) == {"get"}
+    path_parameter = openapi["paths"][detail_path]["get"]["parameters"][0]
+    assert path_parameter["name"] == "basketball_reference_team_id"
+    assert path_parameter["schema"]["type"] == "string"
+    assert path_parameter["schema"]["minLength"] == 1
+    assert path_parameter["schema"]["maxLength"] == 10
     assert set(openapi["components"]["schemas"]["TeamResponse"]["properties"]) == {
-        "team_id",
         "basketball_reference_team_id",
         "current_abbreviation",
         "current_name",
-        "franchise_id",
     }

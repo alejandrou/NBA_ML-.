@@ -198,25 +198,54 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: read-only SQLAlchemy count of
+  `core.teams.basketball_reference_team_id IS NULL` against the configured local
+  development database.
+- Result: `0` null-key rows. No data was changed.
+- Command: `uv run pytest tests/unit/test_team_api.py tests/unit/test_team_service.py tests/unit/test_team_query_repository.py tests/unit/test_core_models.py`
+- Result: `21 passed`.
+- Command: `uv run alembic heads`
+- Result: `0007_team_bref_id_not_null (head)`.
+- Command: `uv run alembic upgrade 0006_synthetic_team_codes:0007_team_bref_id_not_null --sql`
+  and `uv run alembic downgrade 0007_team_bref_id_not_null:0006_synthetic_team_codes --sql`
+- Result: offline SQL generation succeeded; upgrade emits `SET NOT NULL` and
+  downgrade emits `DROP NOT NULL`. Neither migration was applied.
+- Command: `uv run pytest tests/unit/test_api_foundation.py`
+- Result: `7 passed`.
+- Command: `uv run ruff check .`
+- Result: all checks passed.
+- Command: `uv run pytest`
+- Result: `742 passed, 21 skipped`. The skipped PostgreSQL cases require the
+  configured local database to be at repository head; it remains at
+  `0006_synthetic_team_codes` because this task was not authorized to apply the
+  new migration.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Against a disposable database already migrated to `0007`, start the read API
+   and request `GET /api/v1/teams/ATL`.
+2. Request `GET /api/v1/teams/SEA` and `GET /api/v1/teams/OKC` when both codes
+   are present.
+3. Request `GET /api/v1/teams?page=1&page_size=100` and inspect teams sharing a
+   `current_name`.
 
-Expected result:
+Expected result: detail responses contain only
+`basketball_reference_team_id`, `current_abbreviation`, and `current_name`;
+SEA and OKC are independently reachable with no lineage field; the collection
+orders by `current_name` and then `basketball_reference_team_id`.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Request `GET /api/v1/teams/atl` and `GET /api/v1/teams/UNKNOWN`.
+2. Request `GET /api/v1/teams/TOT` and `GET /api/v1/teams/`.
+3. Request an 11-character code and a path containing an extra separator, such
+   as `GET /api/v1/teams/ABCDEFGHIJK` and `GET /api/v1/teams/ATL/extra`.
 
-Expected result:
+Expected result: lowercase, unknown, `TOT`, empty, and separator-containing
+paths return 404; the overlong code returns 422; none returns 500.
 
 ## Known limitations
 
-- None.
+- The configured local PostgreSQL database remains at revision
+  `0006_synthetic_team_codes`. Migration-dependent integration tests therefore
+  skip until an owner-approved environment is migrated to `0007`.

@@ -24,16 +24,24 @@ def list_teams(
     return team_service.list_teams(session, page=page, page_size=page_size)
 
 
+@router.get("/", include_in_schema=False)
+def reject_empty_team_code() -> None:
+    raise HTTPException(status_code=404, detail="Team not found")
+
+
 @router.get(
-    "/{team_id}",
+    "/{basketball_reference_team_id}",
     response_model=TeamResponse,
     summary="Get a team",
 )
 def get_team(
-    team_id: Annotated[int, Path(ge=1)],
+    basketball_reference_team_id: Annotated[str, Path(min_length=1, max_length=10)],
     session: SessionDependency,
 ) -> TeamResponse:
-    team = team_service.get_team(session, team_id=team_id)
+    team = team_service.get_team(
+        session,
+        basketball_reference_team_id=basketball_reference_team_id,
+    )
     if team is None:
         raise HTTPException(status_code=404, detail="Team not found")
     return team

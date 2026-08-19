@@ -11,7 +11,6 @@ def _team(**overrides: object) -> SimpleNamespace:
         "basketball_reference_team_id": "ATL",
         "current_abbreviation": "ATL",
         "current_name": "Atlanta Hawks",
-        "franchise_id": "hawks",
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -47,18 +46,14 @@ def test_list_teams_maps_only_the_public_fields(monkeypatch: pytest.MonkeyPatch)
     assert response.model_dump() == {
         "items": [
             {
-                "team_id": 7,
                 "basketball_reference_team_id": "ATL",
                 "current_abbreviation": "ATL",
                 "current_name": "Atlanta Hawks",
-                "franchise_id": "hawks",
             },
             {
-                "team_id": 9,
                 "basketball_reference_team_id": "ATL",
                 "current_abbreviation": "ATL",
                 "current_name": "Boston Celtics",
-                "franchise_id": "hawks",
             },
         ],
         "page": 2,
@@ -89,17 +84,30 @@ def test_get_team_maps_existing_team_and_returns_none_for_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     team = _team()
-    requested: list[int] = []
+    requested: list[str] = []
 
-    def fake_get(session: object, team_id: int) -> SimpleNamespace | None:
-        requested.append(team_id)
-        return team if team_id == 7 else None
+    def fake_get(session: object, basketball_reference_team_id: str) -> SimpleNamespace | None:
+        requested.append(basketball_reference_team_id)
+        return team if basketball_reference_team_id == "ATL" else None
 
-    monkeypatch.setattr(team_service.team_queries, "get_team", fake_get)
+    monkeypatch.setattr(
+        team_service.team_queries,
+        "get_team_by_basketball_reference_team_id",
+        fake_get,
+    )
 
-    response = team_service.get_team(object(), team_id=7)  # type: ignore[arg-type]
+    response = team_service.get_team(  # type: ignore[arg-type]
+        object(),
+        basketball_reference_team_id="ATL",
+    )
 
     assert response is not None
-    assert response.team_id == 7
-    assert team_service.get_team(object(), team_id=8) is None  # type: ignore[arg-type]
-    assert requested == [7, 8]
+    assert response.basketball_reference_team_id == "ATL"
+    assert (
+        team_service.get_team(  # type: ignore[arg-type]
+            object(),
+            basketball_reference_team_id="atl",
+        )
+        is None
+    )
+    assert requested == ["ATL", "atl"]

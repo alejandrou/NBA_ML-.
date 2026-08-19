@@ -76,30 +76,26 @@ def postgres_api_seed() -> Iterator[ApiSeed]:
 
 
 @pytest.mark.integration
-def test_postgres_api_serves_the_seeded_teams_by_id(postgres_api_seed: ApiSeed) -> None:
+def test_postgres_api_serves_the_seeded_teams_by_code(postgres_api_seed: ApiSeed) -> None:
     """Field mapping, asserted where the seeded rows can be addressed directly."""
 
     with TestClient(create_app()) as client:
         responses = [
-            client.get(f"/api/v1/teams/{team_id}")
-            for team_id in postgres_api_seed.team_ids
+            client.get(f"/api/v1/teams/{team_code}")
+            for team_code in postgres_api_seed.team_codes
         ]
 
     assert [response.status_code for response in responses] == [200, 200]
     assert [response.json() for response in responses] == [
         {
-            "team_id": postgres_api_seed.team_ids[0],
             "basketball_reference_team_id": postgres_api_seed.team_codes[0],
             "current_abbreviation": postgres_api_seed.team_codes[0],
             "current_name": postgres_api_seed.team_names[0],
-            "franchise_id": None,
         },
         {
-            "team_id": postgres_api_seed.team_ids[1],
             "basketball_reference_team_id": postgres_api_seed.team_codes[1],
             "current_abbreviation": None,
             "current_name": postgres_api_seed.team_names[1],
-            "franchise_id": None,
         },
     ]
 
@@ -117,7 +113,7 @@ def test_postgres_api_pages_through_teams_without_repeating_one(
         ]
 
     expected_total = postgres_api_seed.baseline.teams + 2
-    seen: list[int] = []
+    seen: list[str] = []
     for page_number, response in zip((1, 2), pages, strict=True):
         assert response.status_code == 200
         body = response.json()
@@ -125,7 +121,7 @@ def test_postgres_api_pages_through_teams_without_repeating_one(
         assert body["page_size"] == 2
         assert body["total"] == expected_total
         assert len(body["items"]) <= 2
-        seen.extend(item["team_id"] for item in body["items"])
+        seen.extend(item["basketball_reference_team_id"] for item in body["items"])
 
     assert len(seen) == len(set(seen)), f"a team was served on both pages: {seen}"
 
@@ -253,13 +249,11 @@ def _seed_rows(session_factory: sessionmaker[Session], baseline: Baseline) -> Ap
                 basketball_reference_team_id=team_codes[0],
                 current_abbreviation=team_codes[0],
                 current_name=team_names[0],
-                franchise_id=None,
             ),
             Team(
                 basketball_reference_team_id=team_codes[1],
                 current_abbreviation=None,
                 current_name=team_names[1],
-                franchise_id=None,
             ),
         ]
         seasons = [

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -11,7 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
 
 from nba_data.cli.main import app
-from nba_data.validation.official_stats import STATS_TABLE_SPECS, validate_official_stats
+from nba_data.validation.official_stats import (
+    STATS_TABLE_SPECS,
+    _backfill_report_issues,
+    _extract_backfill_summary,
+    validate_official_stats,
+)
 
 
 @pytest.fixture
@@ -24,7 +30,8 @@ def session() -> Iterator[Session]:
 def test_validate_official_stats_accepts_clean_final_phase_4e_shape(session: Session) -> None:
     _insert_clean_dataset(session)
 
-    report = validate_official_stats(session, _stats_backfill_report(stats_loaded_rows=_expected_loaded_rows()))
+    reports = _stats_backfill_reports()
+    report = validate_official_stats(session, reports)
 
     assert report.passed is True
     assert len(report.table_counts) == len(STATS_TABLE_SPECS)
@@ -33,8 +40,151 @@ def test_validate_official_stats_accepts_clean_final_phase_4e_shape(session: Ses
     assert report.table_counts["stats.player_postseason_totals"] == 2
     assert report.validation_summary["synthetic_code_violations"] == 0
     assert report.validation_summary["numeric_range_violations"] == 0
-    assert report.backfill_summary["stats_loaded_rows"] == _expected_loaded_rows()
+    assert report.backfill_summary["team_stats"]["stats_loaded_rows"] == 30  # type: ignore[index]
+    assert report.backfill_summary["player_stats"]["cache_root"] == str(Path.cwd())  # type: ignore[index]
+    assert report.backfill_summary["player_postseason_stats"]["discovery_status"] == "ok"  # type: ignore[index]
     assert report.to_dict()["issues"] == []
+
+
+@pytest.mark.unit
+def test_backfill_reports_reconcile_the_expected_archive_total() -> None:
+    reports = _stats_backfill_reports(
+        team_rows=129_000,
+        player_rows=96_336,
+        postseason_aggregate_rows=40_528,
+        postseason_team_rows=40_528,
+    )
+    summary = _extract_backfill_summary(reports)
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": 306_392},
+        summary,
+        reports,
+    )
+
+    assert issues == []
+
+
+@pytest.mark.unit
+def test_backfill_report_set_names_missing_producers() -> None:
+    reports = _stats_backfill_reports()
+    reports.pop("player_stats")
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    missing = [issue for issue in issues if issue.code == "stats_backfill_report_missing_producer"]
+    assert len(missing) == 1
+    assert missing[0].context["missing_producers"] == ["player_stats"]
+
+
+@pytest.mark.unit
+def test_backfill_report_vocabularies_are_selected_by_producer_kind() -> None:
+    reports = {"team_stats": _player_stats_report(rows_loaded_or_updated=75)}
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": 75},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    missing_fields = [
+        issue.context["field"]
+        for issue in issues
+        if issue.code == "stats_backfill_report_missing_field"
+    ]
+    assert "stats_loaded_rows" in missing_fields
+
+
+@pytest.mark.unit
+def test_backfill_report_failure_counters_are_validated() -> None:
+    reports = _stats_backfill_reports()
+    reports["player_stats"]["rows_failed"] = 2
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    assert any(issue.code == "backfill_failures_present" for issue in issues)
+
+    reports["player_stats"].pop("entries_failed")
+    reports["player_stats"].pop("rows_failed")
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+    assert any(issue.code == "stats_backfill_report_missing_failure_counter" for issue in issues)
+
+
+@pytest.mark.unit
+def test_team_report_requires_new_explicit_failure_counters() -> None:
+    reports = _stats_backfill_reports()
+    reports["team_stats"].pop("entries_failed")
+    reports["team_stats"].pop("rows_failed")
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    missing_counters = {
+        issue.context["counter"]
+        for issue in issues
+        if issue.code == "stats_backfill_report_missing_failure_counter"
+    }
+    assert {"entries_failed", "rows_failed"} <= missing_counters
+
+
+@pytest.mark.unit
+def test_backfill_report_counts_must_be_non_negative_integers() -> None:
+    reports = _stats_backfill_reports()
+    reports["team_stats"]["stats_loaded_rows"] = 30.5
+    reports["player_stats"]["rows_failed"] = 0.5
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    assert any(
+        issue.code == "stats_backfill_report_invalid_field"
+        and issue.context["field"] == "stats_loaded_rows"
+        for issue in issues
+    )
+    assert any(
+        issue.code == "stats_backfill_report_invalid_failure_counter"
+        and issue.context["counter"] == "rows_failed"
+        for issue in issues
+    )
+
+
+@pytest.mark.unit
+def test_player_report_metadata_is_validated_without_affecting_row_totals() -> None:
+    reports = _stats_backfill_reports()
+    reports["player_stats"]["cache_root"] = "relative/cache"
+    reports["player_postseason_stats"]["discovery_status"] = "unknown"
+
+    issues = _backfill_report_issues(
+        {"stats.synthetic": _expected_loaded_rows()},
+        _extract_backfill_summary(reports),
+        reports,
+    )
+
+    metadata_issues = [
+        issue for issue in issues if issue.code == "stats_backfill_report_invalid_metadata"
+    ]
+    assert {issue.context["field"] for issue in metadata_issues} == {
+        "cache_root",
+        "discovery_status",
+    }
 
 
 @pytest.mark.unit
@@ -273,8 +423,11 @@ def test_cli_validate_official_stats_prints_json_and_exits_one_on_issues(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[str] = []
-    backfill_report = tmp_path / "stats-backfill.json"
-    backfill_report.write_text(json.dumps({"stats_loaded_rows": 75}), encoding="utf-8")
+    backfill_report = tmp_path / "team-stats-backfill.json"
+    backfill_report.write_text(
+        json.dumps(_team_stats_report(stats_loaded_rows=75)),
+        encoding="utf-8",
+    )
 
     class FakeValidationReport:
         passed = False
@@ -308,7 +461,7 @@ def test_cli_validate_official_stats_prints_json_and_exits_one_on_issues(
 
     def fake_validate(session: object, backfill_data: object) -> FakeValidationReport:
         assert session is fake_session
-        assert backfill_data == {"stats_loaded_rows": 75}
+        assert backfill_data == {"team_stats": _team_stats_report(stats_loaded_rows=75)}
         events.append("validate")
         return FakeValidationReport()
 
@@ -321,7 +474,7 @@ def test_cli_validate_official_stats_prints_json_and_exits_one_on_issues(
         [
             "validate",
             "official-stats",
-            "--stats-backfill-report",
+            "--team-stats-report",
             str(backfill_report),
         ],
     )
@@ -336,6 +489,62 @@ def test_cli_validate_official_stats_prints_json_and_exits_one_on_issues(
         "session_exit",
         "engine_dispose",
     ]
+
+
+@pytest.mark.unit
+def test_cli_validate_official_stats_rejects_removed_single_report_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_engine(*args: object, **kwargs: object) -> object:
+        raise AssertionError("the removed option must fail before database creation")
+
+    monkeypatch.setattr("nba_data.cli.main.create_db_engine", fail_engine)
+    report_path = tmp_path / "stats-backfill.json"
+    report_path.write_text("{}", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "official-stats",
+            "--stats-backfill-report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--team-stats-report" in result.output
+
+
+@pytest.mark.unit
+def test_cli_validate_official_stats_rejects_duplicate_producer_report_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_engine(*args: object, **kwargs: object) -> object:
+        raise AssertionError("duplicate report options must fail before database creation")
+
+    monkeypatch.setattr("nba_data.cli.main.create_db_engine", fail_engine)
+    first_report = tmp_path / "team-stats-first.json"
+    second_report = tmp_path / "team-stats-second.json"
+    first_report.write_text("{}", encoding="utf-8")
+    second_report.write_text("{}", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "official-stats",
+            "--team-stats-report",
+            str(first_report),
+            "--team-stats-report",
+            str(second_report),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--team-stats-report accepts at most one path" in result.output
 
 
 @contextmanager
@@ -669,21 +878,63 @@ def _expected_loaded_rows() -> int:
     return 75
 
 
-def _stats_backfill_report(
+def _stats_backfill_reports(
     *,
-    stats_loaded_rows: int,
-    processing_failed_sources: int = 0,
-    stats_failed_rows: int = 0,
-    stats_quarantined_rows: int = 0,
-) -> dict[str, object]:
+    team_rows: int = 30,
+    player_rows: int = 25,
+    postseason_aggregate_rows: int = 10,
+    postseason_team_rows: int = 10,
+) -> dict[str, dict[str, object]]:
+    return {
+        "team_stats": _team_stats_report(stats_loaded_rows=team_rows),
+        "player_stats": _player_stats_report(rows_loaded_or_updated=player_rows),
+        "player_postseason_stats": _postseason_stats_report(
+            aggregate_rows_loaded_or_updated=postseason_aggregate_rows,
+            team_rows_loaded_or_updated=postseason_team_rows,
+        ),
+    }
+
+
+def _team_stats_report(*, stats_loaded_rows: int) -> dict[str, object]:
     return {
         "selected_sources": 5,
         "processed_sources": 5,
-        "processing_failed_sources": processing_failed_sources,
+        "processing_failed_sources": 0,
+        "entries_failed": 0,
+        "rows_failed": 0,
         "stats_loaded_rows": stats_loaded_rows,
         "stats_skipped_rows": 0,
-        "stats_failed_rows": stats_failed_rows,
-        "stats_quarantined_rows": stats_quarantined_rows,
+        "stats_failed_rows": 0,
+        "stats_quarantined_rows": 0,
+    }
+
+
+def _player_stats_report(*, rows_loaded_or_updated: int) -> dict[str, object]:
+    return {
+        "player_pages_processed": 1,
+        "rows_loaded_or_updated": rows_loaded_or_updated,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "unresolved_players_or_seasons": 0,
+        "cache_root": str(Path.cwd()),
+        "discovery_status": "ok",
+    }
+
+
+def _postseason_stats_report(
+    *,
+    aggregate_rows_loaded_or_updated: int,
+    team_rows_loaded_or_updated: int,
+) -> dict[str, object]:
+    return {
+        "player_pages_processed": 1,
+        "aggregate_rows_loaded_or_updated": aggregate_rows_loaded_or_updated,
+        "team_rows_loaded_or_updated": team_rows_loaded_or_updated,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "unresolved_players_or_seasons_or_team_stints": 0,
+        "cache_root": str(Path.cwd()),
+        "discovery_status": "ok",
     }
 
 

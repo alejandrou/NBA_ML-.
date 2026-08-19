@@ -378,6 +378,8 @@ def test_stats_backfill_aggregates_counts_and_is_json_serializable(
     assert report.stats_failed_rows == 3
     assert report.stats_quarantined_rows == 4
     assert report.processing_failed_sources == 1
+    assert report.entries_failed == 2
+    assert report.rows_failed == 3
     assert [entry.status for entry in report.entries] == ["loaded", "failed", "failed"]
     assert payload["entries"][0]["loaded_rows"] == 2  # type: ignore[index]
     json.dumps(payload)
@@ -414,7 +416,15 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
 
     class FakeReport:
         def to_dict(self) -> dict[str, object]:
-            return {"selected_sources": 1, "stats_loaded_rows": 2}
+            return {
+                "selected_sources": 1,
+                "stats_loaded_rows": 2,
+                "entries_failed": 0,
+                "rows_failed": 0,
+                "processing_failed_sources": 0,
+                "stats_failed_rows": 0,
+                "stats_quarantined_rows": 0,
+            }
 
     class FakeEngine:
         def dispose(self) -> None:
@@ -513,11 +523,89 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {"selected_sources": 1, "stats_loaded_rows": 2}
+    assert json.loads(result.output) == {
+        "selected_sources": 1,
+        "stats_loaded_rows": 2,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "processing_failed_sources": 0,
+        "stats_failed_rows": 0,
+        "stats_quarantined_rows": 0,
+    }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
         "selected_sources": 1,
         "stats_loaded_rows": 2,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "processing_failed_sources": 0,
+        "stats_failed_rows": 0,
+        "stats_quarantined_rows": 0,
     }
+
+
+@pytest.mark.unit
+def test_cli_backfill_stats_prints_and_writes_before_nonzero_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = tmp_path / "reports" / "stats-failure.json"
+    monkeypatch.setenv("SCRAPER_CACHE_DIR", str(tmp_path / "cache"))
+    get_settings.cache_clear()
+
+    class FakeReport:
+        def to_dict(self) -> dict[str, object]:
+            return {"stats_loaded_rows": 2, "entries_failed": 1, "rows_failed": 3}
+
+    class FakeEngine:
+        def dispose(self) -> None:
+            return None
+
+    class FakeTransaction:
+        def __enter__(self) -> FakeTransaction:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+    class FakeSession:
+        def __enter__(self) -> FakeSession:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+        def begin(self) -> FakeTransaction:
+            return FakeTransaction()
+
+    monkeypatch.setattr(cli_main, "create_db_engine", lambda settings: FakeEngine())
+    monkeypatch.setattr(cli_main, "create_session_factory", lambda engine: lambda: FakeSession())
+    monkeypatch.setattr(
+        cli_main,
+        "run_offline_stats_backfill",
+        lambda *args, **kwargs: FakeReport(),
+    )
+
+    try:
+        result = CliRunner().invoke(
+            app,
+            [
+                "backfill",
+                "stats",
+                "--execute-approved-stats-backfill",
+                "--output",
+                str(output_path),
+            ],
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert result.exit_code == 1
+    assert json.loads(result.output) == {
+        "stats_loaded_rows": 2,
+        "entries_failed": 1,
+        "rows_failed": 3,
+    }
+    assert json.loads(output_path.read_text(encoding="utf-8"))["rows_failed"] == 3
 
 
 @pytest.mark.unit

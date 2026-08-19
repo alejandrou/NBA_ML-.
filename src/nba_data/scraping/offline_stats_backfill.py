@@ -61,6 +61,8 @@ class OfflineStatsBackfillReport:
     selected_sources: int
     processed_sources: int
     processing_failed_sources: int
+    entries_failed: int
+    rows_failed: int
     stats_loaded_rows: int
     stats_skipped_rows: int
     stats_failed_rows: int
@@ -78,6 +80,8 @@ class OfflineStatsBackfillReport:
             "selected_sources": self.selected_sources,
             "processed_sources": self.processed_sources,
             "processing_failed_sources": self.processing_failed_sources,
+            "entries_failed": self.entries_failed,
+            "rows_failed": self.rows_failed,
             "stats_loaded_rows": self.stats_loaded_rows,
             "stats_skipped_rows": self.stats_skipped_rows,
             "stats_failed_rows": self.stats_failed_rows,
@@ -149,6 +153,8 @@ def run_offline_stats_backfill(
         selected_sources=len(selected_entries),
         processed_sources=processing_report.total_inputs,
         processing_failed_sources=processing_report.failed_entries,
+        entries_failed=sum(entry.status == "failed" for entry in entries),
+        rows_failed=sum(entry.failed_rows for entry in entries),
         stats_loaded_rows=sum(entry.loaded_rows for entry in entries),
         stats_skipped_rows=sum(entry.skipped_rows for entry in entries),
         stats_failed_rows=sum(entry.failed_rows for entry in entries),

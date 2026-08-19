@@ -84,13 +84,35 @@ _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION = typer.Option(
     readable=True,
     help="Path to the Phase 4D offline backfill JSON report.",
 )
-_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
+_TEAM_STATS_REPORT_OPTION = typer.Option(
     None,
-    "--stats-backfill-report",
+    "--team-stats-report",
     exists=True,
     dir_okay=False,
     readable=True,
-    help="Optional path to the Phase 4E stats backfill JSON report.",
+    help="Optional path to the Phase 4E team-season stats backfill JSON report.",
+)
+_PLAYER_STATS_REPORT_OPTION = typer.Option(
+    None,
+    "--player-stats-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional path to the Phase 4E player regular-season stats backfill JSON report.",
+)
+_PLAYER_POSTSEASON_STATS_REPORT_OPTION = typer.Option(
+    None,
+    "--player-postseason-stats-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional path to the Phase 4E player postseason stats backfill JSON report.",
+)
+_REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
+    None,
+    "--stats-backfill-report",
+    hidden=True,
+    help="Removed compatibility trap; use --team-stats-report instead.",
 )
 
 
@@ -281,7 +303,17 @@ def backfill_stats(
     finally:
         engine.dispose()
 
-    _print_and_optionally_write_json(report.to_dict(), output)
+    _print_backfill_report_and_exit_if_failed(
+        report.to_dict(),
+        output,
+        failure_fields=(
+            "entries_failed",
+            "rows_failed",
+            "processing_failed_sources",
+            "stats_failed_rows",
+            "stats_quarantined_rows",
+        ),
+    )
 
 
 @backfill_app.command("player-stats")
@@ -349,7 +381,15 @@ def backfill_player_stats(
     finally:
         engine.dispose()
 
-    _print_and_optionally_write_json(report.to_dict(), output)
+    _print_backfill_report_and_exit_if_failed(
+        report.to_dict(),
+        output,
+        failure_fields=(
+            "entries_failed",
+            "rows_failed",
+            "unresolved_players_or_seasons",
+        ),
+    )
 
 
 @backfill_app.command("player-postseason-stats")
@@ -417,7 +457,15 @@ def backfill_player_postseason_stats(
     finally:
         engine.dispose()
 
-    _print_and_optionally_write_json(report.to_dict(), output)
+    _print_backfill_report_and_exit_if_failed(
+        report.to_dict(),
+        output,
+        failure_fields=(
+            "entries_failed",
+            "rows_failed",
+            "unresolved_players_or_seasons_or_team_stints",
+        ),
+    )
 
 
 @validation_app.command("offline-database")
@@ -447,26 +495,49 @@ def validate_offline_database(
 
 @validation_app.command("official-stats")
 def validate_official_stats(
-    stats_backfill_report: Path | None = _OFFICIAL_STATS_BACKFILL_REPORT_OPTION,
+    team_stats_reports: list[Path] | None = _TEAM_STATS_REPORT_OPTION,
+    player_stats_reports: list[Path] | None = _PLAYER_STATS_REPORT_OPTION,
+    player_postseason_stats_reports: list[Path] | None = _PLAYER_POSTSEASON_STATS_REPORT_OPTION,
+    removed_stats_backfill_report: Path | None = _REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION,
 ) -> None:
     """Validate the local Phase 4E official stats state."""
 
-    backfill_data: dict[str, object] | None = None
-    if stats_backfill_report is not None:
-        try:
-            loaded = json.loads(stats_backfill_report.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise typer.BadParameter(f"Invalid stats backfill report JSON: {exc}") from exc
-        if not isinstance(loaded, dict):
-            raise typer.BadParameter("Stats backfill report JSON must be an object.")
-        backfill_data = loaded
+    if removed_stats_backfill_report is not None:
+        raise typer.BadParameter(
+            "--stats-backfill-report was removed; use --team-stats-report instead."
+        )
+
+    report_paths = (
+        (
+            "team_stats",
+            "team stats",
+            _single_report_path(team_stats_reports, "--team-stats-report"),
+        ),
+        (
+            "player_stats",
+            "player stats",
+            _single_report_path(player_stats_reports, "--player-stats-report"),
+        ),
+        (
+            "player_postseason_stats",
+            "player postseason stats",
+            _single_report_path(
+                player_postseason_stats_reports,
+                "--player-postseason-stats-report",
+            ),
+        ),
+    )
+    backfill_data: dict[str, object] = {}
+    for report_kind, label, report_path in report_paths:
+        if report_path is not None:
+            backfill_data[report_kind] = _read_json_object(report_path, label)
 
     settings = get_settings()
     engine = create_db_engine(settings)
     try:
         session_factory = create_session_factory(engine)
         with session_factory() as session:
-            report = run_official_stats_validation(session, backfill_data)
+            report = run_official_stats_validation(session, backfill_data or None)
     finally:
         engine.dispose()
 
@@ -651,6 +722,43 @@ def acquisition_acquire_player_pages(
         raise typer.Exit(code=1) from exc
 
     _print_and_optionally_write_json(report.to_dict(), output)
+
+
+def _read_json_object(path: Path, label: str) -> dict[str, object]:
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"Invalid {label} report JSON: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise typer.BadParameter(f"{label.capitalize()} report JSON must be an object.")
+    return loaded
+
+
+def _single_report_path(paths: list[Path] | None, option_name: str) -> Path | None:
+    if not paths:
+        return None
+    if len(paths) > 1:
+        raise typer.BadParameter(f"{option_name} accepts at most one path.")
+    return paths[0]
+
+
+def _print_backfill_report_and_exit_if_failed(
+    data: dict[str, object],
+    output: Path | None,
+    *,
+    failure_fields: tuple[str, ...],
+) -> None:
+    _print_and_optionally_write_json(data, output)
+    nonzero_failures = {
+        field_name: value
+        for field_name in failure_fields
+        if (value := data.get(field_name)) is not None
+        and isinstance(value, int | float)
+        and not isinstance(value, bool)
+        and value != 0
+    }
+    if nonzero_failures:
+        raise typer.Exit(code=1)
 
 
 def _print_and_optionally_write_json(data: dict[str, object], output: Path | None) -> None:

@@ -108,7 +108,9 @@ schema.
 ### Official stats validation
 
 - **Command:** `validate offline-database --backfill-report <PATH>`;
-  `validate official-stats [--stats-backfill-report <PATH>]`
+  `validate official-stats [--team-stats-report <PATH>]`
+  `[--player-stats-report <PATH>]`
+  `[--player-postseason-stats-report <PATH>]`
 - **Inputs:** the database plus the JSON report from the matching backfill
 - **Implementation:** `validation/offline_database.py`, `validation/official_stats.py`, `validation/team_season.py`
 - **Outputs:** a findings report; non-zero exit on failure

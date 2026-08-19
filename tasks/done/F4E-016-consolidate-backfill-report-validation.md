@@ -242,27 +242,66 @@ surprising.
 
 Filled in before the card moves to `tasks/review/`.
 
+## Review improvements incorporated
+
+- Require the new explicit `entries_failed` and `rows_failed` fields on the team
+  report even when its older producer-specific failure fields are present.
+- Reject fractional row counts and failure counters instead of truncating them
+  during reconciliation; counts must be non-negative integers.
+- Reject repeated producer report options instead of silently keeping only the
+  last path supplied for that producer.
+- Keep inbound documentation links aligned with the card's lifecycle folder.
+
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_official_stats_validation.py`
+- Result: 26 passed.
+- Command: `uv run pytest tests/unit/test_offline_reporting.py`
+- Result: 4 passed.
+- Command: `uv run ruff check .`
+- Result: All checks passed.
+- Command: `uv run pytest`
+- Result: 761 passed, 7 warnings.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
+- Command: `uv run mypy src/nba_data`
+- Result: Fails on 8 pre-existing errors in unrelated parser, API readiness,
+  offline-database validation, acquisition, and postseason helper code; no new
+  error remains in the changed validator.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Prepare three clean producer JSON reports containing their producer-specific
+   row-count keys, `entries_failed: 0`, `rows_failed: 0`, and the player report
+   `cache_root`/`discovery_status` metadata.
+2. Run `uv run nba-data validate official-stats --team-stats-report
+   <TEAM_REPORT> --player-stats-report <PLAYER_REPORT>
+   --player-postseason-stats-report <POSTSEASON_REPORT>` against the local
+   read-only stats database.
+3. Inspect `backfill_summary` for the three nested producer summaries and their
+   combined row total.
 
-Expected result:
+Expected result: exit code `0` when the three report contributions equal the
+persisted `stats.*` total; player metadata is preserved and does not affect the
+row reconciliation.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run the validator with only `--team-stats-report <TEAM_REPORT>`.
+2. Run it with a player report supplied under `--team-stats-report`.
+3. Run `uv run nba-data validate official-stats --stats-backfill-report
+   <TEAM_REPORT>`.
 
-Expected result:
+Expected result: each invocation exits nonzero; the first names the missing
+player producers, the second names the expected `stats_loaded_rows` field, and
+the third names `--team-stats-report` as the replacement for the removed flag.
 
 ## Known limitations
 
-- None.
+- The checked-in operational reports predate the new player failure counters;
+  rerun the guarded producers before using them as a clean validation input.
+- The current cache has the documented 577 regular player-page failures, so the
+  regular player backfill is expected to exit nonzero until F4E-022 lands.
+- No live scrape, backfill, migration, or database write was run for this task.
+- `COMANDOS.md` is ignored by Git in this workspace; its requested documentation
+  update exists locally but is not part of the tracked diff.

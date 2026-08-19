@@ -4,7 +4,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Literal
+from pathlib import Path, PureWindowsPath
+from typing import Any, Literal, TypeGuard
 
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
@@ -139,6 +140,61 @@ STATS_TABLE_SPECS = (
     *POSTSEASON_TEAM_STINT_TABLE_SPECS,
 )
 
+StatsBackfillReportKind = Literal[
+    "team_stats",
+    "player_stats",
+    "player_postseason_stats",
+]
+STATS_BACKFILL_REPORT_KINDS: tuple[StatsBackfillReportKind, ...] = (
+    "team_stats",
+    "player_stats",
+    "player_postseason_stats",
+)
+_REPORT_KIND_ALIASES: dict[str, StatsBackfillReportKind] = {
+    "team": "team_stats",
+    "team_stats": "team_stats",
+    "team_stats_report": "team_stats",
+    "player": "player_stats",
+    "player_stats": "player_stats",
+    "player_stats_report": "player_stats",
+    "player_postseason": "player_postseason_stats",
+    "player_postseason_stats": "player_postseason_stats",
+    "player_postseason_stats_report": "player_postseason_stats",
+}
+_REPORT_LABELS: dict[StatsBackfillReportKind, str] = {
+    "team_stats": "team stats",
+    "player_stats": "player stats",
+    "player_postseason_stats": "player postseason stats",
+}
+_REPORT_ROW_COUNT_FIELDS: dict[StatsBackfillReportKind, tuple[str, ...]] = {
+    "team_stats": ("stats_loaded_rows",),
+    "player_stats": ("rows_loaded_or_updated",),
+    "player_postseason_stats": (
+        "aggregate_rows_loaded_or_updated",
+        "team_rows_loaded_or_updated",
+    ),
+}
+_REPORT_FAILURE_FIELDS: dict[StatsBackfillReportKind, dict[str, tuple[str, ...]]] = {
+    "team_stats": {
+        "entries_failed": ("entries_failed",),
+        "rows_failed": ("rows_failed",),
+        "processing_failed_sources": ("processing_failed_sources",),
+        "stats_failed_rows": ("stats_failed_rows",),
+        "rows_quarantined": ("stats_quarantined_rows",),
+    },
+    "player_stats": {
+        "entries_failed": ("entries_failed",),
+        "rows_failed": ("rows_failed",),
+        "rows_unresolved": ("unresolved_players_or_seasons",),
+    },
+    "player_postseason_stats": {
+        "entries_failed": ("entries_failed",),
+        "rows_failed": ("rows_failed",),
+        "rows_unresolved": ("unresolved_players_or_seasons_or_team_stints",),
+    },
+}
+_PLAYER_REPORT_METADATA_FIELDS = ("cache_root", "discovery_status")
+
 
 @dataclass(frozen=True)
 class OfficialStatsValidationIssue:
@@ -174,7 +230,7 @@ class OfficialStatsValidationReport:
 
 def validate_official_stats(
     session: Session,
-    stats_backfill_report: Mapping[str, Any] | None = None,
+    stats_backfill_reports: Mapping[str, Any] | None = None,
 ) -> OfficialStatsValidationReport:
     """Validate the official Phase 4E stats schema without mutating it."""
 
@@ -223,8 +279,8 @@ def validate_official_stats(
     issues.extend(_row_content_issues(session, reflected_tables))
     issues.extend(_generated_schema_issues(inspector))
 
-    backfill_summary = _extract_backfill_summary(stats_backfill_report)
-    issues.extend(_backfill_report_issues(table_counts, backfill_summary, stats_backfill_report))
+    backfill_summary = _extract_backfill_summary(stats_backfill_reports)
+    issues.extend(_backfill_report_issues(table_counts, backfill_summary, stats_backfill_reports))
     validation_summary = _build_validation_summary(issues)
 
     return OfficialStatsValidationReport(
@@ -905,69 +961,269 @@ def _generated_schema_issues(inspector: Any) -> list[OfficialStatsValidationIssu
 def _backfill_report_issues(
     table_counts: Mapping[str, int],
     backfill_summary: Mapping[str, object],
-    stats_backfill_report: Mapping[str, Any] | None,
+    stats_backfill_reports: Mapping[str, Any] | None,
 ) -> list[OfficialStatsValidationIssue]:
-    if stats_backfill_report is None:
+    reports = _normalize_backfill_reports(stats_backfill_reports)
+    if not reports:
         return []
 
     issues: list[OfficialStatsValidationIssue] = []
     persisted_total_rows = sum(table_counts.values())
-    loaded_rows = backfill_summary.get("stats_loaded_rows")
-    if loaded_rows is None:
+    missing_producers = [kind for kind in STATS_BACKFILL_REPORT_KINDS if kind not in reports]
+    if missing_producers:
         issues.append(
             OfficialStatsValidationIssue(
-                code="stats_backfill_report_missing_field",
-                message="Stats backfill report is missing stats_loaded_rows.",
-                context={"count": 1},
+                code="stats_backfill_report_missing_producer",
+                message=(
+                    "Stats backfill report set is incomplete; missing "
+                    + ", ".join(_REPORT_LABELS[kind] for kind in missing_producers)
+                    + "."
+                ),
+                context={
+                    "count": len(missing_producers),
+                    "missing_producers": missing_producers,
+                },
             )
         )
-    elif loaded_rows != persisted_total_rows:
+
+    reported_total_rows = 0
+    row_counts_valid = True
+    for kind, report in reports.items():
+        for field_name in _REPORT_ROW_COUNT_FIELDS[kind]:
+            if field_name not in report:
+                row_counts_valid = False
+                issues.append(
+                    OfficialStatsValidationIssue(
+                        code="stats_backfill_report_missing_field",
+                        message=(
+                            f"{_REPORT_LABELS[kind].capitalize()} backfill report is missing "
+                            f"{field_name}."
+                        ),
+                        context={
+                            "count": 1,
+                            "report_kind": kind,
+                            "field": field_name,
+                        },
+                    )
+                )
+                continue
+
+            value = report[field_name]
+            if not _is_count(value):
+                row_counts_valid = False
+                issues.append(
+                    OfficialStatsValidationIssue(
+                        code="stats_backfill_report_invalid_field",
+                        message=(
+                            f"{_REPORT_LABELS[kind].capitalize()} backfill report field "
+                            f"{field_name} must be a non-negative integer."
+                        ),
+                        context={
+                            "count": 1,
+                            "report_kind": kind,
+                            "field": field_name,
+                            "value": value,
+                        },
+                    )
+                )
+                continue
+            reported_total_rows += int(value)
+
+        issues.extend(_report_metadata_issues(kind, report))
+        issues.extend(_report_failure_counter_issues(kind, report))
+
+    if not missing_producers and row_counts_valid and reported_total_rows != persisted_total_rows:
         issues.append(
             OfficialStatsValidationIssue(
                 code="backfill_row_mismatch",
                 message=(
                     f"Persisted stats rows total {persisted_total_rows}; "
-                    f"stats backfill report loaded {loaded_rows} rows."
+                    f"the three stats backfill reports loaded {reported_total_rows} rows."
                 ),
                 context={
                     "count": 1,
                     "persisted_total_rows": persisted_total_rows,
-                    "stats_loaded_rows": loaded_rows,
+                    "reported_total_rows": reported_total_rows,
                 },
-            )
-        )
-
-    failure_fields = {
-        "processing_failed_sources": backfill_summary.get("processing_failed_sources"),
-        "stats_failed_rows": backfill_summary.get("stats_failed_rows"),
-        "stats_quarantined_rows": backfill_summary.get("stats_quarantined_rows"),
-    }
-    nonzero_failures = {
-        key: value for key, value in failure_fields.items() if isinstance(value, int | float) and value != 0
-    }
-    if nonzero_failures:
-        issues.append(
-            OfficialStatsValidationIssue(
-                code="backfill_failures_present",
-                message="Stats backfill report contains nonzero processing, load, or quarantine failures.",
-                context={"count": len(nonzero_failures), **nonzero_failures},
             )
         )
     return issues
 
 
-def _extract_backfill_summary(stats_backfill_report: Mapping[str, Any] | None) -> dict[str, object]:
-    if stats_backfill_report is None:
+def _extract_backfill_summary(stats_backfill_reports: Mapping[str, Any] | None) -> dict[str, object]:
+    reports = _normalize_backfill_reports(stats_backfill_reports)
+    if not reports:
         return {}
-    return {
-        "selected_sources": stats_backfill_report.get("selected_sources"),
-        "processed_sources": stats_backfill_report.get("processed_sources"),
-        "processing_failed_sources": stats_backfill_report.get("processing_failed_sources"),
-        "stats_loaded_rows": stats_backfill_report.get("stats_loaded_rows"),
-        "stats_skipped_rows": stats_backfill_report.get("stats_skipped_rows"),
-        "stats_failed_rows": stats_backfill_report.get("stats_failed_rows"),
-        "stats_quarantined_rows": stats_backfill_report.get("stats_quarantined_rows"),
+
+    missing_producers = [kind for kind in STATS_BACKFILL_REPORT_KINDS if kind not in reports]
+    summary: dict[str, object] = {
+        "supplied_producers": list(reports),
+        "missing_producers": missing_producers,
+        "reported_total_rows": 0,
     }
+    reported_total_rows = 0
+    for kind, report in reports.items():
+        fields = list(_REPORT_ROW_COUNT_FIELDS[kind])
+        for aliases in _REPORT_FAILURE_FIELDS[kind].values():
+            fields.extend(aliases)
+        fields.extend(_PLAYER_REPORT_METADATA_FIELDS if kind != "team_stats" else ())
+        report_summary = {
+            field_name: report[field_name]
+            for field_name in dict.fromkeys(fields)
+            if field_name in report
+        }
+        contribution = _report_row_count(kind, report)
+        if contribution is not None:
+            report_summary["reported_rows"] = contribution
+            reported_total_rows += contribution
+        summary[kind] = report_summary
+
+    summary["reported_total_rows"] = reported_total_rows
+    return summary
+
+
+def _normalize_backfill_reports(
+    stats_backfill_reports: Mapping[str, Any] | None,
+) -> dict[StatsBackfillReportKind, Mapping[str, Any]]:
+    if not stats_backfill_reports:
+        return {}
+
+    reports: dict[StatsBackfillReportKind, Mapping[str, Any]] = {}
+    for key, value in stats_backfill_reports.items():
+        kind = _REPORT_KIND_ALIASES.get(key)
+        if kind is None or not isinstance(value, Mapping):
+            continue
+        reports[kind] = value
+    return {kind: reports[kind] for kind in STATS_BACKFILL_REPORT_KINDS if kind in reports}
+
+
+def _report_row_count(
+    kind: StatsBackfillReportKind,
+    report: Mapping[str, Any],
+) -> int | None:
+    values: list[int] = []
+    for field_name in _REPORT_ROW_COUNT_FIELDS[kind]:
+        value = report.get(field_name)
+        if not _is_count(value):
+            return None
+        values.append(int(value))
+    return sum(values)
+
+
+def _report_failure_counter_issues(
+    kind: StatsBackfillReportKind,
+    report: Mapping[str, Any],
+) -> list[OfficialStatsValidationIssue]:
+    issues: list[OfficialStatsValidationIssue] = []
+    nonzero_counters: dict[str, object] = {}
+
+    for counter_name, aliases in _REPORT_FAILURE_FIELDS[kind].items():
+        present = [(field_name, report[field_name]) for field_name in aliases if field_name in report]
+        if not present:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="stats_backfill_report_missing_failure_counter",
+                    message=(
+                        f"{_REPORT_LABELS[kind].capitalize()} backfill report is missing "
+                        f"the {counter_name} failure counter."
+                    ),
+                    context={
+                        "count": 1,
+                        "report_kind": kind,
+                        "counter": counter_name,
+                        "accepted_fields": aliases,
+                    },
+                )
+            )
+            continue
+
+        invalid_fields = [field_name for field_name, value in present if not _is_count(value)]
+        if invalid_fields:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="stats_backfill_report_invalid_failure_counter",
+                    message=(
+                        f"{_REPORT_LABELS[kind].capitalize()} backfill report failure counters "
+                        "must be non-negative integers."
+                    ),
+                    context={
+                        "count": len(invalid_fields),
+                        "report_kind": kind,
+                        "counter": counter_name,
+                        "fields": invalid_fields,
+                    },
+                )
+            )
+            continue
+
+        nonzero_values = {
+            field_name: value
+            for field_name, value in present
+            if isinstance(value, int) and not isinstance(value, bool) and value != 0
+        }
+        if nonzero_values:
+            nonzero_counters[counter_name] = nonzero_values
+
+    if nonzero_counters:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="backfill_failures_present",
+                message=(
+                    f"{_REPORT_LABELS[kind].capitalize()} backfill report contains nonzero "
+                    "failure, quarantine, or unresolved counters."
+                ),
+                context={
+                    "count": len(nonzero_counters),
+                    "report_kind": kind,
+                    "counters": nonzero_counters,
+                },
+            )
+        )
+    return issues
+
+
+def _report_metadata_issues(
+    kind: StatsBackfillReportKind,
+    report: Mapping[str, Any],
+) -> list[OfficialStatsValidationIssue]:
+    if kind == "team_stats":
+        return []
+
+    issues: list[OfficialStatsValidationIssue] = []
+    cache_root = report.get("cache_root")
+    if "cache_root" in report and (
+        not isinstance(cache_root, str)
+        or not cache_root.strip()
+        or not (Path(cache_root).is_absolute() or PureWindowsPath(cache_root).is_absolute())
+    ):
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="stats_backfill_report_invalid_metadata",
+                message=(
+                    f"{_REPORT_LABELS[kind].capitalize()} backfill report cache_root must be "
+                    "a resolved absolute path."
+                ),
+                context={"count": 1, "report_kind": kind, "field": "cache_root"},
+            )
+        )
+
+    discovery_status = report.get("discovery_status")
+    if "discovery_status" in report and discovery_status not in {"ok", "no_matching_pages"}:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="stats_backfill_report_invalid_metadata",
+                message=(
+                    f"{_REPORT_LABELS[kind].capitalize()} backfill report discovery_status "
+                    "must be ok or no_matching_pages."
+                ),
+                context={"count": 1, "report_kind": kind, "field": "discovery_status"},
+            )
+        )
+    return issues
+
+
+def _is_count(value: object) -> TypeGuard[int]:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
 def _build_validation_summary(
@@ -1009,6 +1265,11 @@ def _build_validation_summary(
         "all_stat_columns_null": "all_null_data_rows",
         "generated_metric_schema_name": "generated_metric_schema_objects",
         "stats_backfill_report_missing_field": "backfill_report_violations",
+        "stats_backfill_report_invalid_field": "backfill_report_violations",
+        "stats_backfill_report_missing_producer": "backfill_report_violations",
+        "stats_backfill_report_missing_failure_counter": "backfill_report_violations",
+        "stats_backfill_report_invalid_failure_counter": "backfill_report_violations",
+        "stats_backfill_report_invalid_metadata": "backfill_report_violations",
         "backfill_row_mismatch": "backfill_report_violations",
         "backfill_failures_present": "backfill_report_violations",
     }

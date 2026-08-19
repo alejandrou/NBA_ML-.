@@ -58,6 +58,7 @@ class OfflinePlayerStatsBackfillEntry:
     rows_selected: int
     rows_skipped: int
     loaded_or_updated_rows: int
+    rows_failed: int
     unresolved_rows: int
     reason: str | None = None
 
@@ -71,6 +72,7 @@ class OfflinePlayerStatsBackfillEntry:
             "rows_selected": self.rows_selected,
             "rows_skipped": self.rows_skipped,
             "loaded_or_updated_rows": self.loaded_or_updated_rows,
+            "rows_failed": self.rows_failed,
             "unresolved_rows": self.unresolved_rows,
             "reason": self.reason,
         }
@@ -83,6 +85,8 @@ class OfflinePlayerStatsBackfillReport:
     rows_selected: int
     rows_skipped: int
     rows_loaded_or_updated: int
+    entries_failed: int
+    rows_failed: int
     unresolved_players_or_seasons: int
     cache_root: str
     discovery_status: PlayerCacheDiscoveryStatus
@@ -96,6 +100,8 @@ class OfflinePlayerStatsBackfillReport:
             "rows_selected": self.rows_selected,
             "rows_skipped": self.rows_skipped,
             "rows_loaded_or_updated": self.rows_loaded_or_updated,
+            "entries_failed": self.entries_failed,
+            "rows_failed": self.rows_failed,
             "unresolved_players_or_seasons": self.unresolved_players_or_seasons,
             "cache_root": self.cache_root,
             "discovery_status": self.discovery_status,
@@ -151,6 +157,8 @@ def run_offline_player_stats_backfill(
         rows_selected=sum(entry.rows_selected for entry in entries),
         rows_skipped=sum(entry.rows_skipped for entry in entries),
         rows_loaded_or_updated=sum(entry.loaded_or_updated_rows for entry in entries),
+        entries_failed=sum(entry.status == "failed" for entry in entries),
+        rows_failed=sum(entry.rows_failed for entry in entries),
         unresolved_players_or_seasons=sum(entry.unresolved_rows for entry in entries),
         cache_root=str(cache_root),
         discovery_status=discovery_status,
@@ -263,6 +271,7 @@ def _process_one_player_page(
                 rows_selected=normalized.rows_selected,
                 rows_skipped=normalized.rows_skipped,
                 loaded_or_updated_rows=0,
+                rows_failed=0,
                 unresolved_rows=0,
                 reason="No supported regular-season aggregate rows were selected.",
             )
@@ -285,6 +294,7 @@ def _process_one_player_page(
             rows_selected=0,
             rows_skipped=0,
             loaded_or_updated_rows=0,
+            rows_failed=0,
             unresolved_rows=0,
             reason=str(exc),
         )
@@ -313,6 +323,7 @@ def _process_one_player_page(
         rows_selected=normalized.rows_selected,
         rows_skipped=normalized.rows_skipped + load_report.skipped_rows,
         loaded_or_updated_rows=load_report.loaded_rows,
+        rows_failed=load_report.failed_rows,
         unresolved_rows=unresolved_rows,
         reason=reason,
     )

@@ -153,6 +153,53 @@ team-seasons with no players, suspiciously low per-season counts, `TOT` misuse,
 missing Basketball Reference player IDs, and nonzero failure/quarantine counts
 from the backfill report.
 
+## Run Official Stats Backfills and Validation
+
+The three stats backfills are separate producers. Run each guarded command from
+the local cache when rebuilding the official stats tables:
+
+```bash
+uv run nba-data backfill stats \
+  --execute-approved-stats-backfill \
+  --output reports/stats-backfill-2000-2025.json
+
+uv run nba-data backfill player-stats \
+  --execute-approved-player-stats-backfill \
+  --output reports/player-stats-backfill-2000-2025.json
+
+uv run nba-data backfill player-postseason-stats \
+  --execute-approved-player-postseason-stats-backfill \
+  --output reports/player-postseason-stats-backfill-2000-2025.json
+```
+
+Each command prints and writes its JSON report even when it exits with code `1`.
+An exit code of `1` means that the producer reported failed entries, failed or
+quarantined rows, or unresolved player/season grains. Postseason skipped
+entries and `unsupported_synthetic_or_tot_rows` are expected and do not fail
+the command.
+
+Reconcile all three producer reports against the read-only official-stats
+validator in one invocation:
+
+```bash
+uv run nba-data validate official-stats \
+  --team-stats-report reports/stats-backfill-2000-2025.json \
+  --player-stats-report reports/player-stats-backfill-2000-2025.json \
+  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2025.json
+```
+
+When all three reports are supplied, the validator uses each producer's own
+row-count vocabulary and requires their combined total to match `count(*)`
+across every `stats.*` table. The checked-in Phase 4E baseline contributes
+129,000 team-season rows, 96,336 regular player rows, and 40,528 each of
+postseason aggregate and team-stint rows: 306,392 rows total.
+
+The old `--stats-backfill-report` option is removed. Use the three typed options
+above; a partial set is reported as incomplete rather than accepted as a full
+archive reconciliation. The current cached regular player report contains 577
+failed entries (including 25,640 rows that partially loaded), so that producer
+currently exits nonzero until the placeholder-row fix in F4E-022 is applied.
+
 ## Useful SQL Checks
 
 Table counts:

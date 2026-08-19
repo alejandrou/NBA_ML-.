@@ -97,6 +97,10 @@ def test_offline_player_postseason_stats_backfill_loads_harden_rows(tmp_path: Pa
     assert report.player_pages_processed == 1
     assert report.aggregate_rows_loaded_or_updated == 3
     assert report.team_rows_loaded_or_updated == 3
+    assert report.entries_failed == 0
+    assert report.rows_failed == 0
+    assert report.cache_root == str((tmp_path / "cache").resolve())
+    assert report.to_dict()["discovery_status"] == "ok"
     assert aggregate is not None
     assert aggregate.source_team_code == "BRK"
     assert team is not None
@@ -147,7 +151,13 @@ def test_cli_player_postseason_stats_runs_and_writes_report(tmp_path: Path, monk
 
     class FakeReport:
         def to_dict(self) -> dict[str, object]:
-            return {"player_pages_processed": 1, "aggregate_rows_loaded_or_updated": 3}
+            return {
+                "player_pages_processed": 1,
+                "aggregate_rows_loaded_or_updated": 3,
+                "entries_failed": 0,
+                "rows_failed": 0,
+                "unresolved_players_or_seasons_or_team_stints": 0,
+            }
 
     class FakeEngine:
         def dispose(self) -> None:
@@ -240,11 +250,85 @@ def test_cli_player_postseason_stats_runs_and_writes_report(tmp_path: Path, monk
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {"player_pages_processed": 1, "aggregate_rows_loaded_or_updated": 3}
+    assert json.loads(result.output) == {
+        "player_pages_processed": 1,
+        "aggregate_rows_loaded_or_updated": 3,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "unresolved_players_or_seasons_or_team_stints": 0,
+    }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
         "player_pages_processed": 1,
         "aggregate_rows_loaded_or_updated": 3,
+        "entries_failed": 0,
+        "rows_failed": 0,
+        "unresolved_players_or_seasons_or_team_stints": 0,
     }
+
+
+@pytest.mark.unit
+def test_cli_player_postseason_stats_prints_and_writes_before_nonzero_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = tmp_path / "reports" / "player-postseason-stats-failure.json"
+    monkeypatch.setenv("SCRAPER_CACHE_DIR", str(tmp_path / "cache"))
+    get_settings.cache_clear()
+
+    class FakeReport:
+        def to_dict(self) -> dict[str, object]:
+            return {
+                "aggregate_rows_loaded_or_updated": 3,
+                "entries_failed": 1,
+                "rows_failed": 2,
+            }
+
+    class FakeEngine:
+        def dispose(self) -> None:
+            return None
+
+    class FakeTransaction:
+        def __enter__(self) -> FakeTransaction:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+    class FakeSession:
+        def __enter__(self) -> FakeSession:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+        def begin(self) -> FakeTransaction:
+            return FakeTransaction()
+
+    monkeypatch.setattr(cli_main, "create_db_engine", lambda settings: FakeEngine())
+    monkeypatch.setattr(cli_main, "create_session_factory", lambda engine: lambda: FakeSession())
+    monkeypatch.setattr(
+        cli_main,
+        "run_offline_player_postseason_stats_backfill",
+        lambda *args, **kwargs: FakeReport(),
+    )
+
+    try:
+        result = CliRunner().invoke(
+            app,
+            [
+                "backfill",
+                "player-postseason-stats",
+                "--execute-approved-player-postseason-stats-backfill",
+                "--output",
+                str(output_path),
+            ],
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert result.exit_code == 1
+    assert json.loads(result.output)["entries_failed"] == 1
+    assert json.loads(output_path.read_text(encoding="utf-8"))["rows_failed"] == 2
 
 
 @pytest.mark.unit

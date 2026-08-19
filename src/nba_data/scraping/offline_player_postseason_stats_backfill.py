@@ -41,6 +41,7 @@ class OfflinePlayerPostseasonStatsBackfillEntry:
     rows_skipped: int
     aggregate_rows_loaded_or_updated: int
     team_rows_loaded_or_updated: int
+    rows_failed: int
     unresolved_rows: int
     unsupported_rows: int
     reason: str | None = None
@@ -57,6 +58,7 @@ class OfflinePlayerPostseasonStatsBackfillEntry:
             "rows_skipped": self.rows_skipped,
             "aggregate_rows_loaded_or_updated": self.aggregate_rows_loaded_or_updated,
             "team_rows_loaded_or_updated": self.team_rows_loaded_or_updated,
+            "rows_failed": self.rows_failed,
             "unresolved_rows": self.unresolved_rows,
             "unsupported_rows": self.unsupported_rows,
             "reason": self.reason,
@@ -70,6 +72,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
     aggregate_rows_loaded_or_updated: int
     team_rows_loaded_or_updated: int
     rows_skipped: int
+    entries_failed: int
+    rows_failed: int
     unresolved_players_or_seasons_or_team_stints: int
     unsupported_synthetic_or_tot_rows: int
     cache_root: str
@@ -84,6 +88,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
             "aggregate_rows_loaded_or_updated": self.aggregate_rows_loaded_or_updated,
             "team_rows_loaded_or_updated": self.team_rows_loaded_or_updated,
             "rows_skipped": self.rows_skipped,
+            "entries_failed": self.entries_failed,
+            "rows_failed": self.rows_failed,
             "unresolved_players_or_seasons_or_team_stints": self.unresolved_players_or_seasons_or_team_stints,
             "unsupported_synthetic_or_tot_rows": self.unsupported_synthetic_or_tot_rows,
             "cache_root": self.cache_root,
@@ -140,6 +146,8 @@ def run_offline_player_postseason_stats_backfill(
         aggregate_rows_loaded_or_updated=sum(entry.aggregate_rows_loaded_or_updated for entry in entries),
         team_rows_loaded_or_updated=sum(entry.team_rows_loaded_or_updated for entry in entries),
         rows_skipped=sum(entry.rows_skipped for entry in entries),
+        entries_failed=sum(entry.status == "failed" for entry in entries),
+        rows_failed=sum(entry.rows_failed for entry in entries),
         unresolved_players_or_seasons_or_team_stints=sum(entry.unresolved_rows for entry in entries),
         unsupported_synthetic_or_tot_rows=sum(entry.unsupported_rows for entry in entries),
         cache_root=str(cache_root),
@@ -180,6 +188,7 @@ def _process_one_player_page(
                 rows_skipped=normalized.rows_skipped,
                 aggregate_rows_loaded_or_updated=0,
                 team_rows_loaded_or_updated=0,
+                rows_failed=0,
                 unresolved_rows=0,
                 unsupported_rows=normalized.unsupported_rows,
                 reason="No supported postseason rows were selected.",
@@ -205,6 +214,7 @@ def _process_one_player_page(
             rows_skipped=0,
             aggregate_rows_loaded_or_updated=0,
             team_rows_loaded_or_updated=0,
+            rows_failed=0,
             unresolved_rows=0,
             unsupported_rows=0,
             reason=str(exc),
@@ -250,6 +260,7 @@ def _process_one_player_page(
         rows_skipped=normalized.rows_skipped + load_report.skipped_rows,
         aggregate_rows_loaded_or_updated=aggregate_rows_loaded,
         team_rows_loaded_or_updated=team_rows_loaded,
+        rows_failed=load_report.failed_rows,
         unresolved_rows=unresolved_rows,
         unsupported_rows=normalized.unsupported_rows,
         reason=reason,

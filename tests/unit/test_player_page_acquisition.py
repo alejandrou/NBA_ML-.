@@ -351,7 +351,12 @@ def test_cli_dry_run_player_pages_runs_and_writes_report(
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {"total_players": 1, "cache_hits": 1, "entries": []}
+    assert json.loads(result.output) == {
+        "total_players": 1,
+        "cache_hits": 1,
+        "entries": 0,
+        "output_path": str(output_path.resolve()),
+    }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
         "total_players": 1,
         "cache_hits": 1,
@@ -493,8 +498,12 @@ def test_cli_acquire_player_pages_runs_and_writes_report(
         "client_enter",
         "client_exit",
     ]
-    report = json.loads(result.output)
-    assert report["fetched"] == 1
-    assert report["live_request_count"] == 1
-    assert json.loads(output_path.read_text(encoding="utf-8")) == report
+    summary = json.loads(result.output)
+    assert summary["fetched"] == 1
+    assert summary["live_request_count"] == 1
+    assert summary["output_path"] == str(output_path.resolve())
+    full_report = json.loads(output_path.read_text(encoding="utf-8"))
+    assert full_report["fetched"] == 1
+    assert full_report["live_request_count"] == 1
+    assert summary["entries"] == len(full_report["entries"])
     assert HtmlCache(tmp_path / "cache").get(PLAYER_URL) == "<!doctype html><html>cli fresh</html>"

@@ -126,29 +126,68 @@ list field; the size is the motivation, not the test.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_offline_reporting.py tests/unit/test_offline_backfill.py tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py tests/unit/test_offline_stats_backfill.py tests/unit/test_player_page_acquisition.py tests/unit/test_nba_team_season_acquisition.py`
+- Result: 103 passed.
+- Command: `uv run ruff check .`
+- Result: All checks passed!
+- Command: `uv run pytest`
+- Result: 766 passed, 25 skipped.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
+- Also verified directly (scratch scripts, not committed): `_summarize_report` reduces
+  `list`/`tuple`/`dict` fields to their length, leaves scalars (including `str`)
+  untouched, and adds `output_path`; and the new `open(...).write()` path produces
+  byte-identical output to the old `Path.write_text(...)` call for the same input
+  (both translate `\n` to the platform line separator — `\r\n` on this Windows
+  machine — via Python's default text-mode newline handling, so no behavior
+  changed there).
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Ran `test_cli_backfill_offline_runs_with_fake_session_and_writes_report` (now
+   extended with a `quarantine_entries` list field): with `--output`, stdout
+   parses to `{"selected_inventory_entries": 1, "loaded_entries": 1,
+   "quarantine_entries": 1, "output_path": "<resolved path>"}`, `"BOS"` (the
+   sentinel entry-level value) is absent from stdout, and the file at
+   `--output` holds the full report including the `"BOS"` entry.
+2. Ran the new sibling test
+   `test_cli_backfill_offline_without_output_prints_full_report`: without
+   `--output`, stdout parses to the complete, unmodified report dictionary.
+3. Confirmed the six other CLI report tests that assert stdout with `--output`
+   set (`test_offline_player_stats_backfill.py`,
+   `test_offline_player_postseason_stats_backfill.py`,
+   `test_offline_stats_backfill.py` x2, `test_player_page_acquisition.py` x2,
+   `test_nba_team_season_acquisition.py`) now assert the summary on stdout
+   (scalars unchanged, `entries`/list fields reduced to a count,
+   `output_path` present) and the full report in the written file.
 
-Expected result:
+Expected result: stdout is small and generic across report shapes; the file on
+disk is the untouched, full report.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Ran `test_offline_player_postseason_stats_backfill.py`'s
+   `--output`-with-failure case (unmatched cache root / failed entries): exit
+   code stays 1, the file is written with the full report before the process
+   exits, and stdout's summary still exposes the scalar failure counts
+   (`entries_failed`, `rows_failed`) used by `_print_backfill_report_and_exit_if_failed`.
+2. Ran the acquisition failure-path tests
+   (`test_nba_team_season_acquisition.py`, `test_player_page_acquisition.py`)
+   that stop mid-manifest: report is written to `--output`, summary (with
+   `entries` as a count) prints to stdout, and the command still exits 1.
 
-Expected result:
+Expected result: failure/exit-code behavior is unchanged; only what prints to
+stdout changed.
 
 ## Known limitations
 
-- None.
+- The 178 MB report that motivated this card is not reproducible in a test;
+  behavior is verified on small synthetic reports with a list field, per the
+  card's own implementation note.
+- Not run against a live `--output` invocation of a real acquisition/backfill
+  command end-to-end (would require live scraping or a shared database, both
+  outside this card's approval). Coverage instead comes from the CLI test
+  suite, which exercises the same `_print_and_optionally_write_json` path with
+  fake sessions/engines.

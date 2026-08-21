@@ -332,6 +332,7 @@ def test_cli_player_stats_runs_and_writes_report(
         "entries_failed": 0,
         "rows_failed": 0,
         "unresolved_players_or_seasons": 0,
+        "output_path": str(output_path.resolve()),
     }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
         "player_pages_processed": 1,

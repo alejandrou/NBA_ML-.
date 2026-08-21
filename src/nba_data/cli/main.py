@@ -803,7 +803,26 @@ def _print_backfill_report_and_exit_if_failed(
 
 
 def _print_and_optionally_write_json(data: dict[str, object], output: Path | None) -> None:
-    if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    console.print_json(data=data)
+    if output is None:
+        console.print_json(data=data)
+        return
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    console.print_json(data=_summarize_report(data, output))
+
+
+def _summarize_report(data: dict[str, object], output: Path) -> dict[str, object]:
+    """Reduce a report to its scalars plus lengths, so stdout stays small.
+
+    Generic over the report's shape: no field name of any specific report is
+    referenced here, so a new report type needs no change to this function.
+    """
+
+    summary: dict[str, object] = {
+        key: len(value) if isinstance(value, list | tuple | dict) else value
+        for key, value in data.items()
+    }
+    summary["output_path"] = str(output.resolve())
+    return summary

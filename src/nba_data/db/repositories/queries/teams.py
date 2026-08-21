@@ -8,7 +8,10 @@ def list_teams(session: Session, *, offset: int, limit: int) -> list[Team]:
     """Return one deterministic page of teams without changing the Session."""
     statement = (
         select(Team)
-        .order_by(Team.current_name.asc(), Team.id.asc())
+        .order_by(
+            Team.current_name.asc(),
+            Team.basketball_reference_team_id.asc(),
+        )
         .offset(offset)
         .limit(limit)
     )
@@ -21,7 +24,12 @@ def count_teams(session: Session) -> int:
     return int(session.scalar(statement) or 0)
 
 
-def get_team(session: Session, team_id: int) -> Team | None:
-    """Return one team by its stable internal identifier, if it exists."""
-    statement = select(Team).where(Team.id == team_id)
+def get_team_by_basketball_reference_team_id(
+    session: Session,
+    basketball_reference_team_id: str,
+) -> Team | None:
+    """Return one team by its exact Basketball Reference code, if it exists."""
+    statement = select(Team).where(
+        Team.basketball_reference_team_id == basketball_reference_team_id
+    )
     return session.scalar(statement)

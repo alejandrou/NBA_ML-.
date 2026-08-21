@@ -47,7 +47,7 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
         "/api/v1/health",
         "/api/v1/health/ready",
         "/api/v1/teams",
-        "/api/v1/teams/{team_id}",
+        "/api/v1/teams/{basketball_reference_team_id}",
         "/api/v1/seasons",
         "/api/v1/seasons/{season_year}",
     }
@@ -61,7 +61,7 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
     assert "patch" not in openapi["paths"]["/api/v1/health"]
     assert "delete" not in openapi["paths"]["/api/v1/health"]
     assert set(openapi["paths"]["/api/v1/teams"]) == {"get"}
-    assert set(openapi["paths"]["/api/v1/teams/{team_id}"]) == {"get"}
+    assert set(openapi["paths"]["/api/v1/teams/{basketball_reference_team_id}"]) == {"get"}
     assert set(openapi["paths"]["/api/v1/seasons"]) == {"get"}
     assert set(openapi["paths"]["/api/v1/seasons/{season_year}"]) == {"get"}
 

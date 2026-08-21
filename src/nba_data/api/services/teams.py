@@ -19,17 +19,22 @@ def list_teams(session: Session, *, page: int, page_size: int) -> TeamListRespon
     )
 
 
-def get_team(session: Session, *, team_id: int) -> TeamResponse | None:
+def get_team(
+    session: Session,
+    *,
+    basketball_reference_team_id: str,
+) -> TeamResponse | None:
     """Return one mapped team, or None when the identifier is missing."""
-    team = team_queries.get_team(session, team_id)
+    team = team_queries.get_team_by_basketball_reference_team_id(
+        session,
+        basketball_reference_team_id,
+    )
     return _to_response(team) if team is not None else None
 
 
 def _to_response(team: Team) -> TeamResponse:
     return TeamResponse(
-        team_id=team.id,
         basketball_reference_team_id=team.basketball_reference_team_id,
         current_abbreviation=team.current_abbreviation,
         current_name=team.current_name,
-        franchise_id=team.franchise_id,
     )

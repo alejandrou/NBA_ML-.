@@ -5,40 +5,28 @@ the offline suite builds. PostgreSQL is the engine that actually holds the data,
 and it is the one whose `trim`, `replace`, `substr` and `LIKE` semantics the
 constraints depend on. This runs the same rule against it.
 
-Nothing here commits: every insert happens inside a transaction that is rolled
-back, so the database is left exactly as it was found.
+An insert can fail for reasons that have nothing to do with the rule being
+tested, so every probe names the check constraint it expects and asserts against
+the constraint PostgreSQL reports, rather than against "some `IntegrityError`
+happened" — otherwise a unique or foreign-key violation would satisfy a
+rejection test that the check constraint itself could have failed.
 
-The database under test is a real one that already holds teams, so an insert can
-fail for reasons that have nothing to do with the rule being tested. Every probe
-therefore names the check constraint it expects, and the assertions are made
-against the constraint PostgreSQL reports rather than against "some
-`IntegrityError` happened" — otherwise a unique or foreign-key violation would
-satisfy a rejection test that the check constraint itself could have failed.
+Environment authorization, connection lifetime, revision checking, and the
+rollback that leaves the database as it was found all belong to
+`tests/integration/conftest.py`.
 """
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterator
-from pathlib import Path
-from typing import NoReturn
 from uuid import uuid4
 
 import pytest
-from alembic.config import Config
-from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.engine import Connection
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-
-from nba_data.config.settings import get_settings
-
-_REQUIRE_POSTGRES_INTEGRATION_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
-_REQUIRED_VALUES = {"1", "true", "yes", "on"}
-_ALEMBIC_INI_PATH = Path(__file__).resolve().parents[2] / "alembic.ini"
+from sqlalchemy.exc import IntegrityError
 
 # The only column in the four under test that carries a global uniqueness rule,
-# so the only one where a real row can stand in the way of a probe insert.
+# so the only one where a stored row can stand in the way of a probe insert.
 _TEAMS_BREF_ID_UNIQUE = "uq_core_teams_bref_id"
 
 # Values the constraints must refuse, and lookalikes they must still accept.
@@ -47,52 +35,17 @@ REJECTED = ("TOT", "tot", " 5TM ", "2TM", "5TM", "10TM", "999TM", "99999999TM")
 ACCEPTED = ("BOS", "CHO", "0TM", "1TM", "02TM", "TM", "1T2M", "T2M", "2MT")
 
 
-@pytest.fixture
-def connection() -> Iterator[Connection]:
-    """A connection whose work is always rolled back."""
-
-    engine = create_engine(
-        get_settings().database_url,
-        connect_args={"connect_timeout": 2},
-        pool_pre_ping=True,
-    )
-    if engine.dialect.name != "postgresql":
-        engine.dispose()
-        pytest.fail("DATABASE_URL must configure PostgreSQL for this test", pytrace=False)
-
-    try:
-        open_connection = engine.connect()
-    except SQLAlchemyError as exc:
-        engine.dispose()
-        _skip_or_fail(f"PostgreSQL is unavailable: {exc}")
-
-    try:
-        _require_migration_head(open_connection)
-        # Reading the revision autobegins a transaction; end it before opening
-        # the explicit one whose rollback is this fixture's whole guarantee.
-        open_connection.rollback()
-
-        transaction = open_connection.begin()
-        try:
-            yield open_connection
-        finally:
-            transaction.rollback()
-    finally:
-        open_connection.close()
-        engine.dispose()
-
-
 @pytest.mark.integration
 @pytest.mark.parametrize("value", REJECTED)
 def test_postgres_refuses_a_synthetic_code_in_every_guarded_column(
-    connection: Connection, value: str
+    postgres_connection: Connection, value: str
 ) -> None:
-    team_id, season_id = _seed_parents(connection)
+    team_id, season_id = _seed_parents(postgres_connection)
 
     for statement, parameters, check_name in _inserts(
         value, team_id=team_id, season_id=season_id
     ):
-        error = _integrity_error_from(connection, statement, parameters)
+        error = _integrity_error_from(postgres_connection, statement, parameters)
 
         assert error is not None, f"{check_name} accepted {value!r}"
         assert _violated_constraint(error) == check_name, (
@@ -104,27 +57,29 @@ def test_postgres_refuses_a_synthetic_code_in_every_guarded_column(
 @pytest.mark.integration
 @pytest.mark.parametrize("value", ACCEPTED)
 def test_postgres_still_accepts_a_code_that_is_not_a_marker(
-    connection: Connection, value: str
+    postgres_connection: Connection, value: str
 ) -> None:
-    team_id, season_id = _seed_parents(connection)
+    team_id, season_id = _seed_parents(postgres_connection)
 
     for statement, parameters, check_name in _inserts(
         value, team_id=team_id, season_id=season_id
     ):
-        error = _integrity_error_from(connection, statement, parameters)
+        error = _integrity_error_from(postgres_connection, statement, parameters)
         if error is None:
             continue
 
         violated = _violated_constraint(error)
         assert violated != check_name, f"{check_name} wrongly rejected {value!r}"
-        # A real team already owning this code is not a failure of the check —
+        # A team row already owning this code is not a failure of the check —
         # that stored row had to satisfy the very constraint under test to exist,
-        # which is the same conclusion the insert would have demonstrated.
+        # which is the same conclusion the insert would have demonstrated. The
+        # lane's database starts empty, so this can only be a row an earlier
+        # probe in this same test inserted.
         assert violated == _TEAMS_BREF_ID_UNIQUE, (
             f"inserting {value!r} failed on {violated!r}, which is neither the "
             f"check under test nor a collision with an existing team code"
         )
-        assert _team_code_is_stored(connection, value), (
+        assert _team_code_is_stored(postgres_connection, value), (
             f"{violated!r} fired for {value!r} but no team row holds that code"
         )
 
@@ -136,8 +91,9 @@ def _inserts(
 
     The filler code in the two `core.teams` probes is generated rather than
     hardcoded because it lands in `basketball_reference_team_id`, which is
-    unique: any fixed real-looking code would collide with the stored team that
-    owns it and mask the constraint this module exists to test.
+    unique: any fixed real-looking code would collide with a row seeded
+    elsewhere in the same transaction and mask the constraint this module exists
+    to test.
     """
 
     filler = _unique_probe_code()
@@ -174,9 +130,9 @@ def _integrity_error_from(
 ) -> IntegrityError | None:
     """Run one probe in a savepoint and hand back whatever it violated.
 
-    The savepoint is released before the caller asserts anything, because a
-    failed statement leaves the transaction unusable until it is rolled back and
-    the assertions themselves need to query.
+    The savepoint is rolled back before the caller asserts anything, because a
+    failed statement leaves the transaction unusable until it is, and the
+    assertions themselves need to query.
     """
 
     savepoint = connection.begin_nested()
@@ -210,20 +166,30 @@ def _unique_probe_code() -> str:
 
     It holds no digits, so the rule's digit-stripping branch compares the whole
     six-letter code against `TM` and cannot match, and six characters can never
-    be `TOT`. Six letters also cannot equal any stored three-letter team code.
+    be `TOT`. Six letters also cannot equal any three-letter team code.
     """
 
     return "".join(chr(ord("A") + byte % 26) for byte in uuid4().bytes[:6])
 
 
 def _seed_parents(connection: Connection) -> tuple[int, int]:
-    """Rows the foreign keys need, so a rejection can only come from the check."""
+    """Rows the foreign keys need, so a rejection can only come from the check.
+
+    The parent carries a generated natural key because
+    `0007_team_bref_id_not_null` made `basketball_reference_team_id` NOT NULL:
+    without one, every probe below would fail on this insert instead of on the
+    check constraint under test. The same generator serves both purposes rather
+    than a second one being introduced beside it. `current_abbreviation` stays
+    omitted — it is nullable and irrelevant to the parent's only job, which is
+    to satisfy a foreign key.
+    """
 
     team_id = connection.execute(
         text(
-            "insert into core.teams (current_name) values ('Constraint probe parent') "
-            "returning id"
-        )
+            "insert into core.teams (basketball_reference_team_id, current_name) "
+            "values (:code, 'Constraint probe parent') returning id"
+        ),
+        {"code": _unique_probe_code()},
     ).scalar_one()
     season_id = connection.execute(
         text(
@@ -232,33 +198,3 @@ def _seed_parents(connection: Connection) -> tuple[int, int]:
         )
     ).scalar_one()
     return team_id, season_id
-
-
-def _require_migration_head(connection: Connection) -> None:
-    """These constraints only exist at the head, so anything earlier is N/A.
-
-    A database that predates revision 0006 does not have the constraints under
-    test, which is a reason to skip rather than to fail — except in CI and in
-    `scripts/validate_postgres_local.py`, which both set the require-flag and so
-    turn the skip into a failure.
-    """
-
-    try:
-        revisions = set(
-            connection.scalars(text("SELECT version_num FROM alembic_version")).all()
-        )
-    except SQLAlchemyError as exc:
-        _skip_or_fail(f"PostgreSQL schema is not migrated: {exc}")
-
-    heads = set(ScriptDirectory.from_config(Config(str(_ALEMBIC_INI_PATH))).get_heads())
-    if revisions != heads:
-        _skip_or_fail(
-            f"PostgreSQL schema is at {sorted(revisions)}, "
-            f"not the migration head {sorted(heads)}"
-        )
-
-
-def _skip_or_fail(message: str) -> NoReturn:
-    if os.getenv(_REQUIRE_POSTGRES_INTEGRATION_ENV, "").strip().lower() in _REQUIRED_VALUES:
-        pytest.fail(message, pytrace=False)
-    pytest.skip(message)

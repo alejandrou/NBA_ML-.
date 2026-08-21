@@ -40,7 +40,7 @@ class Team(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    basketball_reference_team_id: Mapped[str | None] = mapped_column(String(10))
+    basketball_reference_team_id: Mapped[str] = mapped_column(String(10), nullable=False)
     current_abbreviation: Mapped[str | None] = mapped_column(String(10))
     current_name: Mapped[str] = mapped_column(String(200), nullable=False)
     franchise_id: Mapped[str | None] = mapped_column(String(100))

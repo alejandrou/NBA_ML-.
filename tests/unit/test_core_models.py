@@ -34,6 +34,7 @@ def test_core_identifier_constraints_are_explicit() -> None:
     )
     assert "uq_core_players_bref_id" in _constraint_names(Player, UniqueConstraint)
     assert "uq_core_seasons_league_year" in _constraint_names(Season, UniqueConstraint)
+    assert Team.__table__.c.basketball_reference_team_id.nullable is False
 
 
 def test_team_season_constraints_reject_tot_as_real_team() -> None:

@@ -8,8 +8,6 @@ from sqlalchemy.orm import Session
 
 from nba_data.api import create_app
 from nba_data.api.dependencies import get_request_session
-from nba_data.api.schemas.teams import TeamListResponse, TeamResponse
-from nba_data.api.services import teams as team_service
 from nba_data.db.models.core import Team
 
 
@@ -81,29 +79,37 @@ def app_reading_from(
 def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Serve requests through the real router, service, and query repository."""
     with offline_core_session() as session:
-        # These rows mirror production, so franchise_id is null: no loader writes it.
         session.add_all(
             [
                 Team(
                     id=3,
-                    basketball_reference_team_id="BBB",
-                    current_abbreviation="BBB",
-                    current_name="Bulls",
-                    franchise_id=None,
-                ),
-                Team(
-                    id=1,
                     basketball_reference_team_id="AAA",
                     current_abbreviation="AAA",
                     current_name="Bulls",
-                    franchise_id=None,
+                ),
+                Team(
+                    id=1,
+                    basketball_reference_team_id="BBB",
+                    current_abbreviation="BBB",
+                    current_name="Bulls",
                 ),
                 Team(
                     id=2,
                     basketball_reference_team_id="CCC",
                     current_abbreviation=None,
                     current_name="Celtics",
-                    franchise_id=None,
+                ),
+                Team(
+                    id=4,
+                    basketball_reference_team_id="SEA",
+                    current_abbreviation="SEA",
+                    current_name="Seattle SuperSonics",
+                ),
+                Team(
+                    id=5,
+                    basketball_reference_team_id="OKC",
+                    current_abbreviation="OKC",
+                    current_name="Oklahoma City Thunder",
                 ),
             ]
         )
@@ -114,102 +120,22 @@ def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 
 
 @pytest.mark.unit
-def test_list_teams_returns_the_approved_collection(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    # A populated franchise_id here tests serialization of a nullable field, not real data:
-    # the column is null on every production row. Tests that seed the database use null.
-    monkeypatch.setattr(
-        team_service,
-        "list_teams",
-        lambda session, *, page, page_size: TeamListResponse(
-            items=[
-                TeamResponse(
-                    team_id=7,
-                    basketball_reference_team_id="ATL",
-                    current_abbreviation="ATL",
-                    current_name="Atlanta Hawks",
-                    franchise_id="hawks",
-                )
-            ],
-            page=page,
-            page_size=page_size,
-            total=1,
-        ),
-    )
-
-    response = client.get("/api/v1/teams", params={"page": 2, "page_size": 1})
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "items": [
-            {
-                "team_id": 7,
-                "basketball_reference_team_id": "ATL",
-                "current_abbreviation": "ATL",
-                "current_name": "Atlanta Hawks",
-                "franchise_id": "hawks",
-            }
-        ],
-        "page": 2,
-        "page_size": 1,
-        "total": 1,
-    }
-
-
-@pytest.mark.unit
-def test_empty_team_page_returns_200(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        team_service,
-        "list_teams",
-        lambda session, *, page, page_size: TeamListResponse(
-            items=[], page=page, page_size=page_size, total=1
-        ),
-    )
-
-    response = client.get("/api/v1/teams?page=999")
-
-    assert response.status_code == 200
-    assert response.json() == {"items": [], "page": 999, "page_size": 50, "total": 1}
-
-
-@pytest.mark.unit
-def test_get_team_returns_existing_team_and_404_for_missing(
-    client: TestClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    team = TeamResponse(
-        team_id=7,
-        basketball_reference_team_id=None,
-        current_abbreviation=None,
-        current_name="Atlanta Hawks",
-        franchise_id=None,
-    )
-    monkeypatch.setattr(
-        team_service,
-        "get_team",
-        lambda session, *, team_id: team if team_id == 7 else None,
-    )
-
-    existing = client.get("/api/v1/teams/7")
-    missing = client.get("/api/v1/teams/8")
-
-    assert existing.status_code == 200
-    assert existing.json() == team.model_dump()
-    assert missing.status_code == 404
-    assert missing.json() == {"detail": "Team not found"}
-
-
-@pytest.mark.unit
 def test_team_routes_validate_inputs_and_expose_only_get(client: TestClient) -> None:
     assert client.get("/api/v1/teams?page=0").status_code == 422
     assert client.get("/api/v1/teams?page_size=101").status_code == 422
-    assert client.get("/api/v1/teams/not-an-integer").status_code == 422
-    assert client.get("/api/v1/teams/0").status_code == 422
+    assert client.get("/api/v1/teams/ABCDEFGHIJK").status_code == 422
+    empty_code = client.get("/api/v1/teams/")
+    assert empty_code.status_code == 404
+    assert empty_code.json() == {"detail": "Team not found"}
+    assert client.get("/api/v1/teams/ATL/extra").status_code == 404
     assert client.post("/api/v1/teams").status_code == 405
-    assert client.delete("/api/v1/teams/7").status_code == 405
+    assert client.put("/api/v1/teams/ATL").status_code == 405
+    assert client.patch("/api/v1/teams/ATL").status_code == 405
+    assert client.delete("/api/v1/teams/ATL").status_code == 405
 
 
 @pytest.mark.unit
-def test_team_routes_serve_real_rows_through_the_whole_stack(
+def test_team_collection_serves_the_approved_fields_and_page_metadata(
     vertical_client: TestClient,
 ) -> None:
     listed = vertical_client.get("/api/v1/teams", params={"page_size": 2})
@@ -218,36 +144,183 @@ def test_team_routes_serve_real_rows_through_the_whole_stack(
     assert listed.json() == {
         "items": [
             {
-                "team_id": 1,
                 "basketball_reference_team_id": "AAA",
                 "current_abbreviation": "AAA",
                 "current_name": "Bulls",
-                "franchise_id": None,
             },
             {
-                "team_id": 3,
                 "basketball_reference_team_id": "BBB",
                 "current_abbreviation": "BBB",
                 "current_name": "Bulls",
-                "franchise_id": None,
             },
         ],
         "page": 1,
         "page_size": 2,
-        "total": 3,
+        "total": 5,
     }
 
-    detail = vertical_client.get("/api/v1/teams/2")
+
+@pytest.mark.unit
+def test_team_collection_orders_by_name_then_natural_key(
+    vertical_client: TestClient,
+) -> None:
+    """The contract's tie-breaker is the natural key, not the surrogate id.
+
+    The two `Bulls` rows are stored with ids 3 and 1, so ordering on the
+    surrogate would serve `BBB` before `AAA`. That is the regression this pins.
+    """
+
+    listed = vertical_client.get("/api/v1/teams", params={"page_size": 100})
+
+    assert listed.status_code == 200
+    assert [
+        (item["current_name"], item["basketball_reference_team_id"])
+        for item in listed.json()["items"]
+    ] == [
+        ("Bulls", "AAA"),
+        ("Bulls", "BBB"),
+        ("Celtics", "CCC"),
+        ("Oklahoma City Thunder", "OKC"),
+        ("Seattle SuperSonics", "SEA"),
+    ]
+
+
+@pytest.mark.unit
+def test_team_pages_partition_the_collection_without_repeating_a_natural_key(
+    vertical_client: TestClient,
+) -> None:
+    pages = [
+        vertical_client.get("/api/v1/teams", params={"page": page, "page_size": 2})
+        for page in (1, 2, 3)
+    ]
+
+    assert [response.status_code for response in pages] == [200, 200, 200]
+    assert [len(response.json()["items"]) for response in pages] == [2, 2, 1]
+    assert [(response.json()["page"], response.json()["page_size"]) for response in pages] == [
+        (1, 2),
+        (2, 2),
+        (3, 2),
+    ]
+    assert {response.json()["total"] for response in pages} == {5}
+
+    served = [
+        item["basketball_reference_team_id"]
+        for response in pages
+        for item in response.json()["items"]
+    ]
+    assert served == ["AAA", "BBB", "CCC", "OKC", "SEA"]
+    assert len(served) == len(set(served)), f"a team was served twice: {served}"
+
+
+@pytest.mark.unit
+def test_a_valid_page_past_the_end_is_empty_and_keeps_the_total(
+    vertical_client: TestClient,
+) -> None:
+    """An empty page is a valid answer, not a 404 and not a changed total.
+
+    Also the one place the default `page_size` is pinned, since the request that
+    omits it is the request that would silently change size.
+    """
+
+    sized = vertical_client.get("/api/v1/teams", params={"page": 999, "page_size": 2})
+    defaulted = vertical_client.get("/api/v1/teams", params={"page": 999})
+
+    assert sized.status_code == 200
+    assert sized.json() == {"items": [], "page": 999, "page_size": 2, "total": 5}
+    assert defaulted.status_code == 200
+    assert defaulted.json() == {"items": [], "page": 999, "page_size": 50, "total": 5}
+
+
+@pytest.mark.unit
+def test_team_detail_serves_a_team_by_its_natural_key(vertical_client: TestClient) -> None:
+    detail = vertical_client.get("/api/v1/teams/CCC")
 
     assert detail.status_code == 200
     assert detail.json() == {
-        "team_id": 2,
         "basketball_reference_team_id": "CCC",
         "current_abbreviation": None,
         "current_name": "Celtics",
-        "franchise_id": None,
     }
-    assert vertical_client.get("/api/v1/teams/999").status_code == 404
+
+
+@pytest.mark.unit
+def test_a_numeric_path_is_not_a_surrogate_id_lookup(vertical_client: TestClient) -> None:
+    """`/teams/1` must stay a lookup for the code `"1"`, which no team holds.
+
+    The fixture stores `BBB` at internal `id=1` deliberately. If a later change
+    reintroduced surrogate-id routing, `/teams/1` would start answering 200 with
+    that row — so this asserts the row is genuinely reachable by its code first,
+    which is what makes the 404 below evidence rather than a coincidence.
+    """
+
+    by_code = vertical_client.get("/api/v1/teams/BBB")
+
+    assert by_code.status_code == 200
+    assert by_code.json() == {
+        "basketball_reference_team_id": "BBB",
+        "current_abbreviation": "BBB",
+        "current_name": "Bulls",
+    }
+
+    by_surrogate_id = vertical_client.get("/api/v1/teams/1")
+
+    assert by_surrogate_id.status_code == 404
+    assert by_surrogate_id.json() == {"detail": "Team not found"}
+
+
+@pytest.mark.unit
+def test_withdrawn_identity_fields_are_absent_from_every_team_response(
+    vertical_client: TestClient,
+) -> None:
+    """`F5-006` withdrew `team_id` and `franchise_id` from v1."""
+
+    detail = vertical_client.get("/api/v1/teams/AAA")
+    listed = vertical_client.get("/api/v1/teams", params={"page_size": 100})
+
+    withdrawn = {"team_id", "franchise_id"}
+    assert set(detail.json()) == {
+        "basketball_reference_team_id",
+        "current_abbreviation",
+        "current_name",
+    }
+    for item in listed.json()["items"]:
+        assert withdrawn.isdisjoint(item), item
+
+
+@pytest.mark.unit
+def test_team_codes_are_exact_and_synthetic_codes_are_not_resolvable(
+    vertical_client: TestClient,
+) -> None:
+    """Case-sensitive lookup, and `TOT` is a marker rather than an addressable team."""
+
+    assert vertical_client.get("/api/v1/teams/AAA").status_code == 200
+
+    for unresolvable in ("aaa", "UNKNOWN", "TOT"):
+        response = vertical_client.get(f"/api/v1/teams/{unresolvable}")
+
+        assert response.status_code == 404, unresolvable
+        assert response.json() == {"detail": "Team not found"}, unresolvable
+
+
+@pytest.mark.unit
+def test_relocated_teams_are_independently_reachable_without_lineage(
+    vertical_client: TestClient,
+) -> None:
+    sea = vertical_client.get("/api/v1/teams/SEA")
+    okc = vertical_client.get("/api/v1/teams/OKC")
+
+    assert sea.status_code == 200
+    assert sea.json() == {
+        "basketball_reference_team_id": "SEA",
+        "current_abbreviation": "SEA",
+        "current_name": "Seattle SuperSonics",
+    }
+    assert okc.status_code == 200
+    assert okc.json() == {
+        "basketball_reference_team_id": "OKC",
+        "current_abbreviation": "OKC",
+        "current_name": "Oklahoma City Thunder",
+    }
 
 
 @pytest.mark.unit
@@ -273,13 +346,17 @@ def test_a_failing_database_returns_the_documented_error_body(
 def test_team_routes_are_registered_with_approved_openapi_fields(client: TestClient) -> None:
     openapi = client.app.openapi()
 
-    assert set(openapi["paths"]) >= {"/api/v1/teams", "/api/v1/teams/{team_id}"}
+    detail_path = "/api/v1/teams/{basketball_reference_team_id}"
+    assert set(openapi["paths"]) >= {"/api/v1/teams", detail_path}
     assert set(openapi["paths"]["/api/v1/teams"]) == {"get"}
-    assert set(openapi["paths"]["/api/v1/teams/{team_id}"]) == {"get"}
+    assert set(openapi["paths"][detail_path]) == {"get"}
+    path_parameter = openapi["paths"][detail_path]["get"]["parameters"][0]
+    assert path_parameter["name"] == "basketball_reference_team_id"
+    assert path_parameter["schema"]["type"] == "string"
+    assert path_parameter["schema"]["minLength"] == 1
+    assert path_parameter["schema"]["maxLength"] == 10
     assert set(openapi["components"]["schemas"]["TeamResponse"]["properties"]) == {
-        "team_id",
         "basketball_reference_team_id",
         "current_abbreviation",
         "current_name",
-        "franchise_id",
     }

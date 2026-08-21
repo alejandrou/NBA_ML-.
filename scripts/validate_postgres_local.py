@@ -22,19 +22,25 @@ import subprocess
 import sys
 from uuid import uuid4
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
 
 from nba_data.config.settings import get_settings
 
+# Imported for its import side effect: the empty check below derives its table
+# list from the shared metadata, which is only complete once every model module
+# has been imported.
+from nba_data.db import models as _models  # noqa: F401
+from nba_data.db.base import Base
+
 _TEMP_DB_PREFIX = "nba_test_tmp_"
+_CORE_SCHEMA = "core"
 _SAFE_NAME_RE = re.compile(r"^[a-z0-9_]+$")
 _REQUIRE_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
-_INTEGRATION_TESTS = (
-    "tests/integration/test_team_season_loader_postgres.py",
-    "tests/integration/test_api_postgres.py",
-    "tests/integration/test_synthetic_team_code_constraints_postgres.py",
-)
+# The tests refuse to connect without this, whatever DATABASE_URL says. Setting
+# it is only safe here because the database it will name is one this script
+# generated moments ago and drops before it returns.
+_TEST_DATABASE_ENV = "NBA_DATA_TEST_DATABASE"
 
 
 def main() -> int:
@@ -71,6 +77,7 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     child_env = dict(os.environ)
     child_env["DATABASE_URL"] = temp_url.render_as_string(hide_password=False)
     child_env[_REQUIRE_ENV] = "1"
+    child_env[_TEST_DATABASE_ENV] = "1"
 
     steps = [
         ["uv", "run", "alembic", "upgrade", "head"],
@@ -81,7 +88,10 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
         ["uv", "run", "alembic", "downgrade", "-1"],
         ["uv", "run", "alembic", "upgrade", "head"],
         ["uv", "run", "alembic", "check"],
-        *([["uv", "run", "pytest", test_path] for test_path in _INTEGRATION_TESTS]),
+        # The whole directory, not a list of modules: a new integration test is
+        # then covered the moment it is written, rather than whenever someone
+        # remembers to add it here.
+        ["uv", "run", "pytest", "-ra", "tests/integration"],
     ]
     for command in steps:
         print(f"$ {' '.join(command)}")
@@ -95,18 +105,30 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
 
 
 def _verify_empty(temp_url) -> None:
+    """Confirm from outside the test process that nothing was committed.
+
+    The integration session checks this too, but from inside the process whose
+    transaction handling is the thing in doubt. This is the independent look at
+    the terminal state, and it covers every mapped `core` table rather than the
+    two that happened to be seeded when it was written.
+    """
+
     engine = create_engine(temp_url)
     try:
         with engine.connect() as connection:
-            teams = connection.execute(text("SELECT count(*) FROM core.teams")).scalar_one()
-            seasons = connection.execute(text("SELECT count(*) FROM core.seasons")).scalar_one()
+            populated = {
+                table.fullname: count
+                for table in Base.metadata.sorted_tables
+                if table.schema == _CORE_SCHEMA
+                and (count := connection.execute(select(func.count()).select_from(table)).scalar_one())
+            }
     finally:
         engine.dispose()
 
-    if teams or seasons:
+    if populated:
+        left_behind = ", ".join(f"{name}={count}" for name, count in sorted(populated.items()))
         raise RuntimeError(
-            f"Test cleanup left {teams} team row(s) and {seasons} season row(s) behind "
-            f"in the temporary database."
+            f"Test cleanup left rows behind in the temporary database: {left_behind}"
         )
 
 

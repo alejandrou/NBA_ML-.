@@ -6,8 +6,13 @@ from nba_data.api.services import teams as team_service
 
 
 def _team(**overrides: object) -> SimpleNamespace:
+    """A stand-in row carrying no surrogate id, because the response never has one.
+
+    Leaving `id` out means a mapping that started reading it would fail here
+    rather than quietly pass on a value the public contract withdrew.
+    """
+
     values: dict[str, object] = {
-        "id": 7,
         "basketball_reference_team_id": "ATL",
         "current_abbreviation": "ATL",
         "current_name": "Atlanta Hawks",
@@ -19,7 +24,17 @@ def _team(**overrides: object) -> SimpleNamespace:
 @pytest.mark.unit
 def test_list_teams_maps_only_the_public_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     received: dict[str, object] = {}
-    teams = [_team(), _team(id=9, current_name="Boston Celtics", secret="hidden")]
+    # Distinct natural keys: two rows sharing one key could not both exist, and
+    # a mapping bug that served the same team twice would look correct.
+    teams = [
+        _team(),
+        _team(
+            basketball_reference_team_id="BOS",
+            current_abbreviation="BOS",
+            current_name="Boston Celtics",
+            secret="hidden",
+        ),
+    ]
 
     def fake_count(session: object) -> int:
         received["count_session"] = session
@@ -51,8 +66,8 @@ def test_list_teams_maps_only_the_public_fields(monkeypatch: pytest.MonkeyPatch)
                 "current_name": "Atlanta Hawks",
             },
             {
-                "basketball_reference_team_id": "ATL",
-                "current_abbreviation": "ATL",
+                "basketball_reference_team_id": "BOS",
+                "current_abbreviation": "BOS",
                 "current_name": "Boston Celtics",
             },
         ],

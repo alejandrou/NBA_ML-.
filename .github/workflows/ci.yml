@@ -33,7 +33,16 @@ jobs:
     name: PostgreSQL integration
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql+psycopg://nba:nba@localhost:5432/nba
+      # `nba_test_ci` is one of the two names the integration lane accepts, and
+      # NBA_DATA_TEST_DATABASE is its explicit authorization to write there. The
+      # database, the URL, and the health check below must name the same thing:
+      # changing one alone leaves the service probing a database that does not
+      # exist, which surfaces as an opaque startup timeout rather than an error.
+      DATABASE_URL: postgresql+psycopg://nba:nba@localhost:5432/nba_test_ci
+      NBA_DATA_TEST_DATABASE: "1"
+      # Turns every environment-related skip -- missing flag, unreachable
+      # database, schema off the migration head -- into a failure, so a job that
+      # silently stopped testing anything cannot report success.
       NBA_DATA_REQUIRE_POSTGRES_INTEGRATION: "1"
     services:
       postgres:
@@ -41,11 +50,11 @@ jobs:
         env:
           POSTGRES_USER: nba
           POSTGRES_PASSWORD: nba
-          POSTGRES_DB: nba
+          POSTGRES_DB: nba_test_ci
         ports:
           - "5432:5432"
         options: >-
-          --health-cmd "pg_isready -U nba -d nba"
+          --health-cmd "pg_isready -U nba -d nba_test_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -110,4 +119,4 @@ jobs:
 
       # Run the directory so every integration test is included automatically.
       - name: Run PostgreSQL integration tests
-        run: uv run pytest tests/integration
+        run: uv run pytest -ra tests/integration

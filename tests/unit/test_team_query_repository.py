@@ -48,6 +48,14 @@ def session() -> Iterator[Session]:
 
 @pytest.mark.unit
 def test_team_queries_count_order_and_paginate(session: Session) -> None:
+    """`AAA` and `BBB` share a name and are stored at ids 3 and 1 deliberately.
+
+    Ordering on the surrogate would put `BBB` first, so the pair is what proves
+    the tie-breaker is `basketball_reference_team_id`. Results are asserted as
+    natural keys throughout for the same reason: an assertion on `team.id` would
+    still pass under surrogate ordering.
+    """
+
     assert count_teams(session) == 3
 
     teams = list_teams(session, offset=0, limit=2)
@@ -56,7 +64,9 @@ def test_team_queries_count_order_and_paginate(session: Session) -> None:
         ("AAA", "Bulls"),
         ("BBB", "Bulls"),
     ]
-    assert [team.id for team in list_teams(session, offset=2, limit=2)] == [2]
+    assert [
+        team.basketball_reference_team_id for team in list_teams(session, offset=2, limit=2)
+    ] == ["CCC"]
     assert list_teams(session, offset=3, limit=2) == []
 
 

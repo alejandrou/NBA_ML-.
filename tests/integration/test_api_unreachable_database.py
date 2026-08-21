@@ -5,6 +5,13 @@ contacts nothing outside the machine: `10.255.255.1` is private address space wi
 no host behind it, chosen because a blackholed address is the case that hangs.
 A network that rejects the address outright fails faster and still satisfies the
 assertions — only an unbounded connect fails this test.
+
+It deliberately requests none of the shared PostgreSQL fixtures in
+`tests/integration/conftest.py`. Those exist to authorize and validate a real
+disposable database; this test's whole subject is a database that is *not*
+there, supplied privately through `Settings`. Requiring the opt-in flag here
+would make an offline-safe test refuse to run, and validating the configured
+database would be checking something this test never touches.
 """
 
 from __future__ import annotations

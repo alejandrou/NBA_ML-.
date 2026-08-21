@@ -5,6 +5,7 @@ import typer
 from rich.console import Console
 
 from nba_data import __version__
+from nba_data.config.logging_config import configure_logging
 from nba_data.config.settings import get_settings
 from nba_data.db.session import create_db_engine, create_session_factory
 from nba_data.scraping.backfill_manifest import (
@@ -61,6 +62,12 @@ app.add_typer(backfill_app, name="backfill")
 app.add_typer(acquisition_app, name="acquisition")
 app.add_typer(validation_app, name="validate")
 console = Console()
+
+
+@app.callback()
+def _main() -> None:
+    configure_logging(get_settings())
+
 _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
     "--output",

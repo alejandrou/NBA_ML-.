@@ -128,29 +128,41 @@ interlock.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_logging_configuration.py`
+  Result: 7 passed.
+- Command: `uv run pytest tests/unit/test_settings.py tests/unit/test_rate_limited_client.py tests/unit/test_api_foundation.py`
+  Result: 21 passed.
+- Command: `uv run ruff check .`
+  Result: All checks passed!
+- Command: `uv run pytest`
+  Result: 762 passed, 25 skipped, 7 warnings (pre-existing `httpx`/`peewee`
+  deprecation warnings only — no new output noise).
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `LOG_LEVEL=INFO uv run nba-data info`
+2. `LOG_LEVEL=WARNING uv run nba-data settings`
 
-Expected result:
+Expected result: both commands run to completion with their normal output;
+`settings` reflects `log_level: WARNING`. No duplicated lines from the CLI
+callback running once per invocation. Confirmed.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `LOG_LEVEL=LOUD uv run nba-data info`
 
-Expected result:
+Expected result: fails before the command body runs, with a `pydantic`
+`ValidationError` naming `LOG_LEVEL='LOUD' is not recognized; expected one of
+['CRITICAL', 'DEBUG', 'ERROR', 'INFO', 'WARNING']`, exit code 1. Confirmed.
 
 ## Known limitations
 
-- None.
+- `nba-data info` and `settings` do not themselves emit any INFO-level log
+  lines (none existed before this card and none were added, per scope), so the
+  happy path above verifies configuration takes effect and does not crash
+  rather than visible log output; the cache-hit INFO line is covered directly
+  by `test_cache_hit_emits_a_formatted_info_line` in
+  `tests/unit/test_logging_configuration.py` instead, without a live network
+  request.

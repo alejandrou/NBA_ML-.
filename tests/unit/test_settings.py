@@ -53,3 +53,16 @@ def test_settings_rejects_a_non_positive_connect_timeout(timeout: float) -> None
     """Zero or negative means "wait forever" to libpq — the very thing this bounds."""
     with pytest.raises(ValidationError):
         Settings(database_connect_timeout_seconds=timeout, _env_file=None)
+
+
+@pytest.mark.unit
+def test_settings_rejects_an_unrecognized_log_level() -> None:
+    with pytest.raises(ValidationError, match="LOG_LEVEL"):
+        Settings(log_level="LOUD", _env_file=None)
+
+
+@pytest.mark.unit
+def test_settings_normalizes_log_level_case() -> None:
+    settings = Settings(log_level="debug", _env_file=None)
+
+    assert settings.log_level == "DEBUG"

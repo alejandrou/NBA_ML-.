@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Starts local PostgreSQL, applies migrations, and runs the DB integration test.
+# Starts local PostgreSQL and delegates validation to the disposable database
+# lane. It never writes to the configured database.
 # Local development only — never point this at a shared or production database.
 set -euo pipefail
 
@@ -33,8 +34,4 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 
-uv run alembic upgrade head
-uv run alembic check
-uv run pytest tests/integration/test_team_season_loader_postgres.py
-
-echo "Database validation passed."
+exec uv run python scripts/validate_postgres_local.py

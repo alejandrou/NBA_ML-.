@@ -143,10 +143,22 @@ Two documents recommend a script the third says not to rely on.
 - Exit `0` when the count is `0`; exit non-zero when it is greater, with a
   message saying the migration must not be applied and that remediation is a
   separate decision for the user.
-- It never prints the connection password.
-- Unit tests cover the zero case, the non-zero case, and the missing-argument
-  case, against SQLite or a stubbed connection — the preflight's own tests stay
-  offline.
+- It never prints the connection password, and never echoes the URL back in an
+  error message.
+- A target it could not correctly assess is a usage error raised before any
+  connection: an empty `--database-url`, a URL SQLAlchemy cannot parse, or a
+  non-PostgreSQL backend. `required=True` alone does not cover the empty case,
+  which is exactly what an unset `"$DATABASE_URL"` sends.
+- The connection attempt is bounded by a timeout. The command's whole purpose is
+  to be run against a persistent, often remote target, where an unanswered
+  connection is an ordinary outcome and an indefinite hang is the worst report
+  it could give.
+- Unit tests cover the zero case, the non-zero case, and every usage error,
+  against a stubbed connection — the preflight's own offline tests stay offline.
+- An integration module proves what a stub cannot: that the literal count
+  resolves against the deployed schema, and that the connection the preflight
+  opens is refused by PostgreSQL when asked to write. A stub accepts a
+  misspelled execution option and a query naming a column that does not exist.
 
 ## Documentation
 
@@ -164,7 +176,8 @@ Two documents recommend a script the third says not to rely on.
 # Scope
 
 `scripts/validate_database.sh`, a new `scripts/preflight_migration_data.py`,
-a new unit-test module for the preflight under `tests/unit/`, `README.md`,
+new test modules for the preflight under `tests/unit/` and
+`tests/integration/`, `README.md`,
 `docs/architecture/IMPACT_MAP.md` (the database component's **Commands** line
 only), and `docs/validation/TESTING_STRATEGY.md`.
 
@@ -201,7 +214,9 @@ The configured local development database stays at `0006_synthetic_team_codes`.
 Nothing in this card moves it.
 
 A new `scripts/` entry point and a new unit-test module join the offline suite,
-raising its count.
+raising its count. The integration directory grows from 24 tests to 26; both
+additions read, and one of them asserts that a write is refused, so the lane's
+empty-database guarantee is unaffected.
 
 `docs/architecture/IMPACT_MAP.md` is also edited by `F4E-023`; the two touch
 different lines, but whichever lands second should re-read the file rather than
@@ -245,30 +260,55 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- `uv run ruff check .` — all checks passed.
+- `uv run pytest tests/unit/test_preflight_migration_data.py` — 7 passed.
+- `uv run pytest -m "not integration and not live"` — 750 passed, 26 deselected,
+  7 warnings.
+- `uv run pytest` — 751 passed, 25 skipped, 7 warnings.
+- `bash scripts/validate_database.sh` — **executed end to end**, exit 0. It
+  started the Docker service, created `nba_test_tmp_aa575cda528844bc`,
+  round-tripped the migrations, ran all 26 integration tests (26 passed, none
+  skipped), verified every mapped `core` table empty, and dropped the scratch
+  database. No command in the run named the configured `nba` database.
+- `bash -n scripts/validate_database.sh` — passed (GNU bash 5.2.37).
+- `uv run python scripts/validate_tasks.py` — passed.
+- `git diff --check` — passed.
 
-## Manual happy path
+## Manual happy path — executed
 
-1. Run `bash scripts/validate_database.sh` with Docker running and confirm it
-   creates and drops a scratch database, runs the whole integration directory
-   with tests actually executing, and exits 0.
-2. Run the preflight against a disposable database migrated to `0006` that holds
-   no team rows.
-3. Confirm the configured development database is still at
-   `0006_synthetic_team_codes` and unmodified afterwards.
+1. `bash scripts/validate_database.sh` with Docker running: created and dropped
+   a scratch database, ran the whole integration directory with every test
+   executing, and exited 0. Recorded above.
+2. The preflight against a disposable database at head holding no team rows:
+   covered automatically, and on every future run, by
+   `tests/integration/test_preflight_migration_data_postgres.py`. It prints
+   `core.teams.basketball_reference_team_id NULL count: 0`, reports the
+   precondition holds, and exits 0.
+3. The configured development database was never connected to during this work.
+   It stays at `0006_synthetic_team_codes`, and nothing here moves it.
 
-Expected result:
+## Manual sad path — executed
 
-## Manual sad path
-
-1. Run `bash scripts/validate_database.sh` with Docker stopped.
-2. Run the preflight with no `--database-url`.
-3. Run the preflight against a disposable database seeded with one team row
-   whose `basketball_reference_team_id` is null.
-
-Expected result:
+1. `uv run python scripts/preflight_migration_data.py` with no argument —
+   argparse usage error, exit 2, no connection opened.
+2. `--database-url ""` — usage error naming the empty target, exit 2. Verified
+   as a test rather than only by hand, along with `sqlite:///./local.db` and an
+   unparseable string.
+3. `--database-url postgresql+psycopg://nope:secret@10.255.255.1:5432/nowhere`
+   (an address that silently drops packets) — reported
+   `Migration preflight failed (OperationalError); the target was not assessed.`
+   and exited 1 after 11 seconds, with the password absent from the output.
+   Before the connect timeout was added, the same command ran past 100 seconds
+   without reporting anything.
+4. The non-zero count branch is proven by unit test only. It cannot be staged on
+   real PostgreSQL at head, because `0007` is precisely what makes a null
+   `basketball_reference_team_id` unstorable — the row the test would need
+   cannot exist in a database the preflight is meaningfully run against.
 
 ## Known limitations
 
-- None.
+- The preflight has never been run against a persistent database. That is
+  deliberate: pointing it at the configured `nba` database is a read the user
+  has not asked for, and the card's value does not depend on it. The command is
+  ready for that run whenever the user wants the answer.
+- The non-zero branch is unreachable on a database at head, as recorded above.

@@ -126,9 +126,10 @@ Never run `alembic upgrade head` against the developer's real database to
 validate a migration; applying a migration to a persistent database is an
 owner-approved operation.
 
-`scripts/validate_database.sh` still points at the developer's ordinary local
-database, which is not an approved test database — its integration step now
-skips rather than writing there. Use the validator above instead.
+`scripts/validate_database.sh` starts the local Docker PostgreSQL service and
+delegates to the validator above. It creates and drops the disposable scratch
+database through that validator, runs the whole integration directory, and
+never migrates, seeds, or drops the configured source database.
 
 ### What a scratch-database pass does not prove
 
@@ -145,6 +146,20 @@ WHERE basketball_reference_team_id IS NULL;
 ```
 
 A non-zero result stops the migration for a separate remediation decision.
+
+The executable preflight for this check requires the target to be named
+explicitly and performs no repair or migration:
+
+```bash
+uv run python scripts/preflight_migration_data.py   --database-url postgresql+psycopg://user:password@host:5432/database
+```
+
+It takes no default and rejects an empty or non-PostgreSQL URL as a usage error
+before connecting, so it cannot assess a different database from the one being
+migrated. Its connection is opened read-only, which
+`tests/integration/test_preflight_migration_data_postgres.py` proves by having
+the server refuse a write through it; that module also runs the count itself
+against the real schema, which the offline tests cannot do.
 
 ### The deliberate exception
 

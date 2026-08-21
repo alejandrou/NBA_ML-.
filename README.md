@@ -31,12 +31,27 @@ git diff --check
 dependencies that resolve, and no unresolved decisions in `backlog/`. It is
 standard-library only and `uv run pytest` runs the same checks.
 
-Database validation — starts PostgreSQL, applies migrations, runs the
-integration test. Local development only:
+Database validation — starts PostgreSQL, creates a uniquely named disposable
+database, round-trips the migrations there, runs the whole integration lane,
+and verifies cleanup. It never writes to the configured database. Local
+development only:
 
 ```bash
 bash scripts/validate_database.sh
 ```
+
+Before any owner-authorized migration of a persistent database, run the
+read-only preflight against that exact target:
+
+```bash
+uv run python scripts/preflight_migration_data.py   --database-url postgresql+psycopg://user:password@host:5432/database
+```
+
+Spell the target out rather than passing a variable: the preflight refuses an
+empty or non-PostgreSQL URL instead of assessing whichever database a shell
+happened to have configured. It stops when migration `0007` would encounter
+teams without a Basketball Reference ID, and it never repairs those rows,
+writes to the target, or applies a migration.
 
 On Windows this needs Git Bash. `scripts/dev/start-dev.ps1` is the PowerShell
 preflight equivalent for lint and tests.

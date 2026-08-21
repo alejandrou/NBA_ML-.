@@ -358,19 +358,26 @@ def test_cli_backfill_offline_refuses_without_explicit_flag(
     assert "Refusing offline backfill" in result.output
 
 
-@pytest.mark.unit
-def test_cli_backfill_offline_runs_with_fake_session_and_writes_report(
+_FAKE_OFFLINE_BACKFILL_REPORT: dict[str, object] = {
+    "selected_inventory_entries": 1,
+    "loaded_entries": 1,
+    "quarantine_entries": [{"team_abbreviation": "BOS", "reason": "loading_failed"}],
+}
+
+
+def _invoke_cli_backfill_offline_with_fake_session(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    *,
+    output_path: Path | None,
+) -> tuple[object, list[str]]:
     events: list[str] = []
-    output_path = tmp_path / "reports" / "offline-backfill.json"
     monkeypatch.setenv("SCRAPER_CACHE_DIR", str(tmp_path / "cache"))
     get_settings.cache_clear()
 
     class FakeReport:
         def to_dict(self) -> dict[str, object]:
-            return {"selected_inventory_entries": 1, "loaded_entries": 1}
+            return _FAKE_OFFLINE_BACKFILL_REPORT
 
     class FakeEngine:
         def dispose(self) -> None:
@@ -419,17 +426,23 @@ def test_cli_backfill_offline_runs_with_fake_session_and_writes_report(
     monkeypatch.setattr("nba_data.cli.main.create_session_factory", fake_session_factory)
     monkeypatch.setattr("nba_data.cli.main.run_full_offline_backfill", fake_backfill)
 
-    result = CliRunner().invoke(
-        app,
-        [
-            "backfill",
-            "offline",
-            "--execute-approved-backfill",
-            "--max-workers",
-            "2",
-            "--output",
-            str(output_path),
-        ],
+    args = ["backfill", "offline", "--execute-approved-backfill", "--max-workers", "2"]
+    if output_path is not None:
+        args += ["--output", str(output_path)]
+
+    result = CliRunner().invoke(app, args)
+    return result, events
+
+
+@pytest.mark.unit
+def test_cli_backfill_offline_runs_with_fake_session_and_writes_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = tmp_path / "reports" / "offline-backfill.json"
+
+    result, events = _invoke_cli_backfill_offline_with_fake_session(
+        tmp_path, monkeypatch, output_path=output_path
     )
 
     assert result.exit_code == 0, result.output
@@ -444,11 +457,28 @@ def test_cli_backfill_offline_runs_with_fake_session_and_writes_report(
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {"selected_inventory_entries": 1, "loaded_entries": 1}
-    assert json.loads(output_path.read_text(encoding="utf-8")) == {
+    printed = json.loads(result.output)
+    assert printed == {
         "selected_inventory_entries": 1,
         "loaded_entries": 1,
+        "quarantine_entries": 1,
+        "output_path": str(output_path.resolve()),
     }
+    assert "BOS" not in result.output
+    assert json.loads(output_path.read_text(encoding="utf-8")) == _FAKE_OFFLINE_BACKFILL_REPORT
+
+
+@pytest.mark.unit
+def test_cli_backfill_offline_without_output_prints_full_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result, _events = _invoke_cli_backfill_offline_with_fake_session(
+        tmp_path, monkeypatch, output_path=None
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == _FAKE_OFFLINE_BACKFILL_REPORT
 
 
 @pytest.mark.unit

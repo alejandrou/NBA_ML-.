@@ -172,8 +172,9 @@ uv run nba-data backfill player-postseason-stats \
   --output reports/player-postseason-stats-backfill-2000-2025.json
 ```
 
-Each command prints and writes its JSON report even when it exits with code `1`.
-An exit code of `1` means that the producer reported failed entries, failed or
+Each command writes its full JSON report to `--output` and prints a compact
+summary to the terminal, even when it exits with code `1`. Read the written file
+for the full report. An exit code of `1` means that the producer reported failed entries, failed or
 quarantined rows, or unresolved player/season grains. Postseason skipped
 entries and `unsupported_synthetic_or_tot_rows` are expected and do not fail
 the command.

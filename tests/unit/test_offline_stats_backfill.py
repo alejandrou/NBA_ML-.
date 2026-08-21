@@ -531,6 +531,7 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
         "processing_failed_sources": 0,
         "stats_failed_rows": 0,
         "stats_quarantined_rows": 0,
+        "output_path": str(output_path.resolve()),
     }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
         "selected_sources": 1,
@@ -604,6 +605,7 @@ def test_cli_backfill_stats_prints_and_writes_before_nonzero_failure(
         "stats_loaded_rows": 2,
         "entries_failed": 1,
         "rows_failed": 3,
+        "output_path": str(output_path.resolve()),
     }
     assert json.loads(output_path.read_text(encoding="utf-8"))["rows_failed"] == 3
 

@@ -518,9 +518,12 @@ def test_cli_acquire_uses_fake_basketball_reference_client_only(
     assert len(fake_instances) == 1
     assert fake_instances[0].max_429_retries == 0
     assert fake_instances[0].calls == [(BOS_2024_URL, False)]
-    report = json.loads(result.output)
+    summary = json.loads(result.output)
     written_report = json.loads(output_path.read_text(encoding="utf-8"))
-    assert report["fetched"] == 1
-    assert report["live_request_count"] == 1
-    assert written_report == report
+    assert summary["fetched"] == 1
+    assert summary["live_request_count"] == 1
+    assert summary["output_path"] == str(output_path.resolve())
+    assert written_report["fetched"] == 1
+    assert written_report["live_request_count"] == 1
+    assert summary["entries"] == len(written_report["entries"])
     assert HtmlCache(tmp_path / "cache").get(BOS_2024_URL) == "<html>cli fresh</html>"

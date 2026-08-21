@@ -8,6 +8,8 @@ Phase 5 is a read-only, GET-only FastAPI surface under `/api/v1`. It has no auth
 
 FastAPI uses synchronous SQLAlchemy. Database endpoints normally use `def`; no async DB stack, `AsyncSession`, `asyncpg`, or `create_async_engine` is introduced without a dedicated task. Each app instance owns one long-lived Engine and one sessionmaker through lifespan; each request receives one Session, which is then closed. Never create an Engine per request or retain a global Session.
 
+`nba-data serve` is the supported way to run the app: it calls `uvicorn.run("nba_data.api:create_app", factory=True, ...)`, binding `127.0.0.1` by default. The CLI opens no database connection itself — the Engine is still built by `lifespan`.
+
 ## Package layout
 
 ```text

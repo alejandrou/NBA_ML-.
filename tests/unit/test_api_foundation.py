@@ -2,8 +2,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.routing import Route
+from typer.testing import CliRunner
 
 from nba_data.api import create_app
+from nba_data.cli.main import app as cli_app
 
 
 @pytest.mark.unit
@@ -115,3 +117,49 @@ def test_app_instances_have_isolated_dependency_overrides() -> None:
         assert second_app.dependency_overrides == {}
     finally:
         first_app.dependency_overrides.clear()
+
+
+@pytest.mark.unit
+def test_serve_command_defaults_to_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(target: str, **kwargs: object) -> None:
+        captured["target"] = target
+        captured.update(kwargs)
+
+    monkeypatch.setattr("uvicorn.run", fake_run)
+
+    result = CliRunner().invoke(cli_app, ["serve"])
+
+    assert result.exit_code == 0
+    assert captured == {
+        "target": "nba_data.api:create_app",
+        "factory": True,
+        "host": "127.0.0.1",
+        "port": 8000,
+        "reload": False,
+    }
+
+
+@pytest.mark.unit
+def test_serve_command_passes_through_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(target: str, **kwargs: object) -> None:
+        captured["target"] = target
+        captured.update(kwargs)
+
+    monkeypatch.setattr("uvicorn.run", fake_run)
+
+    result = CliRunner().invoke(
+        cli_app, ["serve", "--host", "0.0.0.0", "--port", "9001", "--reload"]
+    )
+
+    assert result.exit_code == 0
+    assert captured == {
+        "target": "nba_data.api:create_app",
+        "factory": True,
+        "host": "0.0.0.0",
+        "port": 9001,
+        "reload": True,
+    }

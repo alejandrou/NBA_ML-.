@@ -438,8 +438,32 @@ Each item below is asserted by a named test that passed in the runs above.
 
 ### GitHub implementation evidence
 
-Recorded after the implementation commit is pushed and both workflow events
-report green.
+Implementation SHA `7d181982c9b59950bef0753b4c9f6a07ac5ae03c`, pushed to
+`feature/F5-007-key-teams-api-natural-key`, reusing PR 25. Each pushed head
+produces two runs; both are recorded separately below and both are green.
+
+| | Push event | Pull-request event |
+|---|---|---|
+| Run URL | <https://github.com/alejandrou/NBA_ML-./actions/runs/32509790309> | <https://github.com/alejandrou/NBA_ML-./actions/runs/32509794520> |
+| Overall conclusion | success | success |
+| Offline unit tests | success — Ruff clean; `collected 767 items / 24 deselected / 743 selected`, **743 passed, 24 deselected**, 0 failed, 0 skipped | success — identical counts |
+| PostgreSQL integration | success — **24 passed, 0 failed, 0 skipped** | success — identical counts |
+
+Both runs applied `0001` through `0007` cleanly, reported
+`No new upgrade operations detected.` on `alembic check`, and re-applied
+`0006_synthetic_team_codes -> 0007_team_bref_id_not_null` on the
+downgrade/upgrade round trip with a second clean `alembic check`.
+
+The PostgreSQL job ran with `NBA_DATA_TEST_DATABASE=1` and
+`NBA_DATA_REQUIRE_POSTGRES_INTEGRATION=1` against `nba_test_ci`. In required
+mode every environment condition is a failure rather than a skip, so
+`0 skipped` is positive evidence that all 24 database-dependent tests really
+executed — including the `23502` NOT NULL diagnostic, loader idempotency, and
+all seventeen synthetic-code cases that were failing at the starting SHA.
+
+Compared with the starting SHA `1cedc0d`: the PostgreSQL job went from
+`18 failed, 5 passed` to `24 passed`, and the offline job from
+`740 passed, 23 deselected` to `743 passed, 24 deselected`.
 
 ## Original F5-007 review evidence (historical, 2026-08-17)
 

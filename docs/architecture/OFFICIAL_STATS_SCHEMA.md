@@ -143,6 +143,35 @@ Missing known official columns are stored as `NULL`. Unknown normalized keys
 not listed in this document are not silently stored; the F4E-004 loader must
 report or quarantine them until the schema is reviewed.
 
+## Player Name Display Semantics
+
+`player_name_display` is the name as printed in the source row. It is a
+display value, not player identity: it is `NULL` where the source row prints
+no name, and it must not be used to join, match, or resolve a player.
+`basketball_reference_player_id` is the identity key.
+
+The final 33-table `stats` model has this nullable column on 32 tables. The
+only stats table without it is `stats.player_team_season_roster`. The eight
+regular-season team-stint stat tables (`totals`, `per_game`, `per_minute`,
+`per_poss`, `advanced`, `shooting`, `adj_shooting`, and `pbp`) are populated
+from team-page `name_display` cells. The other 24 tables are fed from player
+pages and remain `NULL` by design because those source rows print no name
+cell: eight regular-season aggregate tables, eight postseason aggregate
+tables, and eight postseason team-stint tables. Player-page loaders must not
+synthesize the value from the page `<h1>`, `core.players.full_name`, or the
+player ID.
+
+The archive measurement supports this source-row meaning:
+
+- Basketball Reference renders a player's current name retroactively. The
+  cached archive contains no era-specific names.
+- Of the 2,702 players appearing on cached team pages, 207 have more than one
+  displayed rendering. The observed differences include abbreviations such as
+  `{"LeBron James", "L. James"}` and spelling/transliteration variants such
+  as `{"Efthimios Rentzias", "Efthimi Rentzias"}`. These are source
+  renderings, not historical identity, and neither rendering set is reversible
+  into a canonical form from the display value alone.
+
 ## Source Team Code Rules
 
 `TOT` and every multi-team marker are not real teams. A multi-team marker is

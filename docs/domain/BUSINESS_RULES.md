@@ -35,6 +35,10 @@
 - Do not use `player_name` as a stable key.
 - Use `basketball_reference_player_id` when available.
 - If the legacy scraper does not extract player IDs yet, document that as debt.
+- Basketball Reference renders current player names retroactively across the
+  cached archive. No era-specific names were observed, so a displayed name is
+  source text rather than historical identity and must not replace
+  `basketball_reference_player_id`.
 
 ## Source Team Codes and Trades
 

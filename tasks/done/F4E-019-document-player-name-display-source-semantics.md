@@ -162,25 +162,42 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_team_season_stats_loader.py tests/unit/test_player_page_stats_loader.py`
+  Result: 51 passed in 1.41s.
+- Command: `uv run ruff check .`
+  Result: All checks passed.
+- Command: `uv run pytest`
+  Result: 753 passed, 25 skipped, 7 warnings in 11.19s.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Read the `Player Name Display Semantics` section in
+   `docs/architecture/OFFICIAL_STATS_SCHEMA.md`.
+2. Confirm it defines the value as source-row display text, identifies
+   `basketball_reference_player_id` as identity, and records the 32/33 table
+   split, the 8/24 population split, and both measured rendering examples.
+3. Read the `Players` rules in `docs/domain/BUSINESS_RULES.md` and run the two
+   focused loader test modules.
 
 Expected result:
+The documentation consistently treats `player_name_display` as nullable source
+semantics, and the focused tests pass.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Exercise the player-page loader case with a page-level name, a different
+   `core.players.full_name`, and a present player ID, while omitting
+   `values["name_display"]` (the regression test is
+   `test_player_page_loader_does_not_synthesize_player_name_display`).
+2. Inspect the loaded `stats.player_season_totals` row.
+3. Confirm no name is inferred from any of those identity/display candidates.
 
 Expected result:
+The stats row loads successfully and `player_name_display` remains `NULL`.
 
 ## Known limitations
 
-- None.
+- The automated checks use deterministic local SQLite fixtures; they do not
+  contact Basketball Reference or remeasure the cached archive.
+- This task intentionally does not migrate, backfill, or expose the column via
+  the API.

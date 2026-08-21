@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_VALID_LOG_LEVELS = frozenset({"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"})
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -29,6 +31,18 @@ class Settings(BaseSettings):
             msg = "SCRAPER_USER_AGENT must be set before making live requests"
             raise ValueError(msg)
         return value
+
+    @field_validator("log_level")
+    @classmethod
+    def log_level_must_be_recognized(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized not in _VALID_LOG_LEVELS:
+            msg = (
+                f"LOG_LEVEL={value!r} is not recognized; "
+                f"expected one of {sorted(_VALID_LOG_LEVELS)}"
+            )
+            raise ValueError(msg)
+        return normalized
 
 
 @lru_cache

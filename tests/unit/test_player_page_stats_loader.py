@@ -88,6 +88,37 @@ def test_player_page_stats_loader_upserts_idempotently_with_source_team_code(ses
 
 
 @pytest.mark.unit
+def test_player_page_loader_does_not_synthesize_player_name_display(
+    session: Session,
+) -> None:
+    _create_player_season(
+        session,
+        player_id="example01",
+        season_year=2021,
+        full_name="Core Player Name",
+    )
+
+    report = load_player_page_stats(
+        session,
+        [
+            _regular_row(
+                player_name="Page H1 Name",
+                basketball_reference_player_id="example01",
+                stable_player_key="example01",
+                values={"games": 44, "pts": 1083},
+            )
+        ],
+        **_lineage(),
+    )
+
+    record = session.scalar(select(PlayerSeasonTotals))
+
+    assert report.loaded_rows == 1
+    assert record is not None
+    assert record.player_name_display is None
+
+
+@pytest.mark.unit
 def test_player_page_stats_loader_skips_unresolved_player_season(session: Session) -> None:
     report = load_player_page_stats(session, [_regular_row()], **_lineage())
 

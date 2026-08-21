@@ -205,6 +205,30 @@ def test_roster_loads_type_converted_values(session: Session) -> None:
 
 
 @pytest.mark.unit
+def test_team_page_loader_populates_player_name_display_from_source_cell(
+    session: Session,
+) -> None:
+    _create_core_grains(session)
+
+    report = load_team_season_stats(
+        session,
+        [
+            _row(
+                player_name="Unmapped context name",
+                values={"name_display": "Source Row Name", "games": 74},
+            )
+        ],
+        **_lineage(),
+    )
+
+    record = session.scalar(select(PlayerTeamSeasonTotals))
+
+    assert report.loaded_rows == 1
+    assert record is not None
+    assert record.player_name_display == "Source Row Name"
+
+
+@pytest.mark.unit
 def test_tot_aggregate_loads_player_season_table_without_real_tot_team(
     session: Session,
 ) -> None:

@@ -121,6 +121,21 @@ _REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
     hidden=True,
     help="Removed compatibility trap; use --team-stats-report instead.",
 )
+_SERVE_HOST_OPTION = typer.Option(
+    "127.0.0.1",
+    "--host",
+    help="Bind address for the API server. Defaults to loopback only.",
+)
+_SERVE_PORT_OPTION = typer.Option(
+    8000,
+    "--port",
+    help="Bind port for the API server.",
+)
+_SERVE_RELOAD_OPTION = typer.Option(
+    False,
+    "--reload",
+    help="Enable uvicorn autoreload for local development.",
+)
 
 
 @app.command()
@@ -129,6 +144,25 @@ def info() -> None:
 
     console.print(f"nba-data-platform {__version__}")
     console.print("Phase 1 foundation CLI. No live scraping commands are enabled.")
+
+
+@app.command()
+def serve(
+    host: str = _SERVE_HOST_OPTION,
+    port: int = _SERVE_PORT_OPTION,
+    reload: bool = _SERVE_RELOAD_OPTION,
+) -> None:
+    """Serve the read-only API locally with uvicorn."""
+
+    import uvicorn
+
+    uvicorn.run(
+        "nba_data.api:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=reload,
+    )
 
 
 @app.command("settings")

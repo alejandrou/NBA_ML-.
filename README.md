@@ -56,6 +56,18 @@ writes to the target, or applies a migration.
 On Windows this needs Git Bash. `scripts/dev/start-dev.ps1` is the PowerShell
 preflight equivalent for lint and tests.
 
+## Running the API
+
+```bash
+uv run nba-data serve            # http://127.0.0.1:8000
+```
+
+Binds to `127.0.0.1` by default — never `0.0.0.0` — with `--host`, `--port`
+(default `8000`), and `--reload` available. The API is read-only, GET-only, and
+contacts no external source. `GET /api/v1/health` is liveness;
+`GET /api/v1/health/ready` is readiness and returns 503 when the database is
+unreachable.
+
 ## Task lifecycle
 
 The folder a task card sits in **is** its status:

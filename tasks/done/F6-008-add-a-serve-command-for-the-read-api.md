@@ -111,29 +111,41 @@ this file. Do not model it on them.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_api_foundation.py`
+- Result: 9 passed (7 existing + 2 new: default args, overridden args).
+- Command: `uv run ruff check .`
+- Result: All checks passed!
+- Command: `uv run pytest`
+- Result: 765 passed, 25 skipped.
+- Command: `uv run nba-data --help`
+- Result: `serve` listed with description "Serve the read-only API locally with
+  uvicorn."
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Ran `uv run nba-data serve --port 8123` in the background.
+2. `curl http://127.0.0.1:8123/api/v1/health` → `{"status":"ok"}`, HTTP 200.
+3. Server bound only to `127.0.0.1` (confirmed via `netstat`), not `0.0.0.0`.
 
-Expected result:
+Expected result: server starts without opening a database connection itself and
+answers liveness immediately. Confirmed.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Same running server, local dev database not migrated to a ready schema.
+2. `curl http://127.0.0.1:8123/api/v1/health/ready` → HTTP 503,
+   `{"detail":"Database schema not ready"}`.
+3. Server kept running and serving liveness throughout — did not crash or block
+   on the unready database.
 
-Expected result:
+Expected result: readiness reports 503 while the server keeps running; the
+F6-005 behavior held with a real (unready) database, not just a monkeypatched
+one. Confirmed.
 
 ## Known limitations
 
-- None.
+- Manual verification used a local dev database that hadn't run migrations
+  (schema-not-ready), not a fully unreachable one; the unreachable-database path
+  is covered by F6-005's own existing tests, not re-verified here.

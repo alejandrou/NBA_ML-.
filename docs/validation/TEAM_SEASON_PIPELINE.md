@@ -120,12 +120,19 @@ Operator retry flow:
 
 ## Known Gaps
 
-Postseason tables, team summary tables, salary tables, database loading,
-migrations, API, frontend, and generated metrics are out of Phase 3 scope.
+Team summary tables, salary tables, frontend, and generated metrics remain out
+of scope. Postseason tables, database loading, migrations, and the API have
+since shipped outside this document's Phase 3 scope.
 
-There is no separate player-page pipeline yet. Current player rows are derived
-from team-season pages such as roster, totals, and advanced tables, with
+The player-page pipeline exists as a separate path from team-season parsing:
+`scraping/parsers/player_page.py`, `scraping/normalizers/player_page.py`,
+`db/loaders/player_page_stats.py`,
+`scraping/offline_player_stats_backfill.py`, and
+`scraping/offline_player_postseason_stats_backfill.py`. It owns full
+player-season aggregate rows — `stats.player_season_*` and
+`stats.player_team_season_*` for regular season,
+`stats.player_postseason_*` and `stats.player_team_postseason_*` for
+postseason (the latter added by migration `0005_postseason_stats_tables`).
+Current player rows from team-season pages (roster, totals, advanced tables)
+are unaffected by this document and continue to have
 `basketball_reference_player_id` extracted from player links when present.
-Dedicated Basketball Reference player pages remain future scope unless a later
-manifest and parser task explicitly adds them. When that future player-page
-path lands, it will own full player-season aggregate rows for `stats.player_season_*`.

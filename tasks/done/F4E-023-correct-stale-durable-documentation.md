@@ -124,28 +124,45 @@ entire output, plus the test that holds one of them true.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_impact_map_documentation.py -v`
+  Result: 1 passed.
+- Command: `uv run python scripts/validate_tasks.py`
+  Result: `Task validation passed.`
+- Command: `uv run ruff check .`
+  Result: `All checks passed!`
+- Command: `uv run pytest`
+  Result: `763 passed, 25 skipped, 7 warnings in 10.46s` (skips are unrelated
+  PostgreSQL integration tests requiring a live database).
 
 ## Manual happy path
 
-1.
-2.
-3.
-
-Expected result:
+1. Open `docs/architecture/IMPACT_MAP.md` and read the `**Schemas:**` bullet
+   under Database.
+   Expected: states `stats` (33 wide tables in 4 families), names the four
+   families and their per-family counts, and states 16 of the 33 are
+   postseason.
+2. Open `docs/validation/TEAM_SEASON_PIPELINE.md`'s "Known Gaps" section.
+   Expected: names the player-page pipeline's five shipped modules and the
+   `stats.player_season_*`/`player_team_season_*`/`player_postseason_*`/
+   `player_team_postseason_*` tables it owns; the postseason/loading/
+   migrations/API items are recorded as shipped rather than as gaps.
+3. Open `docs/architecture/OFFICIAL_STATS_SCHEMA.md`'s "Postseason Stats"
+   section.
+   Expected: both table lists are introduced as existing (created by
+   `0005_postseason_stats_tables`), not "Planned"; "Default FK plan" reads
+   "FKs in place".
 
 ## Manual sad path
 
-1.
-2.
-3.
-
-Expected result:
+1. Edit the `stats` count in `IMPACT_MAP.md`'s `**Schemas:**` line to a wrong
+   number (verified: changed `33` to `99`).
+2. Run `uv run pytest tests/unit/test_impact_map_documentation.py -v`.
+   Expected and observed: test fails with
+   `AssertionError: ... assert 99 == 33`, naming the drift.
+3. Restore the correct count (`33`) and re-run.
+   Expected and observed: test passes again.
 
 ## Known limitations
 

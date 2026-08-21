@@ -159,7 +159,10 @@ schema.
 ### Database
 
 - **Implementation:** `db/base.py`, `db/session.py`, `db/models/{raw,core,stats}.py`, `db/repositories/{core,stats}.py`, `alembic/env.py`
-- **Schemas:** `raw` (3 tables), `core` (7), `stats` (44 wide tables in 4 families). There is **no `features` schema yet.**
+- **Schemas:** `raw` (3 tables), `core` (7), `stats` (33 wide tables in 4
+  families — `player_season_*` 8, `player_team_season_*` 9,
+  `player_postseason_*` 8, `player_team_postseason_*` 8; 16 of the 33 are
+  postseason). There is **no `features` schema yet.**
 - **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables`
 - **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only `0007` data preflight)
 - **Tests:** `test_core_models.py`, `test_raw_models.py`, `test_stats_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`

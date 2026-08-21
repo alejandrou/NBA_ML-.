@@ -704,7 +704,8 @@ Postseason player-page table IDs implemented by `F4E-008`:
 Postseason stats are a separate `stats` table family. They must not be mixed
 into regular-season `player_season_*` or `player_team_season_*` tables.
 
-Planned postseason player-season tables:
+Postseason player-season tables, created by migration
+`0005_postseason_stats_tables`:
 
 - `stats.player_postseason_totals`
 - `stats.player_postseason_per_game`
@@ -715,7 +716,7 @@ Planned postseason player-season tables:
 - `stats.player_postseason_adj_shooting`
 - `stats.player_postseason_pbp`
 
-Planned postseason team-stint tables:
+Postseason team-stint tables, created by the same migration:
 
 - `stats.player_team_postseason_totals`
 - `stats.player_team_postseason_per_game`
@@ -726,7 +727,7 @@ Planned postseason team-stint tables:
 - `stats.player_team_postseason_adj_shooting`
 - `stats.player_team_postseason_pbp`
 
-Default FK plan:
+FKs in place:
 
 - `stats.player_postseason_*` FKs to `core.player_seasons.id`.
 - `stats.player_team_postseason_*` FKs to `core.player_team_seasons.id`.

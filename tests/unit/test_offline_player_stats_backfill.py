@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 import nba_data.cli.main as cli_main
 import nba_data.scraping.offline_player_stats_backfill as offline_player_stats_backfill
 import nba_data.scraping.player_page_acquisition as player_page_acquisition
+import nba_data.scraping.player_page_cache as player_page_cache
 from nba_data.cli.main import app
 from nba_data.config.settings import get_settings
 from nba_data.db.models import (
@@ -45,11 +46,13 @@ from nba_data.db.models import (
 from nba_data.db.repositories import CoreRepository
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.offline_player_stats_backfill import (
-    PlayerCacheRootNotFoundError,
-    _discover_player_cache_entries,
     run_offline_player_stats_backfill,
 )
 from nba_data.scraping.player_page_acquisition import build_player_page_url
+from nba_data.scraping.player_page_cache import (
+    PlayerCacheRootNotFoundError,
+    discover_player_cache_entries,
+)
 
 FIXTURE = Path("tests/fixtures/html/player_page_harden_regular_season.html")
 PLAYER_URL = "https://www.basketball-reference.com/players/h/hardeja01.html"
@@ -434,7 +437,7 @@ def test_offline_player_stats_backfill_discovers_every_accepted_player_id_length
     for player_id in PLAYER_IDS_BY_LENGTH:
         _write_gzip(cache.path_for_url(build_player_page_url(player_id)), MINIMAL_PLAYER_PAGE_HTML)
 
-    discovered = _discover_player_cache_entries(cache.root_dir, player_identifier=None)
+    discovered = discover_player_cache_entries(cache.root_dir, player_identifier=None)
     report = run_offline_player_stats_backfill(session, cache=cache)
 
     assert {player_id for _, player_id, _ in discovered} == set(PLAYER_IDS_BY_LENGTH)
@@ -451,7 +454,7 @@ def test_cache_discovery_and_acquisition_agree_on_player_id_length_range(length:
 
     acquisition_accepts = player_page_acquisition._PLAYER_ID_RE.fullmatch(player_id) is not None
     discovery_accepts = (
-        offline_player_stats_backfill._PLAYER_CACHE_FILE_RE.fullmatch(filename) is not None
+        player_page_cache._PLAYER_CACHE_FILE_RE.fullmatch(filename) is not None
     )
 
     assert discovery_accepts == acquisition_accepts
@@ -473,7 +476,7 @@ def test_offline_player_stats_backfill_still_rejects_malformed_cache_filenames(
     ):
         _write_gzip(cache_dir / malformed_name, MINIMAL_PLAYER_PAGE_HTML)
 
-    discovered = _discover_player_cache_entries(cache.root_dir, player_identifier=None)
+    discovered = discover_player_cache_entries(cache.root_dir, player_identifier=None)
 
     assert [player_id for _, player_id, _ in discovered] == ["hardeja01"]
 
@@ -493,7 +496,7 @@ def test_cache_discovery_rejects_player_ids_acquisition_cannot_write(
         MINIMAL_PLAYER_PAGE_HTML,
     )
 
-    discovered = _discover_player_cache_entries(cache.root_dir, player_identifier=None)
+    discovered = discover_player_cache_entries(cache.root_dir, player_identifier=None)
 
     assert [player_id for _, player_id, _ in discovered] == ["hardeja01"]
     assert player_page_acquisition._PLAYER_ID_RE.fullmatch("1ardeja01") is None

@@ -44,24 +44,32 @@ schema.
    re-derived, not imported, by:
    - `scraping/cache_inventory.py` — `_CACHE_TEAM_SEASON_FILE_RE` (strict)
    - `scraping/cache_inventory.py` — `_TEAM_SEASON_LIKE_FILE_RE` (loose)
-   - `scraping/offline_player_stats_backfill.py` — `_PLAYER_CACHE_FILE_RE`
+   - `scraping/player_page_cache.py` — `_PLAYER_CACHE_FILE_RE`
 
    Change the slug, the digest length, or the extension and discovery silently
    returns zero entries instead of failing.
 
 2. **Player-id length is shared across the acquire/discover boundary.**
-   `PLAYER_ID_PATTERN` in `scraping/player_page_acquisition.py` (`[a-z][a-z0-9]{5,9}`,
-   6-10 characters) is the one definition. `_PLAYER_CACHE_FILE_RE` in
-   `scraping/offline_player_stats_backfill.py` interpolates it rather than
-   restating a range. Widen or narrow the accepted id there and both ends move
-   together; restate it anywhere else and the drift F4E-012 fixed comes back.
+   `PLAYER_ID_PATTERN` in `domain/player_id.py` (`[a-z][a-z0-9]{5,9}`, 6-10
+   characters) is the one definition — a dependency-free leaf, like
+   `domain/team_codes.py`, so a pure consumer can use it without pulling in
+   SQLAlchemy or the scraping client. `scraping/player_page_acquisition.py`'s
+   `_PLAYER_ID_RE` and `scraping/player_page_cache.py`'s
+   `_PLAYER_CACHE_FILE_RE` both interpolate it rather than restating a range.
+   Widen or narrow the accepted id there and all three ends move together;
+   restate it anywhere else and the drift F4E-012 fixed comes back.
 
-3. **Postseason reaches into regular-season internals.**
-   `scraping/offline_player_postseason_stats_backfill.py` imports the private
-   `_discover_player_cache_entries`, `_required_html`, and `_validate_inputs`
-   from `scraping/offline_player_stats_backfill.py`, plus the public
-   `resolve_player_cache_root` and `discovery_status_for`. Any change to those
-   changes both backfill commands.
+3. **Both player-page backfills, and the cache-derived stats-coverage
+   builder (F4E-017), share one discovery contract.**
+   `scraping/player_page_cache.py` holds
+   `resolve_player_cache_root`, `discover_player_cache_entries`,
+   `discovery_status_for`, `read_cached_gzip`, and `required_html` — pure, no
+   database or HTTP import, so `validation/stats_coverage.py` can import it
+   too. `scraping/offline_player_postseason_stats_backfill.py` still imports
+   the private `_validate_inputs` from
+   `scraping/offline_player_stats_backfill.py` (F4E-027 tracks closing that
+   one remaining private cross-import). Any change to the shared module
+   changes both backfills and the coverage builder together.
 
 4. **`Settings.scraper_cache_dir` defaults to the relative `Path("data/raw/html")`**
    (`src/nba_data/config/settings.py`) and `get_settings()` is `@lru_cache`d.

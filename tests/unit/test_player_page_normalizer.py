@@ -3,10 +3,10 @@ from pathlib import Path
 import pytest
 
 from nba_data.scraping.normalizers.player_page import (
-    _is_did_not_play_placeholder,
-    _season_end_year,
+    is_did_not_play_placeholder,
     normalize_player_page_postseason,
     normalize_player_page_regular_season,
+    season_end_year,
 )
 from nba_data.scraping.parsers.player_page import (
     parse_player_page_postseason,
@@ -95,8 +95,8 @@ def test_normalize_player_page_regular_season_selects_single_real_team_row_when_
 def test_did_not_play_placeholder_predicate_matches_all_cache_reasons(reason: str) -> None:
     row = {"year_id": "2003-04", "age": reason}
 
-    assert _is_did_not_play_placeholder(row)
-    assert not _is_did_not_play_placeholder({**row, "team_id": "MIN"})
+    assert is_did_not_play_placeholder(row)
+    assert not is_did_not_play_placeholder({**row, "team_id": "MIN"})
 
 
 @pytest.mark.unit
@@ -330,7 +330,7 @@ def test_normalize_player_page_postseason_supports_real_cache_column_aliases() -
 @pytest.mark.parametrize(("label", "expected"), ARCHIVE_SEASON_LABELS)
 @pytest.mark.parametrize("key", ["season", "year_id"])
 def test_season_end_year_covers_every_archive_label(key: str, label: str, expected: int) -> None:
-    assert _season_end_year({key: label}) == expected
+    assert season_end_year({key: label}) == expected
 
 
 @pytest.mark.unit
@@ -363,7 +363,7 @@ def test_archive_season_labels_span_the_full_archive_range() -> None:
     ],
 )
 def test_season_end_year_resolves_boundary_forms(label: str, expected: int) -> None:
-    assert _season_end_year({"season": label}) == expected
+    assert season_end_year({"season": label}) == expected
 
 
 @pytest.mark.unit
@@ -383,12 +383,12 @@ def test_season_end_year_resolves_boundary_forms(label: str, expected: int) -> N
     ],
 )
 def test_season_end_year_returns_none_for_malformed_labels(label: str) -> None:
-    assert _season_end_year({"season": label}) is None
+    assert season_end_year({"season": label}) is None
 
 
 @pytest.mark.unit
 def test_season_end_year_returns_none_when_no_season_key_is_present() -> None:
-    assert _season_end_year({"team_id": "BOS", "games": "70"}) is None
+    assert season_end_year({"team_id": "BOS", "games": "70"}) is None
 
 
 @pytest.mark.unit

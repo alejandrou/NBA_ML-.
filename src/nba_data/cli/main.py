@@ -45,11 +45,16 @@ from nba_data.scraping.player_page_acquisition import (
     build_player_page_manifest,
     validate_player_page_acquisition_settings,
 )
+from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
 from nba_data.validation.official_stats import (
     validate_official_stats as run_official_stats_validation,
 )
 from nba_data.validation.offline_database import (
     validate_offline_database as run_offline_database_validation,
+)
+from nba_data.validation.stats_coverage import (
+    build_stats_coverage_artifact,
+    write_stats_coverage_artifact,
 )
 
 app = typer.Typer(help="Safe local utilities for the NBA data platform.")
@@ -120,6 +125,16 @@ _REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
     "--stats-backfill-report",
     hidden=True,
     help="Removed compatibility trap; use --team-stats-report instead.",
+)
+_STATS_COVERAGE_OUTPUT_OPTION = typer.Option(
+    ...,
+    "--output",
+    help="Required path to write the cache-derived stats-coverage JSON artifact.",
+)
+_STATS_COVERAGE_CACHE_ROOT_OPTION = typer.Option(
+    None,
+    "--cache-root",
+    help="Optional cache-root override for offline fixtures. Defaults to Settings.scraper_cache_dir.",
 )
 _SERVE_HOST_OPTION = typer.Option(
     "127.0.0.1",
@@ -584,6 +599,31 @@ def validate_official_stats(
 
     console.print_json(data=report.to_dict())
     if not report.passed:
+        raise typer.Exit(code=1)
+
+
+@validation_app.command("build-stats-coverage")
+def validate_build_stats_coverage(
+    output: Path = _STATS_COVERAGE_OUTPUT_OPTION,
+    cache_root: Path | None = _STATS_COVERAGE_CACHE_ROOT_OPTION,
+) -> None:
+    """Build the cache-derived official-stats coverage artifact (F4E-017).
+
+    Database-free: traverses cached team-season and player pages only. Always
+    writes the artifact, then exits non-zero if any season could not be
+    classified or any cached candidate was unreadable.
+    """
+
+    settings = get_settings()
+    root = cache_root if cache_root is not None else settings.scraper_cache_dir
+    try:
+        artifact = build_stats_coverage_artifact(cache_root=root)
+    except PlayerCacheRootNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    write_stats_coverage_artifact(artifact, output)
+    console.print_json(data=_summarize_report(artifact.to_dict(), output))
+    if not artifact.is_complete:
         raise typer.Exit(code=1)
 
 

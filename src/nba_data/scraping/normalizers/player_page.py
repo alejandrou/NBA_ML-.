@@ -78,8 +78,8 @@ def normalize_player_page_postseason(
 
         grouped_rows: dict[int, list[dict[str, str]]] = defaultdict(list)
         for parsed_row in parsed_rows:
-            season_year = _season_end_year(parsed_row)
-            team_code = _team_code(parsed_row)
+            season_year = season_end_year(parsed_row)
+            team_code = parsed_team_code(parsed_row)
             if season_year is None:
                 rows_skipped += 1
                 unsupported_rows += 1
@@ -99,7 +99,7 @@ def normalize_player_page_postseason(
                 unsupported_rows += 1
                 reason = (
                     "did_not_play_season"
-                    if _is_did_not_play_placeholder(parsed_row)
+                    if is_did_not_play_placeholder(parsed_row)
                     else "missing_team_code"
                 )
                 selection_entries.append(
@@ -146,13 +146,13 @@ def normalize_player_page_postseason(
                 )
                 continue
 
-            synthetic_rows = [row for row in season_rows if is_multi_team_marker(_team_code(row))]
-            tot_rows = [row for row in season_rows if is_aggregate_only_team_code(_team_code(row))]
+            synthetic_rows = [row for row in season_rows if is_multi_team_marker(parsed_team_code(row))]
+            tot_rows = [row for row in season_rows if is_aggregate_only_team_code(parsed_team_code(row))]
             real_team_rows = [
                 row
                 for row in season_rows
-                if not is_multi_team_marker(_team_code(row))
-                and not is_aggregate_only_team_code(_team_code(row))
+                if not is_multi_team_marker(parsed_team_code(row))
+                and not is_aggregate_only_team_code(parsed_team_code(row))
             ]
 
             if tot_rows:
@@ -183,7 +183,7 @@ def normalize_player_page_postseason(
                     )
                 )
             else:
-                aggregate_team_code = _team_code(aggregate_row)
+                aggregate_team_code = parsed_team_code(aggregate_row)
                 selection_entries.append(
                     PlayerPageSelectionEntry(
                         source_table=source_table,
@@ -208,7 +208,7 @@ def normalize_player_page_postseason(
             )
 
             for real_team_row in real_team_rows:
-                team_code = _team_code(real_team_row)
+                team_code = parsed_team_code(real_team_row)
                 selection_entries.append(
                     PlayerPageSelectionEntry(
                         source_table=source_table,
@@ -232,7 +232,7 @@ def normalize_player_page_postseason(
                 )
             )
 
-            if synthetic_rows and aggregate_row is not None and is_multi_team_marker(_team_code(aggregate_row)):
+            if synthetic_rows and aggregate_row is not None and is_multi_team_marker(parsed_team_code(aggregate_row)):
                 rows_skipped += max(len(synthetic_rows) - 1, 0)
 
     return PlayerPageNormalizationResult(
@@ -268,8 +268,8 @@ def _normalize_player_page_aggregate_only(
         grouped_rows: dict[int, list[dict[str, str]]] = defaultdict(list)
         invalid_rows = 0
         for parsed_row in parsed_rows:
-            season_year = _season_end_year(parsed_row)
-            team_code = _team_code(parsed_row)
+            season_year = season_end_year(parsed_row)
+            team_code = parsed_team_code(parsed_row)
             if season_year is None or is_aggregate_only_team_code(team_code):
                 invalid_rows += 1
                 continue
@@ -335,7 +335,7 @@ def _normalize_player_page_aggregate_only(
                 )
                 continue
 
-            source_team_code = _team_code(selected_row)
+            source_team_code = parsed_team_code(selected_row)
             rows_skipped += max(len(season_rows) - 1, 0)
             selection_entries.append(
                 PlayerPageSelectionEntry(
@@ -381,31 +381,31 @@ def _required_player_id(value: str) -> str:
 def _select_full_season_row(
     season_rows: list[dict[str, str]],
 ) -> tuple[dict[str, str] | None, str]:
-    synthetic_rows = [row for row in season_rows if is_multi_team_marker(_team_code(row))]
+    synthetic_rows = [row for row in season_rows if is_multi_team_marker(parsed_team_code(row))]
     if synthetic_rows:
         return synthetic_rows[0], "selected_multi_team_aggregate"
 
     real_team_rows = [
         row
         for row in season_rows
-        if _team_code(row) is not None
-        and not _is_did_not_play_placeholder(row)
-        and not is_multi_team_marker(_team_code(row))
-        and not is_aggregate_only_team_code(_team_code(row))
+        if parsed_team_code(row) is not None
+        and not is_did_not_play_placeholder(row)
+        and not is_multi_team_marker(parsed_team_code(row))
+        and not is_aggregate_only_team_code(parsed_team_code(row))
     ]
     if len(real_team_rows) == 1:
         return real_team_rows[0], "selected_single_team_row"
     if not real_team_rows:
-        if any(_is_did_not_play_placeholder(row) for row in season_rows):
+        if any(is_did_not_play_placeholder(row) for row in season_rows):
             return None, "did_not_play_season"
         return None, "no_supported_team_row"
     return None, "ambiguous_multiple_real_team_rows"
 
 
-def _is_did_not_play_placeholder(row: Mapping[str, str]) -> bool:
+def is_did_not_play_placeholder(row: Mapping[str, str]) -> bool:
     """Return whether a parsed row is a no-team Did not play placeholder."""
 
-    if _team_code(row) is not None:
+    if parsed_team_code(row) is not None:
         return False
     age = _clean_string(row.get("age"))
     return age is not None and age.startswith(_DID_NOT_PLAY_MARKER)
@@ -437,7 +437,7 @@ def _build_row(
     }
 
 
-def _season_end_year(row: Mapping[str, str]) -> int | None:
+def season_end_year(row: Mapping[str, str]) -> int | None:
     season_value = None
     for key in ("season", "year_id"):
         season_value = _clean_string(row.get(key))
@@ -468,7 +468,7 @@ def _season_end_year(row: Mapping[str, str]) -> int | None:
     return end_year
 
 
-def _team_code(row: Mapping[str, str]) -> str | None:
+def parsed_team_code(row: Mapping[str, str]) -> str | None:
     for key in ("team_id", "team_name_abbr", "team_abbreviation", "team", "tm"):
         value = _clean_string(row.get(key))
         if value:
@@ -513,6 +513,9 @@ def _normalized_values(row: Mapping[str, str], *, source_table: str) -> dict[str
 __all__ = [
     "PlayerPageNormalizationResult",
     "PlayerPageSelectionEntry",
+    "is_did_not_play_placeholder",
     "normalize_player_page_postseason",
     "normalize_player_page_regular_season",
+    "parsed_team_code",
+    "season_end_year",
 ]

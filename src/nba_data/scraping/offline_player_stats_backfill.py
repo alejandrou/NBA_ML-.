@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import gzip
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -15,7 +13,14 @@ from nba_data.scraping.loaders.player_page_stats import (
 )
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
-from nba_data.scraping.player_page_acquisition import PLAYER_ID_PATTERN
+from nba_data.scraping.player_page_cache import (
+    PlayerCacheDiscoveryStatus,
+    PlayerCacheRootNotFoundError,
+    discover_player_cache_entries,
+    discovery_status_for,
+    required_html,
+    resolve_player_cache_root,
+)
 from nba_data.validation.parser_contracts import current_parser_version
 
 # The version stamped on rows this backfill writes, so a row records which
@@ -23,19 +28,6 @@ from nba_data.validation.parser_contracts import current_parser_version
 # every identifier, what changed, and which task introduced it — lives in
 # `nba_data.validation.parser_contracts`.
 DEFAULT_PLAYER_STATS_PARSER_VERSION = current_parser_version("player_page_regular")
-# The player-id fragment is imported from acquisition on purpose: discovery must
-# accept every id acquisition is allowed to write. Only the id range is shared —
-# the rest of the cache filename shape stays strict.
-_PLAYER_CACHE_FILE_RE = re.compile(
-    rf"^players-(?P<initial>[a-z])-(?P<player_id>{PLAYER_ID_PATTERN})\.html-[0-9a-f]{{16}}\.html\.gz$",
-    re.IGNORECASE,
-)
-
-PlayerCacheDiscoveryStatus = Literal["ok", "no_matching_pages"]
-
-
-class PlayerCacheRootNotFoundError(ValueError):
-    """Raised when the configured player-page cache root does not exist."""
 
 
 @dataclass(frozen=True)
@@ -123,7 +115,7 @@ def run_offline_player_stats_backfill(
     started = perf_counter()
 
     cache_root = resolve_player_cache_root(cache.root_dir)
-    cache_entries = _discover_player_cache_entries(cache_root, player_identifier=normalized_player)
+    cache_entries = discover_player_cache_entries(cache_root, player_identifier=normalized_player)
     discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
@@ -179,59 +171,6 @@ def _validate_inputs(
         raise ValueError(msg)
 
 
-def resolve_player_cache_root(cache_root: Path) -> Path:
-    """Return the absolute cache root, refusing to treat a missing root as empty."""
-
-    root = cache_root.resolve(strict=False)
-    if not root.is_dir():
-        msg = (
-            "Player-page cache root does not exist or is not a directory: "
-            f"{root}. Check SCRAPER_CACHE_DIR and the working directory."
-        )
-        raise PlayerCacheRootNotFoundError(msg)
-    return root
-
-
-def discovery_status_for(
-    cache_entries: list[tuple[Path, str, str]],
-) -> PlayerCacheDiscoveryStatus:
-    """Report an existing-but-empty cache root distinctly from a normal run."""
-
-    return "ok" if cache_entries else "no_matching_pages"
-
-
-def _discover_player_cache_entries(
-    cache_root: Path,
-    *,
-    player_identifier: str | None,
-) -> list[tuple[Path, str, str]]:
-    root = resolve_player_cache_root(cache_root)
-
-    entries: list[tuple[Path, str, str]] = []
-    for path in sorted(root.rglob("*.html.gz"), key=lambda value: value.resolve(strict=False).as_posix().lower()):
-        resolved = path.resolve(strict=False)
-        if root not in resolved.parents and resolved != root:
-            continue
-        if "basketball-reference" not in resolved.parts:
-            continue
-        match = _PLAYER_CACHE_FILE_RE.fullmatch(path.name)
-        if match is None:
-            continue
-
-        current_player = match.group("player_id").lower()
-        if player_identifier is not None and current_player != player_identifier:
-            continue
-
-        source_url = (
-            "https://www.basketball-reference.com/players/"
-            f"{match.group('initial').lower()}/{current_player}.html"
-        )
-        if _read_cached_gzip(resolved) is None:
-            continue
-        entries.append((resolved, current_player, source_url))
-    return entries
-
-
 def _process_one_player_page(
     session: Session,
     *,
@@ -243,7 +182,7 @@ def _process_one_player_page(
     parser_version: str,
 ) -> OfflinePlayerStatsBackfillEntry:
     try:
-        html = _required_html(cache_path)
+        html = required_html(cache_path)
         parsed = parse_player_page_regular_season(html)
         normalized = normalize_player_page_regular_season(
             parsed,
@@ -317,24 +256,6 @@ def _process_one_player_page(
         unresolved_rows=unresolved_rows,
         reason=reason,
     )
-
-
-def _required_html(path: Path) -> str:
-    html = _read_cached_gzip(path)
-    if html is None:
-        msg = f"Cached HTML file is unreadable or empty: {path}"
-        raise ValueError(msg)
-    return html
-
-
-def _read_cached_gzip(path: Path) -> str | None:
-    try:
-        with gzip.open(path, "rt", encoding="utf-8") as file:
-            html = file.read()
-    except OSError:
-        return None
-    cleaned = html.strip()
-    return cleaned if cleaned else None
 
 
 __all__ = [

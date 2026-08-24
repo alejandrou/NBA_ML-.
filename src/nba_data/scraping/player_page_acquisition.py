@@ -13,6 +13,11 @@ from sqlalchemy.orm import Session
 
 from nba_data.config.settings import Settings
 from nba_data.db.models import Player, PlayerSeason, Season
+from nba_data.domain.player_id import (
+    PLAYER_ID_MAX_LENGTH,
+    PLAYER_ID_MIN_LENGTH,
+    PLAYER_ID_PATTERN,
+)
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import RateLimitExceededError
 
@@ -20,14 +25,6 @@ BASE_URL = "https://www.basketball-reference.com"
 PAGE_TYPE = "player_page"
 PLAYER_PAGE_MAX_REQUESTS_PER_MINUTE = 10
 
-# Single source of truth for the accepted basketball_reference_player_id shape.
-# Acquisition validation and offline cache discovery both build their patterns
-# from PLAYER_ID_PATTERN so the two ends of the pipeline cannot drift apart.
-PLAYER_ID_MIN_LENGTH = 6
-PLAYER_ID_MAX_LENGTH = 10
-PLAYER_ID_PATTERN = (
-    rf"[a-z][a-z0-9]{{{PLAYER_ID_MIN_LENGTH - 1},{PLAYER_ID_MAX_LENGTH - 1}}}"
-)
 _PLAYER_ID_RE = re.compile(rf"^{PLAYER_ID_PATTERN}$", re.IGNORECASE)
 
 

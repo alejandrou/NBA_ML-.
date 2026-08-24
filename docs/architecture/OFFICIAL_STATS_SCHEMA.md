@@ -786,3 +786,36 @@ F4E-006 and F4E-009 validation checks:
   report (F4E-025);
 - idempotency;
 - absence of generated metrics in `stats`.
+
+F4E-017 cache-derived coverage artifact — none of the checks above can say that
+a *specific* player-season row which should exist is missing, since report
+totals and shape checks still reconcile when one absent key happens to be
+offset by one unexpected key. `nba_data.validation.stats_coverage` builds an
+independent, database-free JSON artifact (schema version 1) stating the exact
+`stats.*` natural keys the cached HTML implies, so F4E-018 can diff it against
+PostgreSQL:
+
+- Two cache sources, each authoritative for different table families:
+  - **Player pages** are authoritative for the regular full-season aggregate
+    row, the postseason full-season aggregate row, and every postseason
+    team-stint row.
+  - **Team-season pages** are authoritative for the regular roster row and
+    every regular team-stint row.
+- Expectations are classified from parsed source rows and small
+  source-semantic predicates (`is_multi_team_marker`,
+  `is_did_not_play_placeholder`, `is_aggregate_only_team_code`,
+  `season_end_year`) — never from a normalizer's final row-selection result,
+  so a normalizer defect cannot disappear from both the database and this
+  oracle at once. The normalizer is still run and any disagreement with the
+  classifier is recorded as evidence, not used to cancel an expectation.
+- A season that produces neither an expectation nor a did-not-play
+  explanation is written under `unexplained`, and the build command exits
+  non-zero without withholding the artifact.
+- `TOT` and every multi-team marker never become an expectation on either
+  cache source: `TOT` reaching `stats.player_team_season_*` is excluded
+  because a team-page "Team Totals" row carries no player link, and a
+  multi-team marker on a player page routes to the aggregate table only.
+- Did-not-play evidence is recorded separately for regular and postseason and
+  suppresses only the matching aggregate expectation; a roster or team-stint
+  expectation observed for the same season is never erased by it.
+- Run it with `uv run nba-data validate build-stats-coverage --output PATH`.

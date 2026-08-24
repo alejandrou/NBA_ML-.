@@ -9,15 +9,15 @@ from sqlalchemy.orm import Session
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_postseason
-from nba_data.scraping.offline_player_stats_backfill import (
+from nba_data.scraping.offline_player_stats_backfill import _validate_inputs
+from nba_data.scraping.parsers.player_page import parse_player_page_postseason
+from nba_data.scraping.player_page_cache import (
     PlayerCacheDiscoveryStatus,
-    _discover_player_cache_entries,
-    _required_html,
-    _validate_inputs,
+    discover_player_cache_entries,
     discovery_status_for,
+    required_html,
     resolve_player_cache_root,
 )
-from nba_data.scraping.parsers.player_page import parse_player_page_postseason
 from nba_data.validation.parser_contracts import current_parser_version
 
 # The version stamped on rows this backfill writes. `player_page_postseason`'s
@@ -120,7 +120,7 @@ def run_offline_player_postseason_stats_backfill(
     started = perf_counter()
 
     cache_root = resolve_player_cache_root(cache.root_dir)
-    cache_entries = _discover_player_cache_entries(cache_root, player_identifier=normalized_player)
+    cache_entries = discover_player_cache_entries(cache_root, player_identifier=normalized_player)
     discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
@@ -166,7 +166,7 @@ def _process_one_player_page(
     parser_version: str,
 ) -> OfflinePlayerPostseasonStatsBackfillEntry:
     try:
-        html = _required_html(cache_path)
+        html = required_html(cache_path)
         parsed = parse_player_page_postseason(html)
         normalized = normalize_player_page_postseason(
             parsed,

@@ -97,11 +97,12 @@ a large gap means the cache root or the filters were not what you expected.
 ## Player-id contract
 
 Acquisition and offline discovery accept the same 6-10 character player ids.
-`PLAYER_ID_PATTERN` in `scraping/player_page_acquisition.py` is the single source
-of truth; `_PLAYER_CACHE_FILE_RE` in `scraping/offline_player_stats_backfill.py`
-imports that fragment instead of restating a range, so the two ends cannot drift
-apart again. F4E-012 closed the earlier mismatch, where discovery matched only
-8-10 characters and 36 acquired pages were cached and never processed.
+`PLAYER_ID_PATTERN` in `domain/player_id.py` is the single source of truth;
+`scraping/player_page_acquisition.py` and `_PLAYER_CACHE_FILE_RE` in
+`scraping/player_page_cache.py` both import that fragment instead of restating
+a range, so the ends cannot drift apart again. F4E-012 closed the earlier
+mismatch, where discovery matched only 8-10 characters and 36 acquired pages
+were cached and never processed.
 
 A missing cache root is an error, not an empty result: both player backfills
 raise `PlayerCacheRootNotFoundError` naming the resolved absolute path. An

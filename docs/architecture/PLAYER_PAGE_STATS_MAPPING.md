@@ -162,6 +162,25 @@ season team row exists. The cache contains these 22 reason strings:
 - `Did not play - unsigned`
 - `Did not play - waived`
 
+The predicate is exported as `is_did_not_play_placeholder` from
+`nba_data.scraping.normalizers.player_page` (along with `season_end_year` and
+`parsed_team_code`) so it stays the single definition shared by the regular and
+postseason normalizers and by F4E-017's cache-derived stats-coverage builder
+(`nba_data.validation.stats_coverage`), rather than a second copy that could
+drift.
+
+**Season-type scoping.** A regular-season did-not-play marker says nothing
+about the postseason, and vice versa: `normalize_player_page_regular_season`
+and `normalize_player_page_postseason` each evaluate the marker only against
+their own parsed rows, so a player can carry a real regular-season row and a
+did-not-play postseason marker, or the reverse, in the same season. F4E-017's
+coverage artifact records this as two independent booleans,
+`did_not_play.regular` and `did_not_play.postseason`, on the same
+`(basketball_reference_player_id, season_year)` entry — suppressing only the
+matching season type's aggregate expectation. A roster or team-stint
+expectation observed for that season from the other cache source is never
+erased by either flag.
+
 ## Postseason
 
 | Player-page postseason table ID | Player postseason table | Team postseason table |

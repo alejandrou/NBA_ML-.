@@ -16,23 +16,13 @@ from nba_data.scraping.loaders.player_page_stats import (
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
 from nba_data.scraping.player_page_acquisition import PLAYER_ID_PATTERN
+from nba_data.validation.parser_contracts import current_parser_version
 
 # The version stamped on rows this backfill writes, so a row records which
-# parser contract produced it. Each bump marks a change in what the same cached
-# HTML yields; rows written under an earlier version are not re-labelled, so a
-# recovery backfill is what makes an older row current.
-#
-#   v2  fixes the `YYYY-YY` century rollover in `_season_end_year` (F4E-013).
-#       Rows written under v1 carry the wrong `season_year` for
-#       century-crossing labels.
-#   v3  treats any multi-team marker semantically (F4E-014). Rows written under
-#       v1 or v2 are missing the full-season aggregate for a season whose
-#       marker fell outside the old `{2TM, 3TM, 4TM}` list — `5TM` in the
-#       cached archive.
-#   v4  excludes `Did not play - ...` placeholder rows from full-season
-#       selection (F4E-022), recovering real rows that share their season and
-#       preventing placeholder values from reaching the stats loader.
-DEFAULT_PLAYER_STATS_PARSER_VERSION = "player-page-parser-v4"
+# parser contract produced it. `player_page_regular`'s full lineage —
+# every identifier, what changed, and which task introduced it — lives in
+# `nba_data.validation.parser_contracts`.
+DEFAULT_PLAYER_STATS_PARSER_VERSION = current_parser_version("player_page_regular")
 # The player-id fragment is imported from acquisition on purpose: discovery must
 # accept every id acquisition is allowed to write. Only the id range is shared —
 # the rest of the cache filename shape stays strict.

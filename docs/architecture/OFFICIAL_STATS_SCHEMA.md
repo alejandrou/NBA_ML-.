@@ -104,7 +104,7 @@ Every table has the same lineage columns:
 | --- | --- | --- | --- |
 | `source_url` | `Text` | not null | Basketball Reference source URL for the cached page. |
 | `cache_path` | `Text` | not null | Local `.html.gz` cache path used for the row. |
-| `parser_version` | `String(50)` | not null | Version label for parser/normalizer contract. |
+| `parser_version` | `String(50)` | not null | Version label for parser/normalizer contract. `src/nba_data/validation/parser_contracts.py` defines the known vocabulary and the current identifier per producer. |
 | `created_at` | `DateTime(timezone=True)` | not null | Server default `func.now()` in F4E-002. |
 | `updated_at` | `DateTime(timezone=True)` | not null | Server default `func.now()` and updated on update. |
 
@@ -781,5 +781,8 @@ F4E-006 and F4E-009 validation checks:
 - coverage by season and team;
 - Basketball Reference numeric ranges;
 - regular-season versus postseason separation;
+- parser-version lineage against the `parser_contracts` registry: unknown,
+  superseded (`stale`), and current-but-wrong-producer versions all fail the
+  report (F4E-025);
 - idempotency;
 - absence of generated metrics in `stats`.

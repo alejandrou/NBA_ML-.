@@ -19,6 +19,7 @@ from nba_data.validation.official_stats import (
     _extract_backfill_summary,
     validate_official_stats,
 )
+from nba_data.validation.parser_contracts import current_parser_version
 
 
 @pytest.fixture
@@ -41,6 +42,7 @@ def test_validate_official_stats_accepts_clean_final_phase_4e_shape(session: Ses
     assert report.table_counts["stats.player_postseason_totals"] == 2
     assert report.validation_summary["synthetic_code_violations"] == 0
     assert report.validation_summary["numeric_range_violations"] == 0
+    assert report.validation_summary["parser_lineage_violations"] == 0
     assert report.backfill_summary["team_stats"]["stats_loaded_rows"] == 30  # type: ignore[index]
     assert report.backfill_summary["player_stats"]["cache_root"] == str(Path.cwd())  # type: ignore[index]
     assert report.backfill_summary["player_postseason_stats"]["discovery_status"] == "ok"  # type: ignore[index]
@@ -224,7 +226,7 @@ def test_validate_official_stats_detects_orphan_and_invalid_grains(session: Sess
             "insert into stats.player_team_postseason_per_game "
             "(id, player_team_season_id, source_url, cache_path, parser_version, age, g, gs, mp_per_game, fg_pct) "
             "values (99, 99, 'https://example.test/players/h/hardenja01.html#playoffs', "
-            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v1', 31, 12, 12, 39.4, 0.50)"
+            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v4', 31, 12, 12, 39.4, 0.50)"
         )
     )
     session.execute(
@@ -232,7 +234,7 @@ def test_validate_official_stats_detects_orphan_and_invalid_grains(session: Sess
             "insert into stats.player_postseason_totals "
             "(id, player_season_id, source_team_code, source_url, cache_path, parser_version, age, g, gs, mp, fg_pct, pts) "
             "values (99, 999, 'BRK', 'https://example.test/players/h/hardenja01.html#playoffs', "
-            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v1', 31, 12, 12, 420, 0.50, 320)"
+            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v4', 31, 12, 12, 420, 0.50, 320)"
         )
     )
 
@@ -269,7 +271,7 @@ def test_validate_official_stats_detects_synthetic_team_code_misuse(session: Ses
             "insert into stats.player_team_postseason_totals "
             "(id, player_team_season_id, source_url, cache_path, parser_version, age, g, gs, mp, fg_pct, pts) "
             "values (99, 9, 'https://example.test/players/h/hardenja01.html#playoffs', "
-            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v1', 31, 12, 12, 420, 0.50, 320)"
+            "'cache/player_postseason.html.gz', 'player-page-postseason-parser-v4', 31, 12, 12, 420, 0.50, 320)"
         )
     )
     session.execute(text("update stats.player_season_totals set source_team_code = 'TOT' where player_season_id = 2"))
@@ -401,6 +403,135 @@ def test_validate_official_stats_detects_regular_postseason_separation_issues(se
 
 
 @pytest.mark.unit
+def test_validate_official_stats_detects_unknown_parser_version(session: Session) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "update stats.player_season_totals set parser_version = 'not-a-real-parser' "
+            "where player_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert "unknown_parser_version" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "unknown_parser_version")
+    assert issue.context["table"] == "stats.player_season_totals"
+    assert issue.context["parser_version"] == "not-a-real-parser"
+    assert issue.context["count"] == 1
+    assert issue.context["examples"] == [1]
+    assert report.validation_summary["parser_lineage_violations"] >= 1
+
+
+@pytest.mark.unit
+def test_validate_official_stats_detects_stale_parser_version(session: Session) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "update stats.player_season_totals set parser_version = 'player-page-parser-v2' "
+            "where player_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert "stale_parser_version" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "stale_parser_version")
+    assert issue.context["table"] == "stats.player_season_totals"
+    assert issue.context["parser_version"] == "player-page-parser-v2"
+    assert issue.context["count"] == 1
+
+
+@pytest.mark.unit
+def test_validate_official_stats_groups_parser_lineage_violations_by_table_and_version(
+    session: Session,
+) -> None:
+    """Mixed unknown/stale versions across two tables group into separate issues."""
+
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "update stats.player_season_totals set parser_version = 'player-page-parser-v1' "
+            "where player_season_id = 1"
+        )
+    )
+    session.execute(
+        text(
+            "update stats.player_team_season_totals set parser_version = 'legacy-parser' "
+            "where player_team_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    stale = [issue for issue in report.issues if issue.code == "stale_parser_version"]
+    unknown = [issue for issue in report.issues if issue.code == "unknown_parser_version"]
+    assert {issue.context["table"] for issue in stale} == {"stats.player_season_totals"}
+    assert {issue.context["table"] for issue in unknown} == {"stats.player_team_season_totals"}
+    assert report.validation_summary["parser_lineage_violations"] == len(stale) + len(unknown)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_rejects_a_current_version_from_the_wrong_producer(
+    session: Session,
+) -> None:
+    """A registered, current identifier is still wrong if another producer owns it.
+
+    `team-season-parser-v1` is current for `team_season`, but
+    `stats.player_season_totals` is written by the `player_page_regular`
+    backfill. Stamping the team-season identifier there must not pass simply
+    because that identifier is globally current.
+    """
+
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "update stats.player_season_totals set parser_version = 'team-season-parser-v1' "
+            "where player_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert "wrong_producer_parser_version" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "wrong_producer_parser_version")
+    assert issue.context["table"] == "stats.player_season_totals"
+    assert issue.context["parser_version"] == "team-season-parser-v1"
+    assert issue.context["count"] == 1
+    assert issue.context["examples"] == [1]
+    assert report.validation_summary["parser_lineage_violations"] >= 1
+    assert "unknown_parser_version" not in _issue_codes(report)
+    assert "stale_parser_version" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_rejects_a_stale_version_from_the_wrong_producer(
+    session: Session,
+) -> None:
+    """Wrong-producer classification wins over staleness for the same value."""
+
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "update stats.player_team_season_totals set parser_version = "
+            "'player-page-postseason-parser-v1' where player_team_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert "wrong_producer_parser_version" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "wrong_producer_parser_version")
+    assert issue.context["table"] == "stats.player_team_season_totals"
+    assert "stale_parser_version" not in _issue_codes(report)
+
+
+@pytest.mark.unit
 def test_validate_official_stats_detects_duplicate_rows(session: Session) -> None:
     with _session_with_schema(no_unique_grain_tables={"player_team_season_totals"}) as test_session:
         _insert_clean_dataset(test_session)
@@ -408,7 +539,7 @@ def test_validate_official_stats_detects_duplicate_rows(session: Session) -> Non
             text(
                 "insert into stats.player_team_season_totals "
                 "(id, player_team_season_id, source_url, cache_path, parser_version, age, g, gs, mp, fg_pct, pts) "
-                "values (99, 1, 'dup', 'dup', 'stats-parser-v1', 27, 82, 82, 2900, 0.51, 2100)"
+                "values (99, 1, 'dup', 'dup', 'team-season-parser-v1', 27, 82, 82, 2900, 0.51, 2100)"
             )
         )
 
@@ -805,19 +936,19 @@ def _stats_row_params(spec, grain: int) -> dict[str, object]:
         base = {
             "source_url": "https://example.test/players/sample.html#playoffs",
             "cache_path": "cache/player_postseason.html.gz",
-            "parser_version": "player-page-postseason-parser-v1",
+            "parser_version": current_parser_version("player_page_postseason"),
         }
     elif spec.family == "aggregate":
         base = {
             "source_url": "https://example.test/players/sample.html",
             "cache_path": "cache/player_regular.html.gz",
-            "parser_version": "player-page-parser-v1",
+            "parser_version": current_parser_version("player_page_regular"),
         }
     else:
         base = {
             "source_url": "https://example.test/teams/sample/2024.html",
             "cache_path": "cache/team_regular.html.gz",
-            "parser_version": "stats-parser-v1",
+            "parser_version": current_parser_version("team_season"),
         }
 
     if spec.family == "aggregate":

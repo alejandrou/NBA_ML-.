@@ -128,29 +128,74 @@ without producing an enormous report.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+- Command: `uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py tests/unit/test_offline_stats_backfill.py tests/unit/test_official_stats_validation.py tests/unit/test_parser_contracts.py`
+  Result: `104 passed in 4.27s`
+- Command: `uv run ruff check .`
+  Result: `All checks passed!`
+- Command: `uv run pytest`
+  Result: `788 passed, 25 skipped, 7 warnings in 16.59s` (the 25 skips are pre-existing, unrelated integration/live-scraping tests)
 
-## Automated validation
-
-- Command:
-- Result:
+A review pass caught that the initial implementation classified `parser_version`
+values globally (current/stale/unknown) without checking that the identifier's
+*producer* matched the table's actual producer — e.g. `team-season-parser-v1`
+is current for `team_season`, so stamping it on `stats.player_season_totals`
+(a `player_page_regular` table) passed validation. Fixed by adding
+`StatsTableSpec.expected_parser_producer` (derived from `season_type`/`family`:
+postseason tables of either family expect `player_page_postseason`, regular
+aggregate tables expect `player_page_regular`, regular team-stint tables expect
+`team_season`) and a new `wrong_producer_parser_version` issue code, checked
+independently of staleness so a current-but-wrong-producer value is never
+silently accepted. Regression tests added:
+`test_validate_official_stats_rejects_a_current_version_from_the_wrong_producer`
+(the exact reported scenario),
+`test_validate_official_stats_rejects_a_stale_version_from_the_wrong_producer`,
+and `test_parser_contracts.py::test_expected_parser_producer_matches_table_season_type_and_family`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Built the throwaway SQLite fixture the validation tests already use
+   (`_session_with_schema` + `_insert_clean_dataset` from
+   `tests/unit/test_official_stats_validation.py`), which now stamps rows with
+   the three registry-current identifiers (`team-season-parser-v1`,
+   `player-page-parser-v4`, `player-page-postseason-parser-v4`).
+2. Ran `validate_official_stats(session)`.
+3. Ran `uv run nba-data backfill stats --help`, `backfill player-stats --help`,
+   `backfill player-postseason-stats --help` (`COLUMNS=200` to avoid truncation)
+   and read the printed `--parser-version` defaults.
 
-Expected result:
+Expected and actual result: `report.passed is True` and
+`validation_summary["parser_lineage_violations"] == 0`. The three CLI defaults
+printed `team-season-parser-v1`, `player-page-parser-v4`, and
+`player-page-postseason-parser-v4` — unchanged from before this card, now
+sourced from `current_parser_version(...)` in the registry instead of a local
+constant.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Built the same clean fixture.
+2. `update stats.player_season_totals set parser_version = 'player-page-parser-v2' where player_season_id = 1` (known but superseded).
+3. `update stats.player_season_totals set parser_version = 'not-a-parser' where player_season_id = 2` (never registered).
+4. Ran `validate_official_stats(session)`.
 
-Expected result:
+Expected and actual result: `report.passed is False`, with issues:
+`stale_parser_version` for `stats.player_season_totals` /
+`player-page-parser-v2` (count 1, example grain `[1]`) and
+`unknown_parser_version` for `stats.player_season_totals` / `not-a-parser`
+(count 1, example grain `[2]`) — one issue per `(table, parser_version)` group,
+not per row, matching the existing capped-example issue shape.
+
+5. Separately, on a fresh clean fixture:
+   `update stats.player_season_totals set parser_version = 'team-season-parser-v1' where player_season_id = 1`
+   (a real, currently-registered identifier — just the wrong producer's).
+
+Expected and actual result: `report.passed is False`, `wrong_producer_parser_version`
+for `stats.player_season_totals` / `team-season-parser-v1` (count 1, example
+grain `[1]`), and neither `unknown_parser_version` nor `stale_parser_version`
+fires for that row.
 
 ## Known limitations
 
-- None.
+- No existing database row is rewritten or relabelled; a database still
+  holding pre-v4 rows will now fail `validate_official_stats` until an
+  explicitly authorized remediation backfill runs. That remediation is out of
+  scope for this card, as stated in its Scope section.

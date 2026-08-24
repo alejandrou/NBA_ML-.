@@ -18,15 +18,13 @@ from nba_data.scraping.offline_player_stats_backfill import (
     resolve_player_cache_root,
 )
 from nba_data.scraping.parsers.player_page import parse_player_page_postseason
+from nba_data.validation.parser_contracts import current_parser_version
 
-# The version stamped on rows this backfill writes. Tracks the regular-season
-# lineage in `offline_player_stats_backfill.py`, which documents each bump:
-#
-#   v2  fixes the `YYYY-YY` century rollover in `_season_end_year` (F4E-013).
-#   v3  treats any multi-team marker semantically (F4E-014).
-#   v4  keeps `Did not play - ...` placeholder rows out of full-season
-#       selection (F4E-022), matching regular-season parser lineage.
-DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION = "player-page-postseason-parser-v4"
+# The version stamped on rows this backfill writes. `player_page_postseason`'s
+# full lineage — every identifier, what changed, and which task introduced it —
+# lives in `nba_data.validation.parser_contracts`, alongside the regular-season
+# lineage it tracks.
+DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION = current_parser_version("player_page_postseason")
 
 
 @dataclass(frozen=True)

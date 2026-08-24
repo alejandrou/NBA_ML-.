@@ -32,12 +32,33 @@ one, and the row is skipped rather than keyed wrongly.
 player pages. Team-season pages do not use it: their season end year comes from
 the page URL.
 
+`src/nba_data/validation/parser_contracts.py` is the single source of truth for
+every `stats.*.parser_version` identifier: which producer wrote it (team-season
+page, regular player page, or postseason player page), its generation, whether
+it is current, the task that introduced it, and the behavior change it marks.
+The three offline backfill modules import their default `parser_version` from
+this registry rather than declaring it independently; regular and postseason
+player pages keep separate stored identifiers because their selectors and
+destinations differ, but their current entries share the same generation.
+
 Rows written before this rule was fixed carry `parser_version`
 `player-page-parser-v1` / `player-page-postseason-parser-v1`; rows written after
 carry `-v2`. Rows written after the multi-team marker became semantic (F4E-014)
 carry `-v3`. Rows written after Did not play placeholders stopped being treated
-as team rows (F4E-022) carry `-v4`. Lineage queries must filter on the version
-they mean.
+as team rows (F4E-022) carry `-v4`, the current generation for both producers.
+Lineage queries must filter on the version they mean.
+
+`validate_official_stats` enforces this registry against every `stats.*`
+table: a `parser_version` value it does not recognize fails with
+`unknown_parser_version`, a known but non-current value fails with
+`stale_parser_version`, and a known, current value written by the *wrong*
+producer for that table fails with `wrong_producer_parser_version` — for
+example `team-season-parser-v1`, current for `team_season`, still fails on
+`stats.player_season_totals`, which only `player_page_regular` may write. All
+three count toward the report's `parser_lineage_violations` summary. Writers
+still accept a user-supplied `--parser-version` for offline experiments and
+historical reproductions — the validator, not the writer, is the enforcement
+boundary.
 
 ## Multi-Team Markers
 

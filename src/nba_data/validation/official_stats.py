@@ -15,6 +15,11 @@ from nba_data.domain.team_codes import (
     is_multi_team_marker,
     is_synthetic_team_code,
 )
+from nba_data.validation.parser_contracts import (
+    PARSER_CONTRACTS_BY_IDENTIFIER,
+    ParserProducer,
+    classify_parser_version,
+)
 
 _NON_DATA_COLUMNS = {
     "id",
@@ -90,6 +95,22 @@ class StatsTableSpec:
     @property
     def requires_source_team_code(self) -> bool:
         return self.family == "aggregate"
+
+    @property
+    def expected_parser_producer(self) -> ParserProducer:
+        """The `parser_contracts` producer that must have written this table.
+
+        Postseason tables — aggregate and team-stint alike — are written by the
+        postseason player-page backfill. Regular-season aggregate tables are
+        written by the regular player-page backfill; regular-season team-stint
+        tables are written by the team-season backfill.
+        """
+
+        if self.season_type == "postseason":
+            return "player_page_postseason"
+        if self.family == "aggregate":
+            return "player_page_regular"
+        return "team_season"
 
 
 REGULAR_TEAM_STINT_TABLE_SPECS = (
@@ -276,6 +297,7 @@ def validate_official_stats(
     issues.extend(_team_stint_synthetic_code_issues(session, reflected_tables, core_tables))
     issues.extend(_aggregate_source_team_code_issues(session, reflected_tables, core_tables, core_team_aliases))
     issues.extend(_regular_postseason_separation_issues(session, reflected_tables))
+    issues.extend(_parser_version_issues(session, reflected_tables))
     issues.extend(_row_content_issues(session, reflected_tables))
     issues.extend(_generated_schema_issues(inspector))
 
@@ -794,6 +816,76 @@ def _regular_postseason_separation_issues(
     return issues
 
 
+_PARSER_ISSUE_DESCRIPTIONS = {
+    "unknown_parser_version": "an unknown",
+    "stale_parser_version": "a stale",
+    "wrong_producer_parser_version": "a wrong-producer",
+}
+
+
+def _parser_version_issues(
+    session: Session,
+    reflected_tables: Mapping[str, Table],
+) -> list[OfficialStatsValidationIssue]:
+    """Fail on parser lineage the registry doesn't recognize, has superseded,
+    or that was written by a different producer than this table expects.
+
+    A `parser_version` value can be individually known and current in the
+    registry while still being wrong here: `team-season-parser-v1` is current
+    for `team_season`, but a `player_page_regular` table such as
+    `stats.player_season_totals` must never carry it — the two producers write
+    different tables with different selectors. That mismatch is checked
+    independently of staleness so a current-but-wrong-producer version is not
+    silently accepted.
+
+    Grouped by `(table, parser_version)` rather than emitted per row, so a
+    table with thousands of rows under one bad version produces one issue with
+    capped example grains, not thousands of issues.
+    """
+
+    issues: list[OfficialStatsValidationIssue] = []
+    for spec in STATS_TABLE_SPECS:
+        table = reflected_tables.get(spec.table_name)
+        if table is None or "parser_version" not in table.c:
+            continue
+
+        grain = table.c[spec.grain_column]
+        parser_version = table.c["parser_version"]
+        groups: dict[str, list[object]] = {}
+        for row in session.execute(select(grain, parser_version).select_from(table)):
+            groups.setdefault(row[1], []).append(row[0])
+
+        for version, grains in groups.items():
+            status = classify_parser_version(version)
+            if status == "unknown":
+                code = "unknown_parser_version"
+            else:
+                contract = PARSER_CONTRACTS_BY_IDENTIFIER[version]
+                if contract.producer != spec.expected_parser_producer:
+                    code = "wrong_producer_parser_version"
+                elif status == "stale":
+                    code = "stale_parser_version"
+                else:
+                    continue
+
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code=code,
+                    message=(
+                        f"stats.{spec.table_name} has rows with "
+                        f"{_PARSER_ISSUE_DESCRIPTIONS[code]} parser_version {version!r}."
+                    ),
+                    context={
+                        "table": spec.full_name,
+                        "parser_version": version,
+                        "count": len(grains),
+                        "examples": grains[:10],
+                    },
+                )
+            )
+    return issues
+
+
 def _row_content_issues(
     session: Session,
     reflected_tables: Mapping[str, Table],
@@ -1239,6 +1331,7 @@ def _build_validation_summary(
         "synthetic_code_violations": 0,
         "source_metadata_violations": 0,
         "regular_postseason_separation_violations": 0,
+        "parser_lineage_violations": 0,
         "numeric_range_violations": 0,
         "all_null_data_rows": 0,
         "generated_metric_schema_objects": 0,
@@ -1261,6 +1354,9 @@ def _build_validation_summary(
         "missing_source_team_code_value": "source_metadata_violations",
         "invalid_aggregate_source_team_code": "source_metadata_violations",
         "regular_postseason_separation_violation": "regular_postseason_separation_violations",
+        "unknown_parser_version": "parser_lineage_violations",
+        "stale_parser_version": "parser_lineage_violations",
+        "wrong_producer_parser_version": "parser_lineage_violations",
         "impossible_numeric_values": "numeric_range_violations",
         "all_stat_columns_null": "all_null_data_rows",
         "generated_metric_schema_name": "generated_metric_schema_objects",

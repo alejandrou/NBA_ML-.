@@ -19,8 +19,11 @@ from nba_data.scraping.offline_processor import (
     OfflineTeamSeasonSource,
     process_offline_team_season_sources,
 )
+from nba_data.validation.parser_contracts import current_parser_version
 
-DEFAULT_STATS_PARSER_VERSION = "team-season-parser-v1"
+# The version stamped on rows this backfill writes. `team_season`'s full
+# lineage lives in `nba_data.validation.parser_contracts`.
+DEFAULT_STATS_PARSER_VERSION = current_parser_version("team_season")
 _TEAM_ABBREVIATION_RE = re.compile(r"^[A-Z]{3}$")
 
 

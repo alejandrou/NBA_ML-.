@@ -201,6 +201,49 @@ archive reconciliation. The current cached regular player report contains 577
 failed entries (including 25,640 rows that partially loaded), so that producer
 currently exits nonzero until the placeholder-row fix in F4E-022 is applied.
 
+### Row-level coverage (F4E-018)
+
+Report totals reconcile even when one missing key happens to be offset by one
+unexpected key. Build the independent, cache-derived coverage artifact
+(F4E-017) and pass it to `validate official-stats` to catch that case by name:
+
+```bash
+uv run nba-data validate build-stats-coverage --output reports/stats-coverage.json
+
+uv run nba-data validate official-stats \
+  --team-stats-report reports/stats-backfill-2000-2025.json \
+  --player-stats-report reports/player-stats-backfill-2000-2025.json \
+  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2025.json \
+  --coverage-artifact reports/stats-coverage.json
+```
+
+That runs the comparison **unverified**: it trusts the artifact's own claims
+about the cache without re-reading it, and `coverage_summary.freshness_status`
+reports `unverified` in the JSON output. To also confirm the artifact still
+matches the live cache before trusting it, add `--coverage-cache-root`:
+
+```bash
+uv run nba-data validate official-stats \
+  --coverage-artifact reports/stats-coverage.json \
+  --coverage-cache-root "$SCRAPER_CACHE_DIR"
+```
+
+A fingerprint mismatch fails with `coverage_artifact_stale` and skips key
+comparison rather than risk comparing against a cache that has since changed.
+
+Coverage failure codes, one per situation:
+
+| Code | Meaning |
+|---|---|
+| `coverage_artifact_missing` | `--coverage-artifact` was not given; the rest of the report still ran. |
+| `coverage_artifact_schema_unsupported` | The artifact's `schema_version` is not one this validator understands. |
+| `coverage_artifact_invalid` | The artifact's JSON shape is malformed. |
+| `coverage_cache_root_not_found` | `--coverage-cache-root` does not exist. |
+| `coverage_artifact_stale` | The recomputed cache fingerprint does not match the artifact's. |
+| `coverage_unexplained_source` | The artifact itself has cached seasons it could not classify. |
+| `coverage_source_issues_present` | The artifact has unreadable/malformed cached sources — a degraded oracle. |
+| `coverage_missing_<dimension>_row` / `coverage_unexpected_<dimension>_row` | A natural key the artifact expects is absent from `stats.*`, or `stats.*` has one the artifact does not expect, for `regular_aggregate`, `postseason_aggregate`, `regular_team_stint`, or `postseason_team_stint`. |
+
 ## Useful SQL Checks
 
 Table counts:

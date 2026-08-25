@@ -102,6 +102,14 @@ class StatsCoverageSchemaError(ValueError):
     """Raised when a stats-coverage artifact carries an unsupported schema_version."""
 
 
+class StatsCoverageShapeError(ValueError):
+    """Raised when a schema-version-1 stats-coverage artifact is missing required keys
+    or has a field of the wrong shape, so a malformed artifact fails with a named
+    error instead of a bare `KeyError`, an `AssertionError` silently skipped under
+    `-O`, or a partial comparison.
+    """
+
+
 @dataclass(frozen=True)
 class StatsCoverageTeamStint:
     team_code: str
@@ -240,6 +248,64 @@ class StatsCoverageArtifact:
             "disagreements": [item.to_dict() for item in self.disagreements],
             "source_issues": [item.to_dict() for item in self.source_issues],
         }
+
+
+def compute_cache_fingerprint(cache_root: str | Path) -> StatsCoverageFingerprint:
+    """Recompute the cache fingerprint for freshness verification (F4E-018).
+
+    Reproduces exactly the fingerprint pass `build_stats_coverage_artifact` runs
+    while building the full artifact: one row per discovered player-page
+    candidate (including ones later rejected as empty-content) plus one row per
+    `status == "valid"` team-season inventory entry whose cached HTML actually
+    reads back, hashed and sorted the same way. Sharing this function with the
+    build path means the two cannot silently drift apart.
+
+    Raises `PlayerCacheRootNotFoundError` if the root does not exist.
+    """
+
+    resolved_root = resolve_player_cache_root(Path(cache_root))
+    cache = HtmlCache(resolved_root)
+
+    player_entries = discover_player_cache_entries(resolved_root, player_identifier=None)
+    team_inventory = build_cached_html_inventory(cache=cache)
+    valid_team_entries = [entry for entry in team_inventory.entries if entry.status == "valid"]
+
+    fingerprint_rows: list[tuple[str, str]] = []
+    for cache_path, _player_id, _source_url in player_entries:
+        fingerprint_rows.append(
+            (_relative_posix_path(cache_path, resolved_root), _digest_of_cached_file(cache_path))
+        )
+    for entry in valid_team_entries:
+        html = read_cached_gzip(Path(entry.cache_path))
+        if html is None:
+            continue
+        fingerprint_rows.append(
+            (
+                _relative_posix_path(Path(entry.cache_path), resolved_root),
+                _digest_of_cached_file(Path(entry.cache_path)),
+            )
+        )
+
+    return _fingerprint_from_rows(
+        fingerprint_rows,
+        player_page_count=len(player_entries),
+        team_page_count=len(valid_team_entries),
+    )
+
+
+def _fingerprint_from_rows(
+    fingerprint_rows: list[tuple[str, str]],
+    *,
+    player_page_count: int,
+    team_page_count: int,
+) -> StatsCoverageFingerprint:
+    sorted_rows = sorted(fingerprint_rows, key=lambda row: row[0])
+    fingerprint_source = "".join(f"{path}\n{digest}\n" for path, digest in sorted_rows)
+    return StatsCoverageFingerprint(
+        digest=hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest(),
+        player_page_count=player_page_count,
+        team_page_count=team_page_count,
+    )
 
 
 def build_stats_coverage_artifact(*, cache_root: str | Path) -> StatsCoverageArtifact:
@@ -406,10 +472,8 @@ def build_stats_coverage_artifact(*, cache_root: str | Path) -> StatsCoverageArt
             coverage_entry = _entry_for(mutable_entries, player_id, entry.season_end_year)
             coverage_entry.regular_team_stints |= stints
 
-    fingerprint_rows.sort(key=lambda row: row[0])
-    fingerprint_source = "".join(f"{path}\n{digest}\n" for path, digest in fingerprint_rows)
-    fingerprint = StatsCoverageFingerprint(
-        digest=hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest(),
+    fingerprint = _fingerprint_from_rows(
+        fingerprint_rows,
         player_page_count=len(player_entries),
         team_page_count=len(valid_team_entries),
     )
@@ -504,73 +568,117 @@ def parse_stats_coverage_artifact(data: Mapping[str, object]) -> StatsCoverageAr
         )
         raise StatsCoverageSchemaError(msg)
 
-    fingerprint_data = data["cache_fingerprint"]
-    assert isinstance(fingerprint_data, Mapping)
-    fingerprint = StatsCoverageFingerprint(
-        digest=str(fingerprint_data["digest"]),
-        player_page_count=int(fingerprint_data["player_page_count"]),  # type: ignore[arg-type]
-        team_page_count=int(fingerprint_data["team_page_count"]),  # type: ignore[arg-type]
-    )
+    try:
+        fingerprint_data = data["cache_fingerprint"]
+        if not isinstance(fingerprint_data, Mapping):
+            msg = "cache_fingerprint must be an object."
+            raise StatsCoverageShapeError(msg)
+        fingerprint = StatsCoverageFingerprint(
+            digest=str(fingerprint_data["digest"]),
+            player_page_count=int(fingerprint_data["player_page_count"]),  # type: ignore[arg-type]
+            team_page_count=int(fingerprint_data["team_page_count"]),  # type: ignore[arg-type]
+        )
 
-    entries = tuple(_entry_from_dict(item) for item in data.get("entries", []))  # type: ignore[union-attr]
-    unexplained = tuple(
-        StatsCoverageUnexplained(
-            basketball_reference_player_id=str(item["basketball_reference_player_id"]),
-            season_year=int(item["season_year"]),  # type: ignore[arg-type]
-            season_type=item["season_type"],  # type: ignore[arg-type]
-            source_table=str(item["source_table"]),
-            reason=str(item["reason"]),
+        entries = tuple(_entry_from_dict(item) for item in data.get("entries", []))  # type: ignore[union-attr]
+        unexplained = tuple(
+            StatsCoverageUnexplained(
+                basketball_reference_player_id=str(item["basketball_reference_player_id"]),
+                season_year=int(item["season_year"]),  # type: ignore[arg-type]
+                season_type=item["season_type"],  # type: ignore[arg-type]
+                source_table=str(item["source_table"]),
+                reason=str(item["reason"]),
+            )
+            for item in data.get("unexplained", [])  # type: ignore[union-attr]
         )
-        for item in data.get("unexplained", [])  # type: ignore[union-attr]
-    )
-    disagreements = tuple(
-        StatsCoverageDisagreement(
-            basketball_reference_player_id=str(item["basketball_reference_player_id"]),
-            season_year=int(item["season_year"]),  # type: ignore[arg-type]
-            season_type=item["season_type"],  # type: ignore[arg-type]
-            source_table=str(item["source_table"]),
-            classifier_selected=bool(item["classifier_selected"]),
-            normalizer_selected=bool(item["normalizer_selected"]),
-            normalizer_reason=str(item["normalizer_reason"]),
+        disagreements = tuple(
+            StatsCoverageDisagreement(
+                basketball_reference_player_id=str(item["basketball_reference_player_id"]),
+                season_year=int(item["season_year"]),  # type: ignore[arg-type]
+                season_type=item["season_type"],  # type: ignore[arg-type]
+                source_table=str(item["source_table"]),
+                classifier_selected=bool(item["classifier_selected"]),
+                normalizer_selected=bool(item["normalizer_selected"]),
+                normalizer_reason=str(item["normalizer_reason"]),
+            )
+            for item in data.get("disagreements", [])  # type: ignore[union-attr]
         )
-        for item in data.get("disagreements", [])  # type: ignore[union-attr]
-    )
-    source_issues = tuple(
-        StatsCoverageSourceIssue(
-            cache_path=str(item["cache_path"]),
-            status=str(item["status"]),
-            error_message=(str(item["error_message"]) if item.get("error_message") is not None else None),
+        source_issues = tuple(
+            StatsCoverageSourceIssue(
+                cache_path=str(item["cache_path"]),
+                status=str(item["status"]),
+                error_message=(str(item["error_message"]) if item.get("error_message") is not None else None),
+            )
+            for item in data.get("source_issues", [])  # type: ignore[union-attr]
         )
-        for item in data.get("source_issues", [])  # type: ignore[union-attr]
-    )
 
-    return StatsCoverageArtifact(
-        cache_root=str(data["cache_root"]),
-        parser_contracts=dict(data.get("parser_contracts", {})),  # type: ignore[arg-type]
-        cache_fingerprint=fingerprint,
-        counts=dict(data.get("counts", {})),  # type: ignore[arg-type]
-        entries=entries,
-        unexplained=unexplained,
-        disagreements=disagreements,
-        source_issues=source_issues,
-    )
+        artifact = StatsCoverageArtifact(
+            cache_root=str(data["cache_root"]),
+            parser_contracts=dict(data.get("parser_contracts", {})),  # type: ignore[arg-type]
+            cache_fingerprint=fingerprint,
+            counts=dict(data.get("counts", {})),  # type: ignore[arg-type]
+            entries=entries,
+            unexplained=unexplained,
+            disagreements=disagreements,
+            source_issues=source_issues,
+        )
+    except StatsCoverageShapeError:
+        raise
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        msg = f"Malformed stats-coverage artifact: {exc}"
+        raise StatsCoverageShapeError(msg) from exc
+
+    return artifact
+
+
+def _require_str(value: object, field_name: str) -> str:
+    if not isinstance(value, str):
+        msg = f"{field_name} must be a string, got {type(value).__name__}."
+        raise StatsCoverageShapeError(msg)
+    return value
+
+
+def _str_tuple(value: object, field_name: str) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        msg = f"{field_name} must be an array."
+        raise StatsCoverageShapeError(msg)
+    return tuple(_require_str(item, field_name) for item in value)
+
+
+def _team_stint_tuple(value: object, field_name: str) -> tuple[StatsCoverageTeamStint, ...]:
+    if not isinstance(value, list):
+        msg = f"{field_name} must be an array."
+        raise StatsCoverageShapeError(msg)
+    stints: list[StatsCoverageTeamStint] = []
+    for stint in value:
+        if not isinstance(stint, Mapping):
+            msg = f"{field_name} entries must be objects."
+            raise StatsCoverageShapeError(msg)
+        stints.append(
+            StatsCoverageTeamStint(
+                team_code=_require_str(stint.get("team_code"), f"{field_name}.team_code"),
+                table=_require_str(stint.get("table"), f"{field_name}.table"),
+            )
+        )
+    return tuple(stints)
 
 
 def _entry_from_dict(item: Mapping[str, object]) -> StatsCoverageEntry:
     did_not_play_data = item.get("did_not_play", {})
-    assert isinstance(did_not_play_data, Mapping)
+    if not isinstance(did_not_play_data, Mapping):
+        msg = "did_not_play must be an object."
+        raise StatsCoverageShapeError(msg)
     return StatsCoverageEntry(
         basketball_reference_player_id=str(item["basketball_reference_player_id"]),
         season_year=int(item["season_year"]),  # type: ignore[arg-type]
-        regular_aggregate_tables=tuple(item.get("regular_aggregate_tables", [])),  # type: ignore[arg-type]
-        postseason_aggregate_tables=tuple(item.get("postseason_aggregate_tables", [])),  # type: ignore[arg-type]
-        regular_team_stints=tuple(
-            StatsCoverageTeamStint(team_code=str(stint["team_code"]), table=str(stint["table"]))
-            for stint in item.get("regular_team_stints", [])  # type: ignore[union-attr]
+        regular_aggregate_tables=_str_tuple(
+            item.get("regular_aggregate_tables", []), "regular_aggregate_tables"
         ),
-        postseason_team_stints=tuple(
-            StatsCoverageTeamStint(team_code=str(stint["team_code"]), table=str(stint["table"]))
-            for stint in item.get("postseason_team_stints", [])  # type: ignore[union-attr]
+        postseason_aggregate_tables=_str_tuple(
+            item.get("postseason_aggregate_tables", []), "postseason_aggregate_tables"
+        ),
+        regular_team_stints=_team_stint_tuple(item.get("regular_team_stints", []), "regular_team_stints"),
+        postseason_team_stints=_team_stint_tuple(
+            item.get("postseason_team_stints", []), "postseason_team_stints"
         ),
         did_not_play=StatsCoverageDidNotPlay(
             regular=bool(did_not_play_data.get("regular", False)),
@@ -887,10 +995,12 @@ __all__ = [
     "StatsCoverageEntry",
     "StatsCoverageFingerprint",
     "StatsCoverageSchemaError",
+    "StatsCoverageShapeError",
     "StatsCoverageSourceIssue",
     "StatsCoverageTeamStint",
     "StatsCoverageUnexplained",
     "build_stats_coverage_artifact",
+    "compute_cache_fingerprint",
     "parse_stats_coverage_artifact",
     "write_stats_coverage_artifact",
 ]

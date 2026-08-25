@@ -14,12 +14,17 @@ from typer.testing import CliRunner
 
 from nba_data.cli.main import app
 from nba_data.validation.official_stats import (
+    POSTSEASON_AGGREGATE_TABLE_SPECS,
+    POSTSEASON_TEAM_STINT_TABLE_SPECS,
+    REGULAR_AGGREGATE_TABLE_SPECS,
+    REGULAR_TEAM_STINT_TABLE_SPECS,
     STATS_TABLE_SPECS,
     _backfill_report_issues,
     _extract_backfill_summary,
     validate_official_stats,
 )
 from nba_data.validation.parser_contracts import current_parser_version
+from nba_data.validation.stats_coverage import compute_cache_fingerprint
 
 
 @pytest.fixture
@@ -33,7 +38,9 @@ def test_validate_official_stats_accepts_clean_final_phase_4e_shape(session: Ses
     _insert_clean_dataset(session)
 
     reports = _stats_backfill_reports()
-    report = validate_official_stats(session, reports)
+    report = validate_official_stats(
+        session, reports, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
 
     assert report.passed is True
     assert len(report.table_counts) == len(STATS_TABLE_SPECS)
@@ -359,7 +366,9 @@ def test_validate_official_stats_accepts_basketball_reference_numeric_scales(ses
         )
     )
 
-    report = validate_official_stats(session)
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
 
     assert report.passed is True
     assert "impossible_numeric_values" not in _issue_codes(report)
@@ -591,9 +600,17 @@ def test_cli_validate_official_stats_prints_json_and_exits_one_on_issues(
         events.append("session_factory_create")
         return lambda: fake_session
 
-    def fake_validate(session: object, backfill_data: object) -> FakeValidationReport:
+    def fake_validate(
+        session: object,
+        backfill_data: object,
+        *,
+        coverage_artifact: object = None,
+        coverage_cache_root: object = None,
+    ) -> FakeValidationReport:
         assert session is fake_session
         assert backfill_data == {"team_stats": _team_stats_report(stats_loaded_rows=75)}
+        assert coverage_artifact is None
+        assert coverage_cache_root is None
         events.append("validate")
         return FakeValidationReport()
 
@@ -677,6 +694,492 @@ def test_cli_validate_official_stats_rejects_duplicate_producer_report_flag(
 
     assert result.exit_code != 0
     assert "--team-stats-report accepts at most one path" in unstyle(result.output)
+
+
+# --- F4E-018 coverage comparison -------------------------------------------------
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_passes_on_matching_artifact(session: Session) -> None:
+    _insert_clean_dataset(session)
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is True
+    assert report.coverage_summary["status"] == "loaded"
+    assert report.coverage_summary["freshness_status"] == "unverified"
+    dimensions = report.coverage_summary["dimensions"]
+    for name in (
+        "regular_aggregate",
+        "postseason_aggregate",
+        "regular_team_stint",
+        "postseason_team_stint",
+    ):
+        assert dimensions[name]["missing"] == 0
+        assert dimensions[name]["unexpected"] == 0
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_missing_artifact_still_runs_the_rest_of_validation(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    assert "coverage_artifact_missing" in _issue_codes(report)
+    assert report.coverage_summary == {"status": "missing"}
+    assert report.validation_summary["coverage_violations"] == 1
+    # The rest of the report still ran and is still complete.
+    assert set(report.table_counts) == {f"stats.{spec.table_name}" for spec in STATS_TABLE_SPECS}
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_rejects_unsupported_schema_version(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["schema_version"] = 2
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_artifact_schema_unsupported" in _issue_codes(report)
+    assert "dimensions" not in report.coverage_summary
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_rejects_a_malformed_artifact_shape(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    del artifact["cache_fingerprint"]
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_artifact_invalid" in _issue_codes(report)
+    assert "dimensions" not in report.coverage_summary
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_verifies_a_matching_fingerprint(
+    session: Session, tmp_path: Path
+) -> None:
+    _insert_clean_dataset(session)
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["cache_fingerprint"] = compute_cache_fingerprint(cache_root).to_dict()
+
+    report = validate_official_stats(
+        session, coverage_artifact=artifact, coverage_cache_root=cache_root
+    )
+
+    assert report.passed is True
+    assert report.coverage_summary["freshness_status"] == "verified"
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_detects_a_stale_fingerprint(
+    session: Session, tmp_path: Path
+) -> None:
+    _insert_clean_dataset(session)
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["cache_fingerprint"] = {"digest": "f" * 64, "player_page_count": 0, "team_page_count": 0}
+
+    report = validate_official_stats(
+        session, coverage_artifact=artifact, coverage_cache_root=cache_root
+    )
+
+    assert report.passed is False
+    assert "coverage_artifact_stale" in _issue_codes(report)
+    assert "dimensions" not in report.coverage_summary
+    # No key comparison ran once the fingerprint mismatched.
+    assert "coverage_missing_regular_aggregate_row" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_reports_unexplained_source_seasons(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["unexplained"] = [
+        {
+            "basketball_reference_player_id": "hardeja01",
+            "season_year": 2021,
+            "season_type": "regular",
+            "source_table": "totals",
+            "reason": "ambiguous_multiple_real_team_rows_without_marker",
+        }
+    ]
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_unexplained_source" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "coverage_unexplained_source")
+    assert issue.context["count"] == 1
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_reports_source_issues_as_a_degraded_oracle(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["source_issues"] = [
+        {
+            "cache_path": "/cache/players-h-hardeja01.html-deadbeef.html.gz",
+            "status": "invalid_or_unreadable",
+            "error_message": "truncated gzip",
+        }
+    ]
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_source_issues_present" in _issue_codes(report)
+    issue = next(i for i in report.issues if i.code == "coverage_source_issues_present")
+    assert issue.context["count"] == 1
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_detects_missing_and_unexpected_regular_aggregate_rows(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "brownja02", 2024)
+    entry["regular_aggregate_tables"] = [
+        table for table in entry["regular_aggregate_tables"] if table != "stats.player_season_totals"
+    ]
+    artifact["entries"].append(_fake_aggregate_entry("ghostpl01", 1999, "stats.player_season_totals"))
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_missing_regular_aggregate_row" in _issue_codes(report)
+    assert "coverage_unexpected_regular_aggregate_row" in _issue_codes(report)
+    missing = next(i for i in report.issues if i.code == "coverage_missing_regular_aggregate_row")
+    assert missing.context["examples"] == [
+        {"basketball_reference_player_id": "ghostpl01", "season_year": 1999, "table": "stats.player_season_totals"}
+    ]
+    unexpected = next(i for i in report.issues if i.code == "coverage_unexpected_regular_aggregate_row")
+    assert unexpected.context["examples"] == [
+        {"basketball_reference_player_id": "brownja02", "season_year": 2024, "table": "stats.player_season_totals"}
+    ]
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_detects_missing_and_unexpected_postseason_aggregate_rows(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "brownja02", 2024)
+    entry["postseason_aggregate_tables"] = [
+        table
+        for table in entry["postseason_aggregate_tables"]
+        if table != "stats.player_postseason_totals"
+    ]
+    artifact["entries"].append(
+        _fake_aggregate_entry("ghostpl01", 1999, "stats.player_postseason_totals", postseason=True)
+    )
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_missing_postseason_aggregate_row" in _issue_codes(report)
+    assert "coverage_unexpected_postseason_aggregate_row" in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_detects_missing_and_unexpected_regular_team_stint_rows(
+    session: Session,
+) -> None:
+    """Same player/season/team on both sides, but a different table each — the
+    wrong-stats-family case: table is part of the key, so this is not a match."""
+
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "brownja02", 2024)
+    entry["regular_team_stints"] = [
+        stint for stint in entry["regular_team_stints"] if stint["table"] != "stats.player_team_season_totals"
+    ]
+    entry["regular_team_stints"].append({"team_code": "BOS", "table": "stats.player_team_season_pbp_ghost"})
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_missing_regular_team_stint_row" in _issue_codes(report)
+    assert "coverage_unexpected_regular_team_stint_row" in _issue_codes(report)
+    missing = next(i for i in report.issues if i.code == "coverage_missing_regular_team_stint_row")
+    assert missing.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2024,
+            "team_code": "BOS",
+            "table": "stats.player_team_season_pbp_ghost",
+        }
+    ]
+    unexpected = next(i for i in report.issues if i.code == "coverage_unexpected_regular_team_stint_row")
+    assert unexpected.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2024,
+            "team_code": "BOS",
+            "table": "stats.player_team_season_totals",
+        }
+    ]
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_detects_missing_and_unexpected_postseason_team_stint_rows(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "hardeja01", 2021)
+    entry["postseason_team_stints"] = [
+        stint
+        for stint in entry["postseason_team_stints"]
+        if stint["table"] != "stats.player_team_postseason_totals"
+    ]
+    entry["postseason_team_stints"].append(
+        {"team_code": "BRK", "table": "stats.player_team_postseason_pbp_ghost"}
+    )
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    assert "coverage_missing_postseason_team_stint_row" in _issue_codes(report)
+    assert "coverage_unexpected_postseason_team_stint_row" in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_did_not_play_regular_still_verifies_other_dimensions(
+    session: Session,
+) -> None:
+    """A regular DNP season only suppresses the regular aggregate expectation.
+
+    Team stints (regular and postseason) and the postseason aggregate stay
+    independently verified — a regular DNP season may legitimately carry
+    postseason rows, and DNP evidence never prohibits roster/team-stint rows.
+    """
+
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "hardeja01", 2021)
+    entry["regular_aggregate_tables"] = []
+    entry["did_not_play"] = {"regular": True, "postseason": False}
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    # The DB still has real regular aggregate rows for hardeja01/2021, so
+    # withdrawing the expectation now makes every one of them unexpected.
+    assert report.passed is False
+    assert "coverage_unexpected_regular_aggregate_row" in _issue_codes(report)
+    assert "coverage_missing_regular_team_stint_row" not in _issue_codes(report)
+    assert "coverage_unexpected_regular_team_stint_row" not in _issue_codes(report)
+    assert "coverage_missing_postseason_aggregate_row" not in _issue_codes(report)
+    assert "coverage_unexpected_postseason_aggregate_row" not in _issue_codes(report)
+    assert "coverage_missing_postseason_team_stint_row" not in _issue_codes(report)
+    assert "coverage_unexpected_postseason_team_stint_row" not in _issue_codes(report)
+
+
+def _delete_regular_aggregate_rows(session: Session, player_season_id: int) -> None:
+    for spec in REGULAR_AGGREGATE_TABLE_SPECS:
+        session.execute(
+            text(f"delete from stats.{spec.table_name} where {spec.grain_column} = :grain"),
+            {"grain": player_season_id},
+        )
+
+
+def _delete_regular_team_stint_rows(session: Session, player_team_season_ids: tuple[int, ...]) -> None:
+    placeholders = ", ".join(f":grain{i}" for i in range(len(player_team_season_ids)))
+    params = {f"grain{i}": grain for i, grain in enumerate(player_team_season_ids)}
+    for spec in REGULAR_TEAM_STINT_TABLE_SPECS:
+        session.execute(
+            text(f"delete from stats.{spec.table_name} where {spec.grain_column} in ({placeholders})"),
+            params,
+        )
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_passes_a_valid_postseason_only_season(session: Session) -> None:
+    """A season with no regular-season presence at all (no aggregate, no roster
+    row) but a real postseason presence is not itself a violation -- the
+    artifact simply carries empty regular expectations for that season, and
+    the DB agrees.
+    """
+
+    _insert_clean_dataset(session)
+    _delete_regular_aggregate_rows(session, player_season_id=2)
+    _delete_regular_team_stint_rows(session, player_team_season_ids=(2, 3))
+
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "hardeja01", 2021)
+    entry["regular_aggregate_tables"] = []
+    entry["regular_team_stints"] = []
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is True
+    assert "coverage_missing_regular_aggregate_row" not in _issue_codes(report)
+    assert "coverage_unexpected_regular_aggregate_row" not in _issue_codes(report)
+    assert "coverage_missing_regular_team_stint_row" not in _issue_codes(report)
+    assert "coverage_unexpected_regular_team_stint_row" not in _issue_codes(report)
+    assert "coverage_missing_postseason_aggregate_row" not in _issue_codes(report)
+    assert "coverage_unexpected_postseason_aggregate_row" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_passes_did_not_play_regular_plus_real_postseason(
+    session: Session,
+) -> None:
+    """A regular did-not-play season with a genuine postseason call-up: no
+    regular presence of any kind, `did_not_play.regular` set, and the DB
+    agrees on every dimension -- this must pass cleanly, unlike the
+    deliberately-mismatched DNP test above.
+    """
+
+    _insert_clean_dataset(session)
+    _delete_regular_aggregate_rows(session, player_season_id=2)
+    _delete_regular_team_stint_rows(session, player_team_season_ids=(2, 3))
+
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "hardeja01", 2021)
+    entry["regular_aggregate_tables"] = []
+    entry["regular_team_stints"] = []
+    entry["did_not_play"] = {"regular": True, "postseason": False}
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is True
+    assert _issue_codes(report) == set()
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_passes_regular_roster_presence_with_did_not_play(
+    session: Session,
+) -> None:
+    """Did-not-play evidence suppresses only the aggregate expectation: a
+    player can be marked `did_not_play.regular` and still have real
+    roster/team-stint rows from the team page, and that must pass too.
+    """
+
+    _insert_clean_dataset(session)
+    _delete_regular_aggregate_rows(session, player_season_id=2)
+
+    artifact = _coverage_artifact_for_clean_dataset()
+    entry = _find_coverage_entry(artifact, "hardeja01", 2021)
+    entry["regular_aggregate_tables"] = []
+    entry["did_not_play"] = {"regular": True, "postseason": False}
+    # entry["regular_team_stints"] is left untouched: the roster/team-stint
+    # rows in the DB are untouched too, so they must still match.
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is True
+    assert _issue_codes(report) == set()
+
+
+@pytest.mark.unit
+def test_cli_validate_official_stats_passes_coverage_artifact_and_cache_root_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coverage_artifact_path = tmp_path / "coverage.json"
+    coverage_artifact_path.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    cache_root = tmp_path / "cache"
+    cache_root.mkdir()
+
+    events: list[str] = []
+
+    class FakeValidationReport:
+        passed = True
+
+        def to_dict(self) -> dict[str, object]:
+            return {"passed": True}
+
+    class FakeEngine:
+        def dispose(self) -> None:
+            events.append("engine_dispose")
+
+    class FakeSession:
+        def __enter__(self) -> FakeSession:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+            return None
+
+    fake_engine = FakeEngine()
+    fake_session = FakeSession()
+
+    def fake_validate(
+        session: object,
+        backfill_data: object,
+        *,
+        coverage_artifact: object,
+        coverage_cache_root: object,
+    ) -> FakeValidationReport:
+        assert session is fake_session
+        assert coverage_artifact == {"schema_version": 1}
+        assert coverage_cache_root == cache_root
+        events.append("validate")
+        return FakeValidationReport()
+
+    monkeypatch.setattr("nba_data.cli.main.create_db_engine", lambda settings: fake_engine)
+    monkeypatch.setattr(
+        "nba_data.cli.main.create_session_factory", lambda engine: (lambda: fake_session)
+    )
+    monkeypatch.setattr("nba_data.cli.main.run_official_stats_validation", fake_validate)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "official-stats",
+            "--coverage-artifact",
+            str(coverage_artifact_path),
+            "--coverage-cache-root",
+            str(cache_root),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert events == ["validate", "engine_dispose"]
+
+
+def _find_coverage_entry(artifact: dict[str, object], player_id: str, season_year: int) -> dict[str, object]:
+    return next(
+        entry
+        for entry in artifact["entries"]  # type: ignore[index]
+        if entry["basketball_reference_player_id"] == player_id and entry["season_year"] == season_year
+    )
+
+
+def _fake_aggregate_entry(
+    player_id: str, season_year: int, table: str, *, postseason: bool = False
+) -> dict[str, object]:
+    return {
+        "basketball_reference_player_id": player_id,
+        "season_year": season_year,
+        "regular_aggregate_tables": [] if postseason else [table],
+        "postseason_aggregate_tables": [table] if postseason else [],
+        "regular_team_stints": [],
+        "postseason_team_stints": [],
+        "did_not_play": {"regular": False, "postseason": False},
+    }
 
 
 @contextmanager
@@ -929,6 +1432,95 @@ def _grains_for_spec(spec) -> list[int]:
     if spec.family == "team_stint" and spec.season_type == "postseason":
         return [1, 3]
     return [1, 2]
+
+
+# The `core.player_seasons` / `core.player_team_seasons` identity `_insert_clean_dataset`
+# builds, keyed by the same grain values `_grains_for_spec` returns. Used to derive a
+# stats-coverage artifact that expects exactly the rows the fixture inserts, so the two
+# cannot silently drift out of sync.
+_CLEAN_PLAYER_SEASON_GRAINS = {
+    1: ("brownja02", 2024),
+    2: ("hardeja01", 2021),
+}
+_CLEAN_PLAYER_TEAM_SEASON_GRAINS = {
+    1: ("brownja02", 2024, "BOS"),
+    2: ("hardeja01", 2021, "HOU"),
+    3: ("hardeja01", 2021, "BRK"),
+}
+
+
+def _coverage_artifact_for_clean_dataset() -> dict[str, object]:
+    """A stats-coverage artifact (F4E-017 shape) matching `_insert_clean_dataset`.
+
+    Derived from `STATS_TABLE_SPECS` and the same grain identity maps the fixture
+    inserts against, rather than a hand-written key list, so a change to the
+    fixture or the table specs cannot silently desync from what this expects.
+    """
+
+    entries: dict[tuple[str, int], dict[str, set[object]]] = {}
+
+    def entry_for(player_id: str, season_year: int) -> dict[str, set[object]]:
+        return entries.setdefault(
+            (player_id, season_year),
+            {
+                "regular_aggregate_tables": set(),
+                "postseason_aggregate_tables": set(),
+                "regular_team_stints": set(),
+                "postseason_team_stints": set(),
+            },
+        )
+
+    for grain in _grains_for_spec(REGULAR_AGGREGATE_TABLE_SPECS[0]):
+        player_id, season_year = _CLEAN_PLAYER_SEASON_GRAINS[grain]
+        entry_for(player_id, season_year)["regular_aggregate_tables"].update(
+            spec.full_name for spec in REGULAR_AGGREGATE_TABLE_SPECS
+        )
+    for grain in _grains_for_spec(POSTSEASON_AGGREGATE_TABLE_SPECS[0]):
+        player_id, season_year = _CLEAN_PLAYER_SEASON_GRAINS[grain]
+        entry_for(player_id, season_year)["postseason_aggregate_tables"].update(
+            spec.full_name for spec in POSTSEASON_AGGREGATE_TABLE_SPECS
+        )
+    for grain in _grains_for_spec(REGULAR_TEAM_STINT_TABLE_SPECS[0]):
+        player_id, season_year, team_code = _CLEAN_PLAYER_TEAM_SEASON_GRAINS[grain]
+        entry_for(player_id, season_year)["regular_team_stints"].update(
+            (team_code, spec.full_name) for spec in REGULAR_TEAM_STINT_TABLE_SPECS
+        )
+    for grain in _grains_for_spec(POSTSEASON_TEAM_STINT_TABLE_SPECS[0]):
+        player_id, season_year, team_code = _CLEAN_PLAYER_TEAM_SEASON_GRAINS[grain]
+        entry_for(player_id, season_year)["postseason_team_stints"].update(
+            (team_code, spec.full_name) for spec in POSTSEASON_TEAM_STINT_TABLE_SPECS
+        )
+
+    serialized_entries = [
+        {
+            "basketball_reference_player_id": player_id,
+            "season_year": season_year,
+            "regular_aggregate_tables": sorted(entry["regular_aggregate_tables"]),
+            "postseason_aggregate_tables": sorted(entry["postseason_aggregate_tables"]),
+            "regular_team_stints": [
+                {"team_code": team_code, "table": table}
+                for team_code, table in sorted(entry["regular_team_stints"])
+            ],
+            "postseason_team_stints": [
+                {"team_code": team_code, "table": table}
+                for team_code, table in sorted(entry["postseason_team_stints"])
+            ],
+            "did_not_play": {"regular": False, "postseason": False},
+        }
+        for (player_id, season_year), entry in sorted(entries.items())
+    ]
+
+    return {
+        "schema_version": 1,
+        "cache_root": "/fake/cache",
+        "parser_contracts": {},
+        "cache_fingerprint": {"digest": "0" * 64, "player_page_count": 0, "team_page_count": 0},
+        "counts": {},
+        "entries": serialized_entries,
+        "unexplained": [],
+        "disagreements": [],
+        "source_issues": [],
+    }
 
 
 def _stats_row_params(spec, grain: int) -> dict[str, object]:

@@ -119,14 +119,18 @@ schema.
   `validate official-stats [--team-stats-report <PATH>]`
   `[--player-stats-report <PATH>]`
   `[--player-postseason-stats-report <PATH>]`
-- **Inputs:** the database plus the JSON report from the matching backfill
-- **Implementation:** `validation/offline_database.py`, `validation/official_stats.py`, `validation/team_season.py`
+  `[--coverage-artifact <PATH>] [--coverage-cache-root <PATH>]`;
+  `validate build-stats-coverage --output <PATH> [--cache-root <PATH>]`
+- **Inputs:** the database plus the JSON report from the matching backfill;
+  `official-stats` optionally also takes the F4E-017 stats-coverage artifact
+  (built by `build-stats-coverage` from cached HTML, database-free)
+- **Implementation:** `validation/offline_database.py`, `validation/official_stats.py`, `validation/team_season.py`, `validation/stats_coverage.py`
 - **Outputs:** a findings report; non-zero exit on failure
 - **Tables:** reads `core` and `stats`; writes nothing
-- **Tests:** `test_offline_database_validation.py`, `test_official_stats_validation.py`, `test_team_season_validation.py`
-- **Docs:** `docs/architecture/OFFICIAL_STATS_SCHEMA.md` (large — open on demand)
+- **Tests:** `test_offline_database_validation.py`, `test_official_stats_validation.py`, `test_team_season_validation.py`, `test_stats_coverage_artifact.py`
+- **Docs:** `docs/architecture/OFFICIAL_STATS_SCHEMA.md` (large — open on demand), `docs/validation/OFFLINE_DATABASE_PREPARATION.md`
 - **Critical actions:** none; read-only
-- **Invariants:** `TOT` is never a real team; a multi-team marker (any team count of at least two followed by `TM`) is an aggregate source marker, not a team; regular season and postseason never mix
+- **Invariants:** `TOT` is never a real team; a multi-team marker (any team count of at least two followed by `TM`) is an aggregate source marker, not a team; regular season and postseason never mix; row-level coverage (F4E-018) fails on a missing or unexpected natural key even when aggregate report totals reconcile, and does not silently pass when its coverage artifact is missing, unsupported, malformed, or stale
 
 ### Player-page acquisition
 

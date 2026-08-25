@@ -18,7 +18,9 @@ from nba_data.validation.stats_coverage import (
     REGULAR_TEAM_STINT_DESTINATIONS,
     SCHEMA_VERSION,
     StatsCoverageSchemaError,
+    StatsCoverageShapeError,
     build_stats_coverage_artifact,
+    compute_cache_fingerprint,
     parse_stats_coverage_artifact,
     write_stats_coverage_artifact,
 )
@@ -737,6 +739,27 @@ def test_fingerprint_reacts_to_line_ending_changes_not_just_content(tmp_path: Pa
 
 
 @pytest.mark.unit
+def test_compute_cache_fingerprint_matches_the_build_path_for_a_non_empty_cache(tmp_path: Path) -> None:
+    """`compute_cache_fingerprint` (the F4E-018 freshness-recompute path) must
+    agree with the fingerprint `build_stats_coverage_artifact` embeds, over a
+    cache that actually has player *and* team pages in it -- not just the
+    degenerate empty-cache case, where both paths trivially produce the hash
+    of zero rows and a divergence in either discovery loop would go unnoticed.
+    """
+
+    cache = HtmlCache(tmp_path / "cache")
+    _write_player_page(cache, "hardeja01", HARDEN_REGULAR)
+    _write_team_season_page(cache, TEAM_SEASON_BOS_2000)
+
+    artifact = build_stats_coverage_artifact(cache_root=cache.root_dir)
+    recomputed = compute_cache_fingerprint(cache.root_dir)
+
+    assert recomputed == artifact.cache_fingerprint
+    assert artifact.cache_fingerprint.player_page_count > 0
+    assert artifact.cache_fingerprint.team_page_count > 0
+
+
+@pytest.mark.unit
 def test_write_then_parse_round_trips_the_artifact(tmp_path: Path) -> None:
     cache = HtmlCache(tmp_path / "cache")
     _write_player_page(cache, "hardeja01", HARDEN_REGULAR)
@@ -756,6 +779,57 @@ def test_write_then_parse_round_trips_the_artifact(tmp_path: Path) -> None:
 def test_parse_stats_coverage_artifact_rejects_an_unknown_schema_version() -> None:
     with pytest.raises(StatsCoverageSchemaError):
         parse_stats_coverage_artifact({"schema_version": 2})
+
+
+def _minimal_artifact_dict(entries: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "cache_root": "/fake",
+        "parser_contracts": {},
+        "cache_fingerprint": {"digest": "0" * 64, "player_page_count": 0, "team_page_count": 0},
+        "counts": {},
+        "entries": entries,
+        "unexplained": [],
+        "disagreements": [],
+        "source_issues": [],
+    }
+
+
+@pytest.mark.unit
+def test_parse_stats_coverage_artifact_rejects_a_non_string_table_name() -> None:
+    """Regression test: `regular_aggregate_tables` used to be cast straight into a
+    tuple with no per-element check, so a mixed-type list like
+    `["stats.player_season_totals", 1]` was accepted as-is and only blew up later
+    as a bare `TypeError` when the comparator tried to `sorted()` the mismatched
+    key tuples -- instead of failing cleanly with `coverage_artifact_invalid`.
+    """
+
+    artifact = _minimal_artifact_dict(
+        [
+            {
+                "basketball_reference_player_id": "brownja02",
+                "season_year": 2024,
+                "regular_aggregate_tables": ["stats.player_season_totals", 1],
+            }
+        ]
+    )
+    with pytest.raises(StatsCoverageShapeError):
+        parse_stats_coverage_artifact(artifact)
+
+
+@pytest.mark.unit
+def test_parse_stats_coverage_artifact_rejects_a_non_string_team_stint_field() -> None:
+    artifact = _minimal_artifact_dict(
+        [
+            {
+                "basketball_reference_player_id": "brownja02",
+                "season_year": 2024,
+                "regular_team_stints": [{"team_code": "BOS", "table": 1}],
+            }
+        ]
+    )
+    with pytest.raises(StatsCoverageShapeError):
+        parse_stats_coverage_artifact(artifact)
 
 
 @pytest.mark.unit

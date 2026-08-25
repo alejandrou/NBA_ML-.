@@ -126,6 +126,23 @@ _REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION = typer.Option(
     hidden=True,
     help="Removed compatibility trap; use --team-stats-report instead.",
 )
+_COVERAGE_ARTIFACT_OPTION = typer.Option(
+    None,
+    "--coverage-artifact",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional path to the F4E-017 stats-coverage JSON artifact (F4E-018).",
+)
+_COVERAGE_CACHE_ROOT_OPTION = typer.Option(
+    None,
+    "--coverage-cache-root",
+    help=(
+        "Optional cache root to verify the coverage artifact's fingerprint against "
+        "before comparing keys. Without it, comparison still runs and freshness is "
+        "reported as unverified."
+    ),
+)
 _STATS_COVERAGE_OUTPUT_OPTION = typer.Option(
     ...,
     "--output",
@@ -554,6 +571,8 @@ def validate_official_stats(
     team_stats_reports: list[Path] | None = _TEAM_STATS_REPORT_OPTION,
     player_stats_reports: list[Path] | None = _PLAYER_STATS_REPORT_OPTION,
     player_postseason_stats_reports: list[Path] | None = _PLAYER_POSTSEASON_STATS_REPORT_OPTION,
+    coverage_artifact_paths: list[Path] | None = _COVERAGE_ARTIFACT_OPTION,
+    coverage_cache_root: Path | None = _COVERAGE_CACHE_ROOT_OPTION,
     removed_stats_backfill_report: Path | None = _REMOVED_OFFICIAL_STATS_BACKFILL_REPORT_OPTION,
 ) -> None:
     """Validate the local Phase 4E official stats state."""
@@ -588,12 +607,24 @@ def validate_official_stats(
         if report_path is not None:
             backfill_data[report_kind] = _read_json_object(report_path, label)
 
+    coverage_artifact_path = _single_report_path(coverage_artifact_paths, "--coverage-artifact")
+    coverage_artifact = (
+        _read_json_object(coverage_artifact_path, "stats-coverage artifact")
+        if coverage_artifact_path is not None
+        else None
+    )
+
     settings = get_settings()
     engine = create_db_engine(settings)
     try:
         session_factory = create_session_factory(engine)
         with session_factory() as session:
-            report = run_official_stats_validation(session, backfill_data or None)
+            report = run_official_stats_validation(
+                session,
+                backfill_data or None,
+                coverage_artifact=coverage_artifact,
+                coverage_cache_root=coverage_cache_root,
+            )
     finally:
         engine.dispose()
 

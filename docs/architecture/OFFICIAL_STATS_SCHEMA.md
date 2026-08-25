@@ -819,3 +819,36 @@ PostgreSQL:
   suppresses only the matching aggregate expectation; a roster or team-stint
   expectation observed for the same season is never erased by it.
 - Run it with `uv run nba-data validate build-stats-coverage --output PATH`.
+
+F4E-018 set-equality coverage — a standing Phase 4E invariant, not an optional
+check. `validate_official_stats` accepts the F4E-017 artifact and, when given
+one, diffs persisted natural keys against it across four independent
+dimensions: regular aggregate, postseason aggregate, regular team stint, and
+postseason team stint. Missing and unexpected keys fail independently; a row
+present under the wrong `stats.*` table is caught even when player, season,
+and team all match, because the destination table name is part of every key:
+
+- Aggregate keys: `(basketball_reference_player_id, season_year, table)`.
+- Team-stint keys: `(basketball_reference_player_id, season_year, team_code, table)`.
+- Omitting `--coverage-artifact` does not skip the rest of validation — it
+  fails with `coverage_artifact_missing` and the full report still prints. A
+  permanent invariant must not silently pass when its oracle is absent.
+- An artifact whose `schema_version` this reader does not understand fails
+  with `coverage_artifact_schema_unsupported`; a structurally malformed
+  artifact fails with `coverage_artifact_invalid`. Neither runs a guessed
+  comparison.
+- An artifact with `unexplained` entries or `source_issues` is a degraded
+  oracle — it may understate what the cache actually implies — and fails with
+  `coverage_unexplained_source` / `coverage_source_issues_present` rather than
+  comparing anyway.
+- With `--coverage-cache-root`, the artifact's cache fingerprint is
+  recomputed and compared; a mismatch fails with `coverage_artifact_stale`
+  and skips key comparison entirely. Without it, comparison still runs and the
+  report's `coverage_summary.freshness_status` is `unverified` — not itself a
+  failure, and never reported as `verified`.
+- Did-not-play evidence needs no special handling in the comparator: F4E-017
+  already omits the matching aggregate table from an entry's expectations
+  while leaving its team-stint and other-season-type expectations untouched,
+  so the same set-equality diff applies uniformly.
+- Phase 4D's `validate_offline_database` stays core-only and untouched by this
+  invariant.

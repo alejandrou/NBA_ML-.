@@ -34,6 +34,10 @@
 - A player can have multiple team stints in one season.
 - Do not use `player_name` as a stable key.
 - Use `basketball_reference_player_id` when available.
+- `basketball_reference_player_id` is the public API key for a player as well as
+  the internal stable identifier, and no other player identifier is published —
+  not the surrogate `core.players.id`, and not a slug. See
+  `docs/architecture/API_CONTRACT.md` for the served contract.
 - If the legacy scraper does not extract player IDs yet, document that as debt.
 - Basketball Reference renders current player names retroactively across the
   cached archive. No era-specific names were observed, so a displayed name is
@@ -49,6 +53,10 @@
   archive already contains a `5TM` season — so never enumerate it.
 - Multi-team markers are official player-page source markers for multi-team
   full player-season rows.
+- A multi-team marker may be **published** as source metadata on an aggregate
+  row, but it is never a public team and never resolves to a team resource. The
+  rule that governs storage governs publication too: consumers distinguish a
+  marker from a team code by the semantic rule above, never by an enumerated set.
 - The rule has one implementation, `src/nba_data/domain/team_codes.py`, and is
   enforced in the database by the four `ck_core_*_not_synthetic` check
   constraints as well as in code.

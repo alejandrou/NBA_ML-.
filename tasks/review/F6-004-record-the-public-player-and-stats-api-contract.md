@@ -366,29 +366,88 @@ measurement cannot leak into the API. Leave that text to F4E-021, which owns it.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: `Task validation passed.` — the three new `tasks/planning/` cards parse,
+  their ids are unique, `F6-012 → F6-004`, `F6-013 → F6-004, F6-012, F4E-024`,
+  and `F6-014 → F6-004, F6-013, F4E-024` all resolve, and F6-004 is the single
+  card across `active/` and `review/`.
+
+- Command: `uv run pytest tests/unit/test_api_foundation.py tests/unit/test_impact_map_documentation.py`
+- Result: `10 passed`. The foundation test still asserts the current four
+  unversioned documentation routes and the `/api/v1` prefix rule, unchanged — no
+  route was added.
+
+- Command: `uv run ruff check .`
+- Result: `All checks passed!`
+
+- Command: `uv run pytest`
+- Result: `839 passed, 25 skipped, 7 warnings in 23.73s`. The warnings are the
+  pre-existing Starlette `TestClient`/`httpx` deprecation and six peewee
+  `to_field` deprecations from the legacy package; none originate in this change.
+
+No test was added or modified. This card changes documentation and task cards
+only, so there is no application behavior for a test to cover.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Open [docs/architecture/API_CONTRACT.md](../../docs/architecture/API_CONTRACT.md)
+   and read the new `## Players and statistics` section, which follows Seasons at
+   the end of the file.
+2. Confirm it opens with the **"Specified, not yet served"** marker naming
+   F6-012, F6-013, and F6-014, and that the routing table maps each
+   `{season_type}`/grain pair to exactly one table family:
+   `regular`/`aggregate` → `stats.player_season_{family}`,
+   `postseason`/`aggregate` → `stats.player_postseason_{family}`,
+   `regular`/`stints` → `stats.player_team_season_{family}`,
+   `postseason`/`stints` → `stats.player_team_postseason_{family}`.
+3. Confirm the multi-team rule is stated semantically — "a numeric team count of
+   at least two followed by `TM`" — and that no marker set is enumerated anywhere
+   in the section. Then read the two new bullets in
+   [docs/domain/BUSINESS_RULES.md](../../docs/domain/BUSINESS_RULES.md): the
+   public player key under Players, and the publishable-but-never-a-team marker
+   rule under Source Team Codes and Trades.
 
-Expected result:
+Expected result: the section records the seven owner decisions of 2026-08-27 —
+`basketball_reference_player_id` as the sole public player key matched exactly in
+lowercase, no slug, the six nested route templates, all four dimensions and all
+eight families public, `source_team_code` plus a derived `is_multi_team` on
+aggregate rows only, no `player_name_display`, and the inherited NBA season scope.
+`BUSINESS_RULES.md` gains two clarifications and weakens no existing rule; the
+`TOT` and marker wording is untouched.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Search the new section for an enumerated marker set — `grep -n "2TM\|3TM\|4TM"
+   docs/architecture/API_CONTRACT.md`. The only hit is the sentence explaining why
+   enumerating them would be wrong.
+2. Search it for fields the contract forbids — `grep -n
+   "player_name_display\|franchise_id\|slug\|parser_version\|cache_path"
+   docs/architecture/API_CONTRACT.md`. Every hit is inside a non-promise or a
+   "lineage columns are private" statement, never inside a response body.
+3. Confirm nothing under `src/` or `tests/` changed: `git status --short` lists
+   only the two documents, the moved card, and the three new planning cards.
 
-Expected result:
+Expected result: no code, schema, route, or readiness list changed. The
+readiness required-table list still holds `core.teams` and `core.seasons`; the
+contract says which tables each successor adds, and defers the edit to the card
+that lands the route.
 
 ## Known limitations
 
-- None.
+- The section specifies routes that do not exist. That is the point of the card,
+  and the "Specified, not yet served" marker states it in the document itself so
+  no reader mistakes it for a description of running behavior.
+- F6-013 and F6-014 stay blocked on F4E-024: three of the four dimensions carry a
+  stale parser version in the persistent `nba` database and the aggregate family
+  is 625 player-seasons short. That rebuild is named in both cards and authorized
+  by neither.
+- `tasks/planning/F7-001` still lists `tasks/planning/F6-004-define-public-player-stats-api-contract.md`
+  in its `read:`, a path that stopped existing when F6-004 was promoted to
+  `tasks/backlog/` under its current filename. The lifecycle validator does not
+  check `read:` paths, so this passes today. It is outside this card's scope and
+  is left for whoever prepares F7-001.
+- `OFFICIAL_STATS_SCHEMA.md`'s stale Player Name Display Semantics measurement is
+  deliberately untouched — F4E-021 owns it, and this contract publishes no
+  `player_name_display`, so the stale figure cannot reach the API.

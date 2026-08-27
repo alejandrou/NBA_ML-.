@@ -135,3 +135,245 @@ Two fields that earlier revisions of this contract described are withdrawn from 
 Any resource that references a season — teams by season, player seasons, statistics — inherits this scope and must not reintroduce league as a path or query dimension within v1. If another league is ever published, it gets its own resource; it does not reshape this one. A `league` filter may be added later as an additive, non-breaking query parameter, but the NBA default cannot change.
 
 The `league` field stays in the response so the scope is explicit in every payload rather than implied by the URL.
+
+## Players and statistics
+
+**Specified, not yet served.** Nothing in this section is implemented. No player
+route, player query repository, player schema, or statistics route exists today;
+`db/repositories/queries/` holds only `teams.py` and `seasons.py`. The section
+fixes the shape before any of it is written, so a response body cannot be
+decided accidentally by copying the column list of a wide table.
+
+Three successor cards implement it: **F6-012** (players and player-season
+identity), **F6-013** (regular-season statistics), and **F6-014** (postseason
+statistics). Each removes the resources it lands from this marker. Serving is
+staged by data health, not by contract — F6-013 and F6-014 additionally wait on
+the F4E-024 rebuild, because three of the four dimensions carry a stale parser
+version and the aggregate family is short of the archive.
+
+### Player identity
+
+**A public player is one Basketball Reference player id, and
+`basketball_reference_player_id` is its permanent v1 key.**
+`/api/v1/players/jamesle01` means "the player Basketball Reference calls
+`jamesle01`" for the life of v1 and will never be redefined.
+
+The id is the key for the reason the team code is: it is reproducible. Rebuilding
+the database from the same cached pages yields the same ids, so a client may
+persist `"jamesle01"`, compare it across deployments, and join its own data on
+it. `core.players` already enforces uniqueness through `uq_core_players_bref_id`,
+and v1 additionally requires the id to be **present on every published row**: a
+player without one is a data defect, not a served possibility.
+`get_or_create_player` refuses an empty value on the write path, so no such row
+is created today; the column's `nullable=True` in the model is the same gap
+`core.teams` had before `0007_team_bref_id_not_null`.
+
+Ids are matched **exactly**, in the lowercase form Basketball Reference renders.
+`/api/v1/players/JAMESLE01` is not `/api/v1/players/jamesle01` and returns 404 —
+the same rule the team code follows in the opposite casing.
+
+`core.players.id` is private, exactly as `core.teams.id` and `core.seasons.id`
+are. It is stable within one database and not reproducible across a rebuild, so
+publishing it would hand clients a second key the contract then has to warn them
+off.
+
+**No `slug` is published.** The only rebuild-stable source for one would be
+`basketball_reference_player_id` itself, which the response already carries under
+its own name, so a slug field would be the same key wearing a second name.
+
+### Routes
+
+`{pid}` is the player key, `{season_type}` is one of `regular` or `postseason`,
+and `{family}` is one of `totals`, `per_game`, `per_minute`, `per_poss`,
+`advanced`, `shooting`, `adj_shooting`, `pbp`.
+
+```text
+GET /api/v1/players
+GET /api/v1/players/{pid}
+GET /api/v1/players/{pid}/seasons
+GET /api/v1/players/{pid}/seasons/{season_year}
+GET /api/v1/players/{pid}/seasons/{season_year}/{season_type}/aggregate/{family}
+GET /api/v1/players/{pid}/seasons/{season_year}/{season_type}/stints/{family}
+```
+
+Grain and season type are path segments, never query parameters, so no request
+can ask for a shape that mixes them.
+
+### Dimension routing
+
+A path maps to exactly one table family. All four dimensions and all eight
+families are public in v1 — the complete stat model, 32 tables — so a later
+addition never reshapes a body a client already parses.
+
+| Path | Table family | Grain FK |
+|---|---|---|
+| `regular` / `aggregate` | `stats.player_season_{family}` | `core.player_seasons.id` |
+| `postseason` / `aggregate` | `stats.player_postseason_{family}` | `core.player_seasons.id` |
+| `regular` / `stints` | `stats.player_team_season_{family}` | `core.player_team_seasons.id` |
+| `postseason` / `stints` | `stats.player_team_postseason_{family}` | `core.player_team_seasons.id` |
+
+The `{family}` segment is the table suffix verbatim: `adj_shooting` reads
+`stats.player_season_adj_shooting`, and so on for all eight.
+
+The ninth table in the regular stint family, `stats.player_team_season_roster`,
+is **out of v1**, and deliberately so rather than by oversight: it exists in one
+dimension only and carries biography — jersey number, position, height, weight,
+birth date, experience, college — rather than statistics. Publishing it is its
+own additive decision.
+
+### Response bodies
+
+A player object:
+
+```json
+{
+  "basketball_reference_player_id": "jamesle01",
+  "full_name": "LeBron James"
+}
+```
+
+That is the whole player resource. `core.players` holds no birth date, height,
+weight, position, or college; that data lives per stint on
+`stats.player_team_season_roster`, so a richer player object would have to invent
+a grain the storage does not hold.
+
+A season-index item, served by `/players/{pid}/seasons` and
+`/players/{pid}/seasons/{season_year}`:
+
+```json
+{
+  "season_year": 2008,
+  "league": "NBA",
+  "teams": ["CLE"]
+}
+```
+
+`teams` is the list of `basketball_reference_team_id` values reached through
+`core.player_team_seasons`. It is stint **membership**, read from `core`, and is
+never a substitute for stint statistics: it says which teams the player appeared
+for, and nothing about what they did there.
+
+An aggregate stat object carries `season_year`, `season_type`,
+`source_team_code`, `is_multi_team`, and the family's stat columns. A stint stat
+object carries `season_year`, `season_type`, `basketball_reference_team_id`, and
+the family's stat columns. Because all four dimensions inherit the same eight
+column mixins, one body shape per family serves every dimension.
+
+**Stat column names are the stored names, verbatim and unrenamed** — `fg_pct`,
+`fg3a`, `mp`, `tpl_dbl`, `ws_per_48`, `pct_fga_16_plus`. They are the documented
+Basketball Reference mapping, and renaming them at the boundary would create a
+second vocabulary to keep in step. `src/nba_data/db/models/stats.py` is the
+authority for what a family contains.
+
+**A missing stat is `null`** — never `0`, and never an omitted key. Older seasons
+lack statistics that did not exist yet, and a zero would assert a measurement
+that was never taken.
+
+**Rates are JSON numbers.** `Numeric(10, 4)` columns publish as JSON numbers at
+their stored scale (`0.4661`), not as strings. This is stated explicitly because
+Pydantic serializes `Decimal` to a string in JSON mode by default: a schema that
+types these columns as `Decimal` and is left unconfigured breaks this rule
+silently.
+
+**Lineage columns are private.** `source_url`, `cache_path`, `parser_version`,
+`created_at`, and `updated_at` are never published on any route.
+
+### Multi-team markers
+
+`source_team_code` appears on aggregate rows only, is verbatim source metadata,
+and is nullable. It is never a team link.
+
+`is_multi_team` is derived from it: true when the code is **a numeric team count
+of at least two followed by `TM`**. The contract states the rule and enumerates
+nothing — the cached archive already contains a `5TM` season, so a contract
+listing `2TM`, `3TM`, and `4TM` would have been wrong on the day it published.
+`src/nba_data/domain/team_codes.py` is the one implementation of that rule for
+every layer, and the API derives the boolean from it rather than re-deciding it.
+
+When `is_multi_team` is true the value is not a team and resolves to no
+`/api/v1/teams` resource. When it is false the value is a real team code that
+does. **Clients branch on the boolean, never on the string.**
+
+`TOT` is not a multi-team marker, is never a team, and must not appear in this
+field at all. If it does, that is a data defect rather than a served shape.
+
+### Grain and derivation
+
+No response mixes aggregate and stint rows; the path decides the grain before the
+query runs.
+
+**The API computes nothing.** Every published number is a stored official value.
+It is never a sum of stints, never an averaged percentage, never a career or
+multi-season roll-up, and never a generated metric from `features`.
+
+### Season and team scope
+
+Every player resource inherits the permanent NBA scope of `/api/v1/seasons` and
+introduces no `league` path or query dimension. Team references are code-era
+identities and carry no franchise lineage, exactly as the teams contract above
+states.
+
+The two scopes deliberately disagree — seasons are NBA-only, teams are filtered
+by no league at all — so the asymmetry is restated here rather than left to be
+inferred from two sections a reader may not have read together.
+
+### Ordering and pagination
+
+| Collection | Ordering |
+|---|---|
+| `/players` | `full_name ASC, basketball_reference_player_id ASC` |
+| `/players/{pid}/seasons` | `season_year DESC` |
+| stint stat collections | `basketball_reference_team_id ASC` |
+
+All collections use the collection envelope and the `page` / `page_size` bounds
+defined above; neither is restated here.
+
+### Status codes
+
+| Condition | Status | Body |
+|---|---|---|
+| Unknown player | 404 | `{"detail": "Player not found"}` |
+| Known player, no such season | 404 | `{"detail": "Player season not found"}` |
+| Player-season exists, no row in that dimension and family (aggregate routes) | 404 | `{"detail": "Statistics not found"}` |
+| Player-season exists, no rows in that dimension and family (stint collections) | 200 | the envelope with an empty `items` list |
+| Unrecognized `{season_type}` or `{family}` | 422 | path validation |
+| Non-integer `{season_year}` | 422 | path validation |
+
+An aggregate route addresses at most one row, so its absence is a missing
+resource. A stint route addresses a collection, and an empty collection is a
+valid page, per the collection rule above.
+
+Detail strings are fixed in the same sense the readiness and 500 strings are
+fixed: they never interpolate the player id, the season, the family, an
+exception, or a SQL statement.
+
+### Readiness impact
+
+Each resource adds the tables it reads to the readiness required-table list.
+F6-012 adds `core.players`, `core.player_seasons`, and
+`core.player_team_seasons`; F6-013 adds the `stats.player_season_*` and
+`stats.player_team_season_*` tables it serves; F6-014 adds the
+`stats.player_postseason_*` and `stats.player_team_postseason_*` tables. The list
+changes when a route lands, not when its contract is written.
+
+### Named v1 non-promises
+
+Each of these is a decision, not a gap awaiting repair.
+
+- **No name search or filter on `/players`** beyond pagination. `player_name` is
+  not a stable key, and search is its own design problem.
+- **No `stats.player_team_season_roster`**, and therefore no biography fields —
+  it is regular-stint-only and holds no statistics.
+- **No `player_name_display`.** It is `NULL` by design on 24 of the 32 stat
+  tables, so publishing it would expose a field populated in one dimension and
+  empty in three, which reads as missing data rather than as source semantics.
+  `core.players.full_name` is the only name the API publishes.
+- **No `slug`**, for the reason given under Player identity.
+- **No surrogate ids** — `core.players.id`, `core.player_seasons.id`, and
+  `core.player_team_seasons.id` stay private.
+- **No lineage columns.**
+- **No career or multi-season totals.** They would be a derived aggregate the
+  storage does not hold, and computing one would break the rule that the API
+  computes nothing.
+- **No cross-player, season-wide stat collection or leaderboard.** Every
+  statistics route is scoped to one player and one season.

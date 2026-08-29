@@ -34,7 +34,7 @@ outside this repository.
 | Key | Defect | Status | Owning card |
 |---|---|---|---|
 | DB-01 † | `_season_end_year` rolls `1999-00` to **1900**, so season-2000 rows never resolve a grain and are silently dropped | fixed | [F4E-013](../../tasks/done/F4E-013-fix-season-century-rollover-in-player-page-parsing.md) |
-| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | fixed at the parser; persisted rows not yet repaired | [F4E-014](../../tasks/review/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md) |
+| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | fixed at the parser; repair rehearsed and measured, not yet applied to `nba` | [F4E-014](../../tasks/done/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md), rebuilt by [F4E-024](../../tasks/done/F4E-024-rebuild-the-player-page-stats-archive-at-parser-v4.md) |
 | DB-03 † | `core.teams.current_name` and `core.team_aliases.name` hold abbreviations; no loader ever supplies a real team name | confirmed, planned | [F4E-015](../../tasks/backlog/F4E-015-populate-real-team-names-from-cached-team-pages.md) |
 | DB-04 † | `validate official-stats` reconciles one backfill report against all stats tables; backfill commands exit 0 on partial row failure | implemented | [F4E-016](../../tasks/done/F4E-016-consolidate-backfill-report-validation.md) |
 | DB-05 | `player_name_display` is NULL across the player-page-fed stats tables, with nothing documenting why | confirmed as a documentation defect, planned | [F4E-019](../../tasks/backlog/F4E-019-document-player-name-display-source-semantics.md) |
@@ -85,6 +85,43 @@ the running `nba_postgres` container.
 | `core.seasons` range | 2000–2025, no row below 1999 |
 
 The 12,676 / 12,042 / 634 figures match the audit exactly.
+
+### The same figures after the `-v4` rebuild
+
+F4E-024 rebuilt the whole player-page archive from the same cache under the
+current parser contract, on a scratch database, on **2026-08-28**. The `nba`
+database was not written to and is unchanged. Measured:
+
+| Measure | `-v1` archive | `-v4` rebuild |
+|---|---|---|
+| `core.player_seasons` | 12,676 | 12,676 |
+| …with regular-season aggregate stats | 12,042 | **12,667** |
+| …**without** | 634 | **9** |
+| Distinct postseason player-seasons | 5,066 | **5,301** |
+| Distinct postseason team stints | 5,066 | **5,301** |
+| Total rows across all 33 `stats` tables | 306,392 | **315,152** |
+| Player-page `parser_version` | `-v1` | `-v4` |
+
+The 9 that remain without regular-season stats are exactly the 9 postseason-only
+seasons below — correct as loaded. **Every other bucket of the 634 was
+recovered**, 625 in total, decomposing precisely as this document predicted: 439
+season-2000, 184 short-id, 1 `5TM`, 1 placeholder, and **0 unclassified**.
+
+A before/after diff of the regular-season grain keys also found **0 lost** — no
+player-season that the `-v1` load produced is absent from the `-v4` rebuild. That
+settles, by measurement, the open question of whether an upsert-only write path
+strands rows the current parser no longer produces. It does not; the coverage
+comparison independently reports `unexpected = 0` in all four dimensions.
+
+One incidental corroboration of F4E-022: this document measured **1,380**
+`(player, season)` pairs carrying a "Did not play" placeholder, while the `-v4`
+coverage artifact classifies **1,379** as did-not-play regular seasons. The
+difference is `milleol01` 2003-04, which `-v4` now correctly reads as a real
+48-game season rather than a placeholder.
+
+The rebuild is rehearsed only. Applying it to the persistent `nba` database
+needs the owner's direct instruction; the procedure is in
+[`OFFLINE_DATABASE_PREPARATION.md`](OFFLINE_DATABASE_PREPARATION.md).
 
 ### The 634 decomposed — fully, with no residue
 
@@ -160,7 +197,7 @@ requires `[a-z0-9]{8,10}`, which cannot match a six- or seven-character id:
 Their pages are cached and parseable, so the data is fully recoverable; their
 `core.player_seasons` rows exist because those come from **team** pages, which
 discovery handles correctly. This defect is owned by the
-[F4E-012 review card](../../tasks/review/F4E-012-fix-player-page-cache-discovery-contract.md).
+[F4E-012 review card](../../tasks/done/F4E-012-fix-player-page-cache-discovery-contract.md).
 Its implementation is merged, but the card remains in review pending the user's
 testing decision, which is why F4E-017 cannot be started yet.
 
@@ -281,7 +318,7 @@ container is running and every database figure above was queried directly.
 
 Two pieces of work are deliberately **not** in `tasks/` yet. They are downstream
 of the discovery repair recorded by the [F4E-012 review
-card](../../tasks/review/F4E-012-fix-player-page-cache-discovery-contract.md)
+card](../../tasks/done/F4E-012-fix-player-page-cache-discovery-contract.md)
 and should be assigned only after that review is accepted:
 
 - **Rebuild and diff** — rebuild the archive into a scratch database and diff it

@@ -437,29 +437,153 @@ id is the stable handle. Only the filename and title change.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+Rehearsed end to end on scratch database `nba_f4e024_tmp_1ea6e5ff607b4184`,
+created and dropped by the run, on 2026-08-28. The persistent `nba` database was
+never written to.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run ruff check .`
+- Result: **passed** — "All checks passed!"
+
+- Command: `uv run pytest`
+- Result: **passed** — exit 0.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **passed** — "Task validation passed."
+
+- Command: `bash scripts/validate_database.sh`
+- Result: **passed** — exit 0. Created `nba_test_tmp_6c47cbdd955a465f`, migrated
+  to head, proved `0007` reversible with `downgrade -1` then `upgrade head`, ran
+  26 integration tests, and dropped the temporary database.
+
+- Command: `uv run nba-data validate build-stats-coverage --output reports/F4E-024/stats_coverage.json`
+- Result: **exit 0** — 16,840 entries, 0 unexplained, 0 disagreements, 0 source issues.
+
+- Command: `uv run python scripts/dev/rehearse_player_page_rebuild.py`
+- Result: **exit 1**, from `validate official-stats` only. Step exit codes:
+  `alembic upgrade head` 0, `alembic check` 0, `backfill offline` 0,
+  `backfill stats` 0, `backfill player-stats` 1,
+  `backfill player-postseason-stats` 1, `validate offline-database` 0,
+  `validate official-stats` 1. All three nonzero codes are explained under
+  *Known limitations* and none is a defect in the rebuild.
+
+### Isolation
+
+- The scratch database name was generated per run, asserted to differ from the
+  configured database, and dropped in a `finally` path.
+- `nba` proven untouched, not asserted: the parser-version census across all 33
+  `stats` tables was captured before the rehearsal and again after, and `diff`
+  reports the two captures **identical**. `alembic_version` is still
+  `0006_synthetic_team_codes`. No `nba_f4e024_tmp_*` database remains.
+- No command ran with `--execute-approved-*` while `DATABASE_URL` resolved to
+  `nba`; the driver raises rather than allowing it.
+
+### The rebuild
+
+- Scratch database migrated to head `0007_team_bref_id_not_null`;
+  `alembic check` reported "No new upgrade operations detected."
+- Core counts match the Phase 4D baseline exactly: `core.players` 2,551,
+  `core.player_seasons` 12,676, `core.player_team_seasons` 14,344.
+- `backfill player-stats` reported **0 entries with `status="failed"`** and 0
+  failed rows, down from the 577 failed entries the archive audit recorded.
+  F4E-022's prediction is confirmed by measurement for the first time.
+- Producer row counts: 129,000 team-season; 101,336 regular player; 42,408
+  postseason aggregate; 42,408 postseason team stint. Total 315,152.
+
+### The recovery, measured at the grain
+
+- `select count(distinct player_season_id) from stats.player_season_totals`
+  returns **12,667**, up from 12,042 — exactly the predicted +625.
+- Bucket reconciliation, counted separately by diffing the before/after grain
+  keys: season 2000 **439**, short player ids **184**, `jonesbo02` 2008 **1**,
+  `milleol01` 2004 **1**. Total **625**, with **0 unclassified**.
+- **0 lost** — no player-season present in the `-v1` archive is absent from the
+  `-v4` rebuild.
+- `jonesbo02` 2008 has **8** regular-season aggregate rows, one in each
+  `stats.player_season_*` table, verified by a grain join rather than by reading
+  a report.
+- `milleol01` 2004 has **8** such rows, with `g = 48` and `pts = 121`.
+- The 9 postseason-only seasons each have **0** regular-season aggregate rows and
+  **8** postseason aggregate rows, intact.
+- Measured, not predicted: postseason aggregate and postseason team-stint grains
+  each grew from 5,066 to **5,301** distinct keys (+235). Team-season stints are
+  unchanged at 14,332.
+
+### Lineage
+
+- `select distinct parser_version` across all 33 `stats` tables returns exactly
+  three values: `team-season-parser-v1`, `player-page-parser-v4`,
+  `player-page-postseason-parser-v4`. **Zero** rows carry `-v1`, `-v2` or `-v3`
+  player-page lineage, and `parser_lineage_violations` is **0**.
+
+### The residue check — the card's central question
+
+- `coverage_summary.freshness_status` is **`verified`** (the artifact's
+  fingerprint was re-checked against the live cache), with `unexplained_count` 0
+  and `source_issues_count` 0.
+- **`coverage_unexpected_<dimension>` is 0 in all four dimensions.** The
+  upsert-only write path stranded nothing, corroborated independently by the
+  before/after key diff finding 0 lost. No delete step is needed, and no card
+  should add one on speculation.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Start PostgreSQL: `docker compose up -d postgres`.
+2. Build the coverage artifact:
+   `uv run nba-data validate build-stats-coverage --output reports/stats-coverage.json`.
+3. Run the rehearsal: `uv run python scripts/dev/rehearse_player_page_rebuild.py`.
+4. Read `reports/F4E-024/rehearsal_evidence.json`.
 
-Expected result:
+Expected result: `grain_counts.regular_aggregate_distinct_player_seasons` is
+12,667; `recovery.recovered` is 625 with `recovery.lost` 0 and
+`buckets.unclassified` 0; `distinct_parser_versions` is the three-value list
+above; each of the 9 postseason-only seasons shows `regular=0`, `postseason=8`.
+Takes roughly 70 minutes.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. While the rehearsal is running, confirm it never targets `nba`:
+   `docker compose exec -T postgres psql -U nba -d postgres -At -c "select datname from pg_database where datname like 'nba_f4e024_tmp_%';"`
+2. After it finishes, run the same query again.
+3. Re-capture the `nba` lineage census with `reports/F4E-024/lineage_census.sql`
+   and diff it against `reports/F4E-024/nba_lineage_before.txt`.
 
-Expected result:
+Expected result: step 1 lists exactly one scratch database; step 2 lists none,
+because the driver dropped it; step 3 reports no differences, and
+`select version_num from alembic_version` on `nba` still returns
+`0006_synthetic_team_codes`. If a scratch database survives — which happens if
+the process is killed before its `finally` path runs — drop it by name before
+re-running.
 
 ## Known limitations
 
-- None.
+- **`validate official-stats` exits 1, and this card does not make it exit 0.**
+  The cause is a scope defect in the coverage oracle, not in the rebuild:
+  `build-stats-coverage` enumerates every season on every cached player page
+  (1983-2026), while the archive deliberately loads only the 2000-2025 seasons in
+  `core.seasons`. It therefore expects 39,972 rows the archive was never meant to
+  hold, reported as `coverage_missing_regular_aggregate_row` (19,692),
+  `coverage_missing_postseason_aggregate_row` (10,140) and
+  `coverage_missing_postseason_team_stint_row` (10,140). Every sampled example is
+  a pre-2000 season. Restricted to 2000-2025 the artifact expects exactly 101,336
+  regular and 42,408 postseason rows — precisely what the rebuild produced.
+  Fixing this belongs to the F4E-017 / F4E-018 coverage cards; this card writes
+  no application code by its own scope rule.
+- **Both player-page producers exit 1 for the same reason**, reporting
+  `unresolved_players_or_seasons` 19,692 and
+  `unresolved_players_or_seasons_or_team_stints` 20,280 while `entries_failed`
+  and `rows_failed` are both 0. Those counts equal the coverage artifact's
+  out-of-scope expectations exactly. The rehearsal driver continues past a
+  nonzero exit only when the sole failure signal is that unresolved counter and
+  both real failure counters are zero; it still aborts on any genuine failure.
+- The card's acceptance criteria "zero `coverage_missing_<dimension>_row`
+  findings" and "`validate official-stats` exits 0" are therefore **not met**,
+  and cannot be met without changing the oracle. Every other acceptance
+  criterion is met and measured.
+- The rebuild is rehearsed only. The persistent `nba` database is untouched and
+  still one migration behind head. The handover procedure in
+  `docs/validation/OFFLINE_DATABASE_PREPARATION.md` requires the owner's direct,
+  current instruction; this card does not supply it.
+- Reports under `reports/F4E-024/` are git-ignored and local to this machine;
+  `offline_backfill.json` is ~180 MB.

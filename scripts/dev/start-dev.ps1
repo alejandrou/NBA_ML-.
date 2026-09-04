@@ -18,6 +18,7 @@ Write-Host "Repository: $repoRoot"
 Write-Host "No live scraping will be run."
 Invoke-Checked "Install/sync dependencies" { uv sync --all-groups }
 Invoke-Checked "Run Ruff" { uv run ruff check . }
+Invoke-Checked "Run Mypy" { uv run mypy src/nba_data }
 Invoke-Checked "Run Pytest" { uv run pytest }
 
 if (-not $SkipDocker -and (Get-Command docker -ErrorAction SilentlyContinue)) {

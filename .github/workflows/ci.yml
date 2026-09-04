@@ -26,6 +26,12 @@ jobs:
       - name: Ruff
         run: uv run ruff check .
 
+      # The path is named explicitly so the gate's scope is visible here rather
+      # than implied by the working directory. `tests/`, `scripts/`, `alembic/`
+      # and the legacy prototype are deliberately outside it.
+      - name: Mypy
+        run: uv run mypy src/nba_data
+
       - name: Pytest (offline)
         run: uv run pytest -m "not integration and not live"
 

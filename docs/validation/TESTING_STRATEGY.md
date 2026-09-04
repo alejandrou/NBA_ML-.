@@ -3,11 +3,20 @@
 ## Offline suite
 
 The unit-test lane is deliberately independent of PostgreSQL and network
-access. It runs Ruff and:
+access. It runs Ruff, Mypy, and Pytest, in that order:
 
 ```bash
+uv run ruff check .
+uv run mypy src/nba_data
 uv run pytest -m "not integration and not live"
 ```
+
+Mypy is a gate, not advice: CI fails on any error it reports. Its scope is
+`src/nba_data` only — `tests/`, `scripts/`, `alembic/` and the legacy prototype
+are excluded, and the path is spelled out in CI and in the README so that scope
+is visible rather than implied by the working directory. It enforces the
+`[tool.mypy]` settings in `pyproject.toml` as they stand; raising that bar
+(`strict`, `disallow_untyped_defs`) is a separate decision.
 
 Normal unit and offline validation never needs PostgreSQL, and nothing in that
 lane opens a database connection.

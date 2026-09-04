@@ -154,7 +154,7 @@ def _parse_table(soup: BeautifulSoup, table_id: str) -> list[dict[str, str]]:
 
 
 def _is_repeated_header_row(tr: Tag, cells: list[Tag]) -> bool:
-    if "thead" in tr.get("class", []):
+    if "thead" in tr.get_attribute_list("class"):
         return True
 
     data_stats = [cell.get("data-stat") for cell in cells]
@@ -170,7 +170,10 @@ def _headers(table: Tag) -> list[str]:
     headers = []
     for cell in header_row.find_all(["th", "td"], recursive=False):
         data_stat = cell.get("data-stat")
-        label = data_stat if data_stat else cell.get_text(strip=True)
+        # `data-stat` is single-valued, so bs4 hands back a string; anything
+        # else falls back to the visible header text rather than widening the
+        # declared `list[str]`.
+        label = data_stat if isinstance(data_stat, str) and data_stat else cell.get_text(strip=True)
         headers.append(label)
     return headers
 

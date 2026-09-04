@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from time import perf_counter
 from typing import Literal
 
@@ -184,7 +185,7 @@ def run_offline_player_postseason_stats_backfill(
 def _process_one_player_page(
     session: Session,
     *,
-    cache_path: object,
+    cache_path: Path,
     player_identifier: str,
     source_url: str,
     start_year: int | None,

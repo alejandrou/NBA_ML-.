@@ -5,8 +5,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
+from nba_data.db.base import Base
 from nba_data.db.models import (
     Player,
     PlayerSeason,
@@ -301,42 +302,49 @@ def _orphan_issues(session: Session) -> list[OfflineDatabaseValidationIssue]:
             TeamAlias,
             Team,
             TeamAlias.team_id == Team.id,
+            parent_id=Team.id,
         ),
         "orphan_team_seasons_team": _missing_parent_count(
             session,
             TeamSeason,
             Team,
             TeamSeason.team_id == Team.id,
+            parent_id=Team.id,
         ),
         "orphan_team_seasons_season": _missing_parent_count(
             session,
             TeamSeason,
             Season,
             TeamSeason.season_id == Season.id,
+            parent_id=Season.id,
         ),
         "orphan_player_seasons_player": _missing_parent_count(
             session,
             PlayerSeason,
             Player,
             PlayerSeason.player_id == Player.id,
+            parent_id=Player.id,
         ),
         "orphan_player_seasons_season": _missing_parent_count(
             session,
             PlayerSeason,
             Season,
             PlayerSeason.season_id == Season.id,
+            parent_id=Season.id,
         ),
         "orphan_player_team_seasons_player_season": _missing_parent_count(
             session,
             PlayerTeamSeason,
             PlayerSeason,
             PlayerTeamSeason.player_season_id == PlayerSeason.id,
+            parent_id=PlayerSeason.id,
         ),
         "orphan_player_team_seasons_team_season": _missing_parent_count(
             session,
             PlayerTeamSeason,
             TeamSeason,
             PlayerTeamSeason.team_season_id == TeamSeason.id,
+            parent_id=TeamSeason.id,
         ),
     }
     return [
@@ -505,16 +513,29 @@ def _extract_backfill_summary(backfill_report: Mapping[str, Any] | None) -> dict
     }
 
 
-def _missing_parent_count(session: Session, child: type, parent: type, join_condition: Any) -> int:
+def _missing_parent_count(
+    session: Session,
+    child: type[Base],
+    parent: type[Base],
+    join_condition: Any,
+    *,
+    parent_id: InstrumentedAttribute[int],
+) -> int:
+    """Count `child` rows whose `parent` row is absent.
+
+    `parent_id` names the column the outer join leaves NULL. `Base` declares no
+    columns of its own, so the parent class alone cannot supply it.
+    """
+
     return (
         session.scalar(
-            select(func.count()).select_from(child).outerjoin(parent, join_condition).where(parent.id.is_(None))
+            select(func.count()).select_from(child).outerjoin(parent, join_condition).where(parent_id.is_(None))
         )
         or 0
     )
 
 
-def _count(session: Session, model: type) -> int:
+def _count(session: Session, model: type[Base]) -> int:
     return session.scalar(select(func.count()).select_from(model)) or 0
 
 

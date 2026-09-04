@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
@@ -1017,6 +1018,9 @@ def _coverage_issues(
         )
 
     dimension_summaries: dict[str, object] = {}
+    expected: AbstractSet[CoverageKey]
+    excluded_expected: AbstractSet[CoverageKey]
+    actual: AbstractSet[CoverageKey]
     for dimension_name, specs, postseason, is_team_stint in (
         ("regular_aggregate", REGULAR_AGGREGATE_TABLE_SPECS, False, False),
         ("postseason_aggregate", POSTSEASON_AGGREGATE_TABLE_SPECS, True, False),
@@ -1038,8 +1042,8 @@ def _coverage_issues(
             )
             actual = _actual_aggregate_keys(session, reflected_tables, core_tables, specs)
 
-        missing = sorted(expected - actual)
-        unexpected = sorted(actual - expected)
+        missing: list[CoverageKey] = sorted(expected - actual)
+        unexpected: list[CoverageKey] = sorted(actual - expected)
         dimension_summaries[dimension_name] = {
             "expected": len(expected),
             "actual": len(actual),
@@ -1060,7 +1064,7 @@ def _coverage_issues(
                     ),
                     context={
                         "count": len(missing),
-                        "examples": _serialize_coverage_keys(missing[:10], team_stint=is_team_stint),
+                        "examples": _serialize_coverage_keys(missing[:10]),
                     },
                 )
             )
@@ -1074,7 +1078,7 @@ def _coverage_issues(
                     ),
                     context={
                         "count": len(unexpected),
-                        "examples": _serialize_coverage_keys(unexpected[:10], team_stint=is_team_stint),
+                        "examples": _serialize_coverage_keys(unexpected[:10]),
                     },
                 )
             )
@@ -1083,6 +1087,15 @@ def _coverage_issues(
     summary["unexplained_count"] = len(artifact.unexplained)
     summary["source_issues_count"] = len(artifact.source_issues)
     return issues, summary
+
+
+# The aggregate dimensions key on (player, season, table); the team-stint
+# dimensions add the team code. The loop below holds one dimension at a time,
+# so it reads them through the covariant `AbstractSet` rather than `set`, whose
+# invariance would reject the narrower producers.
+AggregateCoverageKey = tuple[str, int, str]
+TeamStintCoverageKey = tuple[str, int, str, str]
+CoverageKey = AggregateCoverageKey | TeamStintCoverageKey
 
 
 def _expected_aggregate_keys(
@@ -1212,25 +1225,34 @@ def _actual_team_stint_keys(
     return keys
 
 
-def _serialize_coverage_keys(
-    keys: list[tuple[str, int, str]] | list[tuple[str, int, str, str]],
-    *,
-    team_stint: bool,
-) -> list[dict[str, object]]:
-    if team_stint:
-        return [
-            {
-                "basketball_reference_player_id": key[0],
-                "season_year": key[1],
-                "team_code": key[2],
-                "table": key[3],
-            }
-            for key in keys  # type: ignore[misc]
-        ]
-    return [
-        {"basketball_reference_player_id": key[0], "season_year": key[1], "table": key[2]}
-        for key in keys  # type: ignore[misc]
-    ]
+def _serialize_coverage_keys(keys: Sequence[CoverageKey]) -> list[dict[str, object]]:
+    """Render coverage keys for an issue's `examples` list.
+
+    A key carries the team code exactly when it has four fields, so the width
+    decides the shape and the caller does not have to repeat which dimension it
+    is reporting on.
+    """
+
+    serialized: list[dict[str, object]] = []
+    for key in keys:
+        if len(key) == 4:
+            serialized.append(
+                {
+                    "basketball_reference_player_id": key[0],
+                    "season_year": key[1],
+                    "team_code": key[2],
+                    "table": key[3],
+                }
+            )
+        else:
+            serialized.append(
+                {
+                    "basketball_reference_player_id": key[0],
+                    "season_year": key[1],
+                    "table": key[2],
+                }
+            )
+    return serialized
 
 
 _PARSER_ISSUE_DESCRIPTIONS = {

@@ -15,7 +15,7 @@ from pathlib import Path
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ def _missing_required_tables(session: Session) -> list[str]:
     return [f"{REQUIRED_SCHEMA}.{name}" for name in REQUIRED_TABLES if name not in present]
 
 
-def _is_query_canceled(exc: SQLAlchemyError) -> bool:
+def _is_query_canceled(exc: DBAPIError) -> bool:
     return getattr(exc.orig, "sqlstate", None) == _QUERY_CANCELED_SQLSTATE
 
 

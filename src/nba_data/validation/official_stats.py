@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
@@ -10,6 +10,7 @@ from typing import Any, Literal, TypeGuard
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
 
+from nba_data.db.repositories.queries.seasons import NBA_LEAGUE
 from nba_data.domain.team_codes import (
     is_aggregate_only_team_code,
     is_multi_team_marker,
@@ -974,6 +975,39 @@ def _coverage_issues(
             )
         )
 
+    loaded_season_years = _loaded_season_years(session, core_tables["seasons"])
+    in_scope_entries = 0
+    excluded_seasons: set[int] = set()
+    for entry in artifact.entries:
+        if entry.season_year in loaded_season_years:
+            in_scope_entries += 1
+        else:
+            excluded_seasons.add(entry.season_year)
+    scope_summary = {
+        "league": NBA_LEAGUE,
+        "season_years": sorted(loaded_season_years),
+        "artifact_entries": len(artifact.entries),
+        "in_scope_entries": in_scope_entries,
+        "excluded_entries": len(artifact.entries) - in_scope_entries,
+        "excluded_seasons": sorted(excluded_seasons),
+        "excluded_reason": "season_not_loaded_for_league",
+    }
+    if not loaded_season_years:
+        issues.append(
+            OfficialStatsValidationIssue(
+                code="coverage_scope_empty",
+                message=(
+                    f"No {NBA_LEAGUE} seasons are present in core.seasons; "
+                    "coverage comparison has no season scope."
+                ),
+                context={
+                    "count": 1,
+                    "league": NBA_LEAGUE,
+                    "season_years": [],
+                },
+            )
+        )
+
     dimension_summaries: dict[str, object] = {}
     for dimension_name, specs, postseason, is_team_stint in (
         ("regular_aggregate", REGULAR_AGGREGATE_TABLE_SPECS, False, False),
@@ -982,10 +1016,18 @@ def _coverage_issues(
         ("postseason_team_stint", POSTSEASON_TEAM_STINT_TABLE_SPECS, True, True),
     ):
         if is_team_stint:
-            expected = _expected_team_stint_keys(artifact.entries, postseason=postseason)
+            expected, excluded_expected = _expected_team_stint_keys(
+                artifact.entries,
+                postseason=postseason,
+                season_years=loaded_season_years,
+            )
             actual = _actual_team_stint_keys(session, reflected_tables, core_tables, specs)
         else:
-            expected = _expected_aggregate_keys(artifact.entries, postseason=postseason)
+            expected, excluded_expected = _expected_aggregate_keys(
+                artifact.entries,
+                postseason=postseason,
+                season_years=loaded_season_years,
+            )
             actual = _actual_aggregate_keys(session, reflected_tables, core_tables, specs)
 
         missing = sorted(expected - actual)
@@ -995,6 +1037,10 @@ def _coverage_issues(
             "actual": len(actual),
             "missing": len(missing),
             "unexpected": len(unexpected),
+            "scope": {
+                **scope_summary,
+                "excluded_expected_keys": len(excluded_expected),
+            },
         }
         if missing:
             issues.append(
@@ -1031,25 +1077,50 @@ def _coverage_issues(
     return issues, summary
 
 
+def _loaded_season_years(session: Session, seasons: Table) -> frozenset[int]:
+    """Return the season years loaded for the league this validator serves."""
+
+    statement = select(seasons.c.season_year).where(seasons.c.league == NBA_LEAGUE)
+    return frozenset(int(season_year) for season_year in session.scalars(statement))
+
+
 def _expected_aggregate_keys(
-    entries: tuple[StatsCoverageEntry, ...], *, postseason: bool
-) -> set[tuple[str, int, str]]:
+    entries: tuple[StatsCoverageEntry, ...],
+    *,
+    postseason: bool,
+    season_years: Collection[int],
+) -> tuple[set[tuple[str, int, str]], set[tuple[str, int, str]]]:
     keys: set[tuple[str, int, str]] = set()
+    excluded_keys: set[tuple[str, int, str]] = set()
     for entry in entries:
         tables = entry.postseason_aggregate_tables if postseason else entry.regular_aggregate_tables
+        target = (
+            excluded_keys
+            if entry.season_year not in season_years
+            else keys
+        )
         for table in tables:
-            keys.add((entry.basketball_reference_player_id, entry.season_year, table))
-    return keys
+            target.add((entry.basketball_reference_player_id, entry.season_year, table))
+    return keys, excluded_keys
 
 
 def _expected_team_stint_keys(
-    entries: tuple[StatsCoverageEntry, ...], *, postseason: bool
-) -> set[tuple[str, int, str, str]]:
+    entries: tuple[StatsCoverageEntry, ...],
+    *,
+    postseason: bool,
+    season_years: Collection[int],
+) -> tuple[set[tuple[str, int, str, str]], set[tuple[str, int, str, str]]]:
     keys: set[tuple[str, int, str, str]] = set()
+    excluded_keys: set[tuple[str, int, str, str]] = set()
     for entry in entries:
         stints = entry.postseason_team_stints if postseason else entry.regular_team_stints
+        target = (
+            excluded_keys
+            if entry.season_year not in season_years
+            else keys
+        )
         for stint in stints:
-            keys.add(
+            target.add(
                 (
                     entry.basketball_reference_player_id,
                     entry.season_year,
@@ -1057,7 +1128,7 @@ def _expected_team_stint_keys(
                     stint.table,
                 )
             )
-    return keys
+    return keys, excluded_keys
 
 
 def _actual_aggregate_keys(
@@ -1078,12 +1149,15 @@ def _actual_aggregate_keys(
             # `_schema_requirement_issues`; not this comparison's job.
             continue
         grain = table.c[spec.grain_column]
+        # The natural key stores season_year but not league, so filter the
+        # joined season before reducing rows to that key.
         statement = (
             select(players.c.basketball_reference_player_id, seasons.c.season_year)
             .select_from(table)
             .join(player_seasons, grain == player_seasons.c.id)
             .join(players, player_seasons.c.player_id == players.c.id)
             .join(seasons, player_seasons.c.season_id == seasons.c.id)
+            .where(seasons.c.league == NBA_LEAGUE)
         )
         for player_id, season_year in session.execute(statement):
             if player_id is None or season_year is None:
@@ -1112,6 +1186,8 @@ def _actual_team_stint_keys(
         if table is None or spec.grain_column not in table.c:
             continue
         grain = table.c[spec.grain_column]
+        # The natural key stores season_year but not league, so filter the
+        # joined season before reducing rows to that key.
         statement = (
             select(
                 players.c.basketball_reference_player_id,
@@ -1124,6 +1200,7 @@ def _actual_team_stint_keys(
             .join(players, player_seasons.c.player_id == players.c.id)
             .join(seasons, player_seasons.c.season_id == seasons.c.id)
             .join(team_seasons, player_team_seasons.c.team_season_id == team_seasons.c.id)
+            .where(seasons.c.league == NBA_LEAGUE)
         )
         for player_id, season_year, team_abbreviation in session.execute(statement):
             if player_id is None or season_year is None or team_abbreviation is None:
@@ -1715,6 +1792,7 @@ def _build_validation_summary(
         "coverage_artifact_stale": "coverage_violations",
         "coverage_unexplained_source": "coverage_violations",
         "coverage_source_issues_present": "coverage_violations",
+        "coverage_scope_empty": "coverage_violations",
         "coverage_missing_regular_aggregate_row": "coverage_violations",
         "coverage_unexpected_regular_aggregate_row": "coverage_violations",
         "coverage_missing_postseason_aggregate_row": "coverage_violations",

@@ -719,6 +719,9 @@ def test_validate_official_stats_coverage_passes_on_matching_artifact(session: S
     ):
         assert dimensions[name]["missing"] == 0
         assert dimensions[name]["unexpected"] == 0
+        assert dimensions[name]["scope"]["league"] == "NBA"
+        assert dimensions[name]["scope"]["season_years"] == [2021, 2024]
+        assert dimensions[name]["scope"]["excluded_entries"] == 0
 
 
 @pytest.mark.unit
@@ -862,7 +865,7 @@ def test_validate_official_stats_coverage_detects_missing_and_unexpected_regular
     entry["regular_aggregate_tables"] = [
         table for table in entry["regular_aggregate_tables"] if table != "stats.player_season_totals"
     ]
-    artifact["entries"].append(_fake_aggregate_entry("ghostpl01", 1999, "stats.player_season_totals"))
+    artifact["entries"].append(_fake_aggregate_entry("ghostpl01", 2021, "stats.player_season_totals"))
 
     report = validate_official_stats(session, coverage_artifact=artifact)
 
@@ -871,7 +874,7 @@ def test_validate_official_stats_coverage_detects_missing_and_unexpected_regular
     assert "coverage_unexpected_regular_aggregate_row" in _issue_codes(report)
     missing = next(i for i in report.issues if i.code == "coverage_missing_regular_aggregate_row")
     assert missing.context["examples"] == [
-        {"basketball_reference_player_id": "ghostpl01", "season_year": 1999, "table": "stats.player_season_totals"}
+        {"basketball_reference_player_id": "ghostpl01", "season_year": 2021, "table": "stats.player_season_totals"}
     ]
     unexpected = next(i for i in report.issues if i.code == "coverage_unexpected_regular_aggregate_row")
     assert unexpected.context["examples"] == [
@@ -892,7 +895,7 @@ def test_validate_official_stats_coverage_detects_missing_and_unexpected_postsea
         if table != "stats.player_postseason_totals"
     ]
     artifact["entries"].append(
-        _fake_aggregate_entry("ghostpl01", 1999, "stats.player_postseason_totals", postseason=True)
+        _fake_aggregate_entry("ghostpl01", 2021, "stats.player_postseason_totals", postseason=True)
     )
 
     report = validate_official_stats(session, coverage_artifact=artifact)
@@ -900,6 +903,252 @@ def test_validate_official_stats_coverage_detects_missing_and_unexpected_postsea
     assert report.passed is False
     assert "coverage_missing_postseason_aggregate_row" in _issue_codes(report)
     assert "coverage_unexpected_postseason_aggregate_row" in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_reports_a_missing_in_range_persisted_key(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text("delete from stats.player_season_totals where player_season_id = 1")
+    )
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "coverage_missing_regular_aggregate_row")
+    assert issue.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2024,
+            "table": "stats.player_season_totals",
+        }
+    ]
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_scopes_expected_keys_to_database_seasons(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "insert into core.seasons (id, season_year, league, label) values "
+            "(3, 2000, 'NBA', '1999-00'), (4, 2025, 'NBA', '2024-25')"
+        )
+    )
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["entries"].extend(
+        _fake_aggregate_entry("ghostpl01", season_year, "stats.player_season_totals")
+        for season_year in (1999, 2000, 2025, 2026)
+    )
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "coverage_missing_regular_aggregate_row")
+    assert issue.context["examples"] == [
+        {
+            "basketball_reference_player_id": "ghostpl01",
+            "season_year": 2000,
+            "table": "stats.player_season_totals",
+        },
+        {
+            "basketball_reference_player_id": "ghostpl01",
+            "season_year": 2025,
+            "table": "stats.player_season_totals",
+        },
+    ]
+    scope = report.coverage_summary["dimensions"]["regular_aggregate"]["scope"]
+    assert scope == {
+        "league": "NBA",
+        "season_years": [2000, 2021, 2024, 2025],
+        "artifact_entries": 6,
+        "in_scope_entries": 4,
+        "excluded_entries": 2,
+        "excluded_seasons": [1999, 2026],
+        "excluded_expected_keys": 2,
+        "excluded_reason": "season_not_loaded_for_league",
+    }
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_fails_on_an_empty_nba_scope(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(text("update core.seasons set league = 'WNBA'"))
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "coverage_scope_empty")
+    assert issue.context == {
+        "count": 1,
+        "league": "NBA",
+        "season_years": [],
+    }
+    assert report.validation_summary["coverage_violations"] == 1
+    dimensions = report.coverage_summary["dimensions"]
+    for dimension in dimensions.values():
+        assert dimension["scope"]["season_years"] == []
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_does_not_use_a_non_nba_collision_row(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "insert into core.seasons (id, season_year, league, label) values "
+            "(3, 2024, 'WNBA', '2024')"
+        )
+    )
+    session.execute(
+        text(
+            "insert into core.team_seasons "
+            "(id, team_id, season_id, team_abbreviation) values "
+            "(4, 1, 3, 'BOS')"
+        )
+    )
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (3, 1, 3)")
+    )
+    session.execute(
+        text(
+            "insert into core.player_team_seasons "
+            "(id, player_season_id, team_season_id) values (4, 3, 4)"
+        )
+    )
+    session.execute(
+        text("delete from stats.player_season_totals where player_season_id = 1")
+    )
+    session.execute(
+        text("delete from stats.player_team_season_totals where player_team_season_id = 1")
+    )
+    spec = REGULAR_AGGREGATE_TABLE_SPECS[0]
+    params = _stats_row_params(spec, grain=3)
+    params.update({"id": 99, spec.grain_column: 3})
+    columns = ", ".join(params)
+    values = ", ".join(f":{column}" for column in params)
+    session.execute(
+        text(f"insert into stats.{spec.table_name} ({columns}) values ({values})"),
+        params,
+    )
+    stint_spec = REGULAR_TEAM_STINT_TABLE_SPECS[1]
+    stint_params = _stats_row_params(stint_spec, grain=4)
+    stint_params.update({"id": 99, stint_spec.grain_column: 4})
+    stint_columns = ", ".join(stint_params)
+    stint_values = ", ".join(f":{column}" for column in stint_params)
+    session.execute(
+        text(
+            f"insert into stats.{stint_spec.table_name} "
+            f"({stint_columns}) values ({stint_values})"
+        ),
+        stint_params,
+    )
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "coverage_missing_regular_aggregate_row")
+    assert issue.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2024,
+            "table": "stats.player_season_totals",
+        }
+    ]
+    stint_issue = next(i for i in report.issues if i.code == "coverage_missing_regular_team_stint_row")
+    assert stint_issue.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2024,
+            "team_code": "BOS",
+            "table": "stats.player_team_season_totals",
+        }
+    ]
+    assert "coverage_unexpected_regular_aggregate_row" not in _issue_codes(report)
+    assert "coverage_unexpected_regular_team_stint_row" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_does_not_allow_persisted_nba_rows_without_artifact_expectations(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text(
+            "insert into core.seasons (id, season_year, league, label) values "
+            "(3, 2026, 'NBA', '2025-26')"
+        )
+    )
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (3, 1, 3)")
+    )
+    spec = REGULAR_AGGREGATE_TABLE_SPECS[0]
+    params = _stats_row_params(spec, grain=1)
+    params.update({"id": 99, spec.grain_column: 3})
+    columns = ", ".join(params)
+    values = ", ".join(f":{column}" for column in params)
+    session.execute(
+        text(f"insert into stats.{spec.table_name} ({columns}) values ({values})"),
+        params,
+    )
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "coverage_unexpected_regular_aggregate_row")
+    assert issue.context["examples"] == [
+        {
+            "basketball_reference_player_id": "brownja02",
+            "season_year": 2026,
+            "table": "stats.player_season_totals",
+        }
+    ]
+
+
+@pytest.mark.unit
+def test_validate_official_stats_coverage_scopes_regular_team_stints_without_changing_actual_rows(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["entries"].append(
+        {
+            "basketball_reference_player_id": "ghostpl01",
+            "season_year": 1999,
+            "regular_aggregate_tables": [],
+            "postseason_aggregate_tables": [],
+            "regular_team_stints": [
+                {"team_code": "BOS", "table": spec.full_name}
+                for spec in REGULAR_TEAM_STINT_TABLE_SPECS
+            ],
+            "postseason_team_stints": [],
+            "did_not_play": {"regular": False, "postseason": False},
+        }
+    )
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert report.passed is True
+    dimension = report.coverage_summary["dimensions"]["regular_team_stint"]
+    assert dimension["expected"] == dimension["actual"] == 27
+    assert dimension["missing"] == dimension["unexpected"] == 0
+    assert dimension["scope"]["excluded_entries"] == 1
+    assert dimension["scope"]["excluded_seasons"] == [1999]
+    assert dimension["scope"]["excluded_expected_keys"] == len(REGULAR_TEAM_STINT_TABLE_SPECS)
 
 
 @pytest.mark.unit

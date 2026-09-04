@@ -24,6 +24,12 @@ def count_seasons(session: Session) -> int:
     return int(session.scalar(statement) or 0)
 
 
+def get_season_years(session: Session) -> frozenset[int]:
+    """Return the NBA season years currently present in ``core.seasons``."""
+    statement = select(Season.season_year).where(Season.league == NBA_LEAGUE)
+    return frozenset(int(season_year) for season_year in session.scalars(statement))
+
+
 def get_season(session: Session, season_year: int) -> Season | None:
     """Return one NBA season by its public year, if it exists."""
     statement = select(Season).where(

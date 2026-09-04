@@ -10,7 +10,7 @@ from typing import Any, Literal, TypeGuard
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
 
-from nba_data.db.repositories.queries.seasons import NBA_LEAGUE
+from nba_data.db.repositories.queries.seasons import NBA_LEAGUE, get_season_years
 from nba_data.domain.team_codes import (
     is_aggregate_only_team_code,
     is_multi_team_marker,
@@ -223,7 +223,15 @@ _REPORT_FAILURE_FIELDS: dict[StatsBackfillReportKind, dict[str, tuple[str, ...]]
         "rows_unresolved": ("unresolved_players_or_seasons_or_team_stints",),
     },
 }
-_PLAYER_REPORT_METADATA_FIELDS = ("cache_root", "discovery_status")
+# Diagnostic producer fields the summary carries through without gating the
+# result: out-of-scope rows are cache seasons the archive does not load.
+_PLAYER_REPORT_METADATA_FIELDS = (
+    "cache_root",
+    "discovery_status",
+    "out_of_scope_players_or_seasons",
+    "out_of_scope_players_or_seasons_or_team_stints",
+    "out_of_scope_reason_counts",
+)
 
 
 @dataclass(frozen=True)
@@ -975,7 +983,7 @@ def _coverage_issues(
             )
         )
 
-    loaded_season_years = _loaded_season_years(session, core_tables["seasons"])
+    loaded_season_years = get_season_years(session)
     in_scope_entries = 0
     excluded_seasons: set[int] = set()
     for entry in artifact.entries:
@@ -1075,13 +1083,6 @@ def _coverage_issues(
     summary["unexplained_count"] = len(artifact.unexplained)
     summary["source_issues_count"] = len(artifact.source_issues)
     return issues, summary
-
-
-def _loaded_season_years(session: Session, seasons: Table) -> frozenset[int]:
-    """Return the season years loaded for the league this validator serves."""
-
-    statement = select(seasons.c.season_year).where(seasons.c.league == NBA_LEAGUE)
-    return frozenset(int(season_year) for season_year in session.scalars(statement))
 
 
 def _expected_aggregate_keys(

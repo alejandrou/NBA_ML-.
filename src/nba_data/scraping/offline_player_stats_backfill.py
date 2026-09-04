@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from time import perf_counter
 from typing import Literal
@@ -8,9 +9,7 @@ from typing import Literal
 from sqlalchemy.orm import Session
 
 from nba_data.scraping.cache import HtmlCache
-from nba_data.scraping.loaders.player_page_stats import (
-    load_player_page_stats,
-)
+from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
 from nba_data.scraping.player_page_cache import (
@@ -20,6 +19,13 @@ from nba_data.scraping.player_page_cache import (
     discovery_status_for,
     required_html,
     resolve_player_cache_root,
+)
+from nba_data.scraping.player_page_scope import (
+    REGULAR_UNRESOLVED_REASONS,
+    EmptySeasonScopeError,
+    classify_unresolved_rows,
+    load_season_scope,
+    merge_out_of_scope_reasons,
 )
 from nba_data.validation.parser_contracts import current_parser_version
 
@@ -43,6 +49,8 @@ class OfflinePlayerStatsBackfillEntry:
     rows_failed: int
     unresolved_rows: int
     reason: str | None = None
+    out_of_scope_rows: int = 0
+    out_of_scope_reasons: Mapping[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -57,6 +65,8 @@ class OfflinePlayerStatsBackfillEntry:
             "rows_failed": self.rows_failed,
             "unresolved_rows": self.unresolved_rows,
             "reason": self.reason,
+            "out_of_scope_rows": self.out_of_scope_rows,
+            "out_of_scope_reasons": dict(self.out_of_scope_reasons),
         }
 
 
@@ -74,6 +84,8 @@ class OfflinePlayerStatsBackfillReport:
     discovery_status: PlayerCacheDiscoveryStatus
     elapsed_seconds: float
     entries: tuple[OfflinePlayerStatsBackfillEntry, ...]
+    out_of_scope_players_or_seasons: int = 0
+    out_of_scope_reason_counts: Mapping[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -85,6 +97,8 @@ class OfflinePlayerStatsBackfillReport:
             "entries_failed": self.entries_failed,
             "rows_failed": self.rows_failed,
             "unresolved_players_or_seasons": self.unresolved_players_or_seasons,
+            "out_of_scope_players_or_seasons": self.out_of_scope_players_or_seasons,
+            "out_of_scope_reason_counts": dict(self.out_of_scope_reason_counts),
             "cache_root": self.cache_root,
             "discovery_status": self.discovery_status,
             "elapsed_seconds": self.elapsed_seconds,
@@ -119,6 +133,9 @@ def run_offline_player_stats_backfill(
     discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
+    # Only a run with pages to process depends on the season scope, and only
+    # such a run could be misread as a success against an unseeded database.
+    loaded_season_years = load_season_scope(session) if cache_entries else frozenset()
 
     entries = tuple(
         _process_one_player_page(
@@ -129,6 +146,7 @@ def run_offline_player_stats_backfill(
             start_year=start_year,
             end_year=end_year,
             parser_version=parser_version,
+            loaded_season_years=loaded_season_years,
         )
         for cache_path, player_identifier, source_url in cache_entries
     )
@@ -142,6 +160,10 @@ def run_offline_player_stats_backfill(
         entries_failed=sum(entry.status == "failed" for entry in entries),
         rows_failed=sum(entry.rows_failed for entry in entries),
         unresolved_players_or_seasons=sum(entry.unresolved_rows for entry in entries),
+        out_of_scope_players_or_seasons=sum(entry.out_of_scope_rows for entry in entries),
+        out_of_scope_reason_counts=merge_out_of_scope_reasons(
+            [entry.out_of_scope_reasons for entry in entries]
+        ),
         cache_root=str(cache_root),
         discovery_status=discovery_status,
         elapsed_seconds=perf_counter() - started,
@@ -180,6 +202,7 @@ def _process_one_player_page(
     start_year: int | None,
     end_year: int | None,
     parser_version: str,
+    loaded_season_years: Collection[int],
 ) -> OfflinePlayerStatsBackfillEntry:
     try:
         html = required_html(cache_path)
@@ -228,9 +251,10 @@ def _process_one_player_page(
             reason=str(exc),
         )
 
-    unresolved_rows = sum(
-        entry.reason in {"missing_player", "missing_season", "missing_player_season"}
-        for entry in load_report.entries
+    unresolved = classify_unresolved_rows(
+        load_report.entries,
+        loaded_season_years=loaded_season_years,
+        unresolved_reasons=REGULAR_UNRESOLVED_REASONS,
     )
     status: Literal["loaded", "skipped", "failed"]
     if load_report.failed_rows:
@@ -253,13 +277,16 @@ def _process_one_player_page(
         rows_skipped=normalized.rows_skipped + load_report.skipped_rows,
         loaded_or_updated_rows=load_report.loaded_rows,
         rows_failed=load_report.failed_rows,
-        unresolved_rows=unresolved_rows,
+        unresolved_rows=unresolved.in_scope,
+        out_of_scope_rows=unresolved.out_of_scope,
+        out_of_scope_reasons=unresolved.out_of_scope_reasons,
         reason=reason,
     )
 
 
 __all__ = [
     "DEFAULT_PLAYER_STATS_PARSER_VERSION",
+    "EmptySeasonScopeError",
     "OfflinePlayerStatsBackfillEntry",
     "OfflinePlayerStatsBackfillReport",
     "PlayerCacheDiscoveryStatus",

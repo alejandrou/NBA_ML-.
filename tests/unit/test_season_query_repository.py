@@ -5,7 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from nba_data.db.models.core import Season
-from nba_data.db.repositories.queries.seasons import count_seasons, get_season, list_seasons
+from nba_data.db.repositories.queries.seasons import (
+    count_seasons,
+    get_season,
+    get_season_years,
+    list_seasons,
+)
 
 
 @pytest.fixture
@@ -44,6 +49,7 @@ def test_season_queries_expose_only_the_nba_league(session: Session) -> None:
     seasons = list_seasons(session, offset=0, limit=100)
 
     assert {season.league for season in seasons} == {"NBA"}
+    assert get_season_years(session) == frozenset({2023, 2024, 2025})
     assert get_season(session, 1975) is None
 
 

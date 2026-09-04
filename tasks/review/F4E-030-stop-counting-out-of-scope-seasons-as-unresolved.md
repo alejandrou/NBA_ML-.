@@ -143,6 +143,18 @@ session cover both classifications. Run
 confirm the exit-0 criterion end to end and to prove the removed workaround was
 not load-bearing.
 
+# Implementation record
+
+The shared classification lives in `src/nba_data/scraping/player_page_scope.py`
+(`classify_unresolved_rows`, `load_season_scope`, `merge_out_of_scope_reasons`
+and the two reason sets), so the two producers no longer carry a duplicated
+classifier that could drift. `load_season_scope` refuses an empty `core.seasons`
+because an unseeded database would otherwise classify every cached row as out of
+scope and report a success that loaded nothing — the misordering the old
+unresolved counter used to catch. Both reports also carry
+`out_of_scope_reason_counts`, and `validate official-stats` passes the
+out-of-scope fields through `backfill_summary` without gating its result.
+
 # Durable knowledge updates
 
 - `docs/validation/OFFLINE_DATABASE_PREPARATION.md` — replace the "Producer exit
@@ -155,25 +167,79 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py tests/unit/test_player_page_scope.py`
+- Result: **passed** — 66 tests passed.
+
+- Command: `uv run ruff check .`
+- Result: **passed** — all checks passed.
+
+- Command: `uv run pytest`
+- Result: **passed** — 872 tests passed, 25 skipped, 7 dependency warnings.
+
+- Command: `uv run python scripts/dev/rehearse_player_page_rebuild.py`
+- Result: **passed** — exit 0. All eight steps exited 0 on scratch database
+  `nba_f4e024_tmp_a3bf6da826854d21`, which was dropped in the `finally` path;
+  the configured `nba` database was never written to. Measured on 2026-09-04:
+
+| Producer | `entries_failed` | `rows_failed` | In-scope unresolved | Out-of-scope | `out_of_scope_reason_counts` | Rows loaded | Exit |
+|---|---|---|---|---|---|---|---|
+| `backfill player-stats` | 0 | 0 | 0 | 19,692 | `{"missing_season": 19692}` | 101,336 | 0 |
+| `backfill player-postseason-stats` | 0 | 0 | 0 | 20,280 | `{"missing_season": 20280}` | 42,408 + 42,408 | 0 |
+
+  Both out-of-scope counts match the coverage artifact's expectations exactly.
+  `validate offline-database` and `validate official-stats` both exited 0, the
+  latter with `passed: true`, zero issues, and `regular_aggregate`
+  expected 101,336 = actual 101,336, missing 0, unexpected 0. The rehearsal
+  driver reached the end with `_is_out_of_scope_only()` removed, proving the
+  workaround was not load-bearing.
+
+- Command: `git diff --check`
+- Result: **passed** — no whitespace errors.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **passed** — `Task validation passed.` after moving the card to
+  `tasks/active/`, and again after moving it to `tasks/review/`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. In a disposable database seeded with the archive's NBA `core.seasons`, run
+   either player-page producer against cached HTML containing only rows outside
+   that season scope.
+2. Inspect the JSON report written by `--output`.
+3. Run `uv run python scripts/dev/rehearse_player_page_rebuild.py`, which
+   rebuilds the whole archive on a scratch database and drops it afterwards.
 
 Expected result:
+
+The producer exits 0 when `entries_failed`, `rows_failed`, and the in-scope
+`unresolved_*` counter are zero. The matching `out_of_scope_*` counter records
+the excluded rows, and the rehearsal stops only if a producer actually exits
+nonzero.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. In a disposable database, seed an NBA season present in `core.seasons` but
+   omit the player or player-season grain needed by one cached selected row.
+2. Run the matching producer with its explicit `--execute-approved-*` flag and
+   write its report with `--output`.
+3. Inspect the report and process exit code.
 
 Expected result:
 
+The in-scope `unresolved_*` counter is nonzero, the out-of-scope counter does
+not absorb the row, and the producer exits 1. A failure in either producer step
+also makes the rehearsal driver exit immediately.
+
 ## Known limitations
 
-- None.
+- An out-of-scope row is classified by its season whatever its loader reason, so
+  a player absent from `core.players` whose cached rows all fall outside
+  2000–2025 raises no failure signal. That is the card's criterion, not an
+  oversight; the new `out_of_scope_reason_counts` field keeps the reason visible
+  (the measured rebuild reports `missing_season` for every out-of-scope row, so
+  no such player exists in the current cache).
+- A partially seeded `core.seasons` still narrows the scope silently. Only a
+  completely unseeded table is refused, via `EmptySeasonScopeError`.
+- No live source was scraped: the rebuild ran cache-only against
+  `data/raw/html`. It applied migrations and wrote a real database, but only the
+  scratch database the rehearsal creates and drops.

@@ -213,34 +213,46 @@ archive reconciliation.
 
 ### Producer exit codes on a complete rebuild
 
-Both player-page producers exit **1** on a complete cache-only rebuild even when
-nothing is wrong, and the reason is the archive's season scope rather than a
-defect:
+Both player-page producers exit **0** on a complete cache-only rebuild. Their
+reports distinguish genuinely unresolved in-scope rows from cached rows for
+seasons the archive does not load:
 
-| Producer | `entries_failed` | `rows_failed` | Unresolved counter | Exit |
-|---|---|---|---|---|
-| `backfill stats` | 0 | 0 | — | 0 |
-| `backfill player-stats` | 0 | 0 | `unresolved_players_or_seasons` = 19,692 | 1 |
-| `backfill player-postseason-stats` | 0 | 0 | `unresolved_players_or_seasons_or_team_stints` = 20,280 | 1 |
+| Producer | `entries_failed` | `rows_failed` | In-scope unresolved counter | Out-of-scope counter | Exit |
+|---|---|---|---|---|---|
+| `backfill stats` | 0 | 0 | — | — | 0 |
+| `backfill player-stats` | 0 | 0 | `unresolved_players_or_seasons` = 0 | `out_of_scope_players_or_seasons` = 19,692 | 0 |
+| `backfill player-postseason-stats` | 0 | 0 | `unresolved_players_or_seasons_or_team_stints` = 0 | `out_of_scope_players_or_seasons_or_team_stints` = 20,280 | 0 |
 
 A cached player page carries a player's whole career, so the cache spans season
-end years **1983–2026**, while `core.seasons` holds only **2000–2025**. Rows for
-a season outside that range resolve no grain and are counted as unresolved. The
-counts are exactly the out-of-scope expectations in the coverage artifact —
-19,692 regular aggregate rows, and 10,140 postseason aggregate plus 10,140
-postseason stint rows — so they are the archive's scope showing through the
-exit-code contract, not lost data.
+end years **1983–2026**, while `core.seasons` holds only **2000–2025**. The
+producers compare each unresolved loader entry's season year with the NBA years
+present in `core.seasons` before interpreting its loader reason. Rows outside
+that database scope are counted in `out_of_scope_players_or_seasons` or
+`out_of_scope_players_or_seasons_or_team_stints`; rows inside the scope remain
+in the corresponding `unresolved_*` counter. The measured out-of-scope counts
+are exactly the coverage artifact's expectations — 19,692 regular aggregate
+rows, and 10,140 postseason aggregate plus 10,140 postseason stint rows.
 
-Read `entries_failed` and `rows_failed` before reacting to the exit code. Those
-two being zero, with only an unresolved counter nonzero, is the expected shape of
-a clean full rebuild. The earlier claim in this document that the regular player
-producer "exits nonzero until the placeholder-row fix in F4E-022 is applied" was
-wrong on both halves: F4E-022 is applied, and the producer now reports **0**
-failed entries where it previously reported 577 — yet it still exits 1, for the
-unrelated scope reason above.
+Read `entries_failed`, `rows_failed`, and the in-scope unresolved counter before
+reacting to the exit code. The out-of-scope counter is diagnostic and does not
+fail the run. Any nonzero failed-entry, failed-row, or in-scope unresolved
+counter still fails the producer.
 
-F4E-030 owns making both producers exit 0 on a complete run, by counting
-out-of-scope seasons separately from genuinely unresolved rows.
+Because the scope is read from `core.seasons`, an out-of-scope row is classified
+by its season whatever its loader reason — a player who only ever appeared
+before 2000 is out of scope, not missing. That would otherwise hide a genuinely
+absent player, so each report also carries `out_of_scope_reason_counts`, the
+loader reasons behind the out-of-scope total. On a complete rebuild the total is
+`missing_season`; a `missing_player` entry there means a cached page whose player
+never reached the archive's season range.
+
+Running either producer against an empty `core.seasons` would classify every
+cached row as out of scope and report a success that loaded nothing, so both
+refuse to start: they abort with `EmptySeasonScopeError` and a nonzero exit
+before processing any page. Run `backfill offline` first.
+
+The rehearsal driver applies the same contract: any nonzero producer exit stops
+the rebuild, with no exception for out-of-scope rows.
 
 ### Row-level coverage (F4E-018)
 
@@ -354,9 +366,12 @@ Expect roughly 70 minutes end to end: offline backfill ~9 min, team-season stats
 Run `backfill offline` first and confirm the core counts before concluding
 anything about stats numbers. The player-page backfills resolve grains against
 `core.players`, `core.seasons` and `core.player_seasons`; a database seeded with
-anything less than the full offline backfill reports `unresolved_players_or_seasons`
-instead of recovering rows. The expected core counts are `core.players` 2,551,
-`core.player_seasons` 12,676, `core.player_team_seasons` 14,344.
+anything less than the full offline backfill can leave in-scope rows in the
+`unresolved_*` counters instead of recovering them. Rows outside the database
+season scope are reported separately, and a completely unseeded `core.seasons`
+aborts the producer rather than reporting every row as out of scope. The expected core counts are
+`core.players` 2,551, `core.player_seasons` 12,676, `core.player_team_seasons`
+14,344.
 
 ### Upsert-only leaves no residue — F4E-024 observed measurements
 
@@ -426,13 +441,13 @@ explained by the pre-fix unscoped comparison. After F4E-029 is rerun, accept
 the validator only when it actually exits 0 with all four `missing` and
 `unexpected` counts at 0.
 
-The producer unresolved counters have a narrower meaning today: with
-`entries_failed = 0` and `rows_failed = 0`, the measured nonzero counts in the
-table above are cache rows outside the database's 2000–2025 season scope, not
-parse or write failures. Any nonzero failed-entry/failed-row counter, or an
-unresolved count that does not reconcile to the documented out-of-scope rows,
-still blocks acceptance. F4E-030 owns changing that producer exit-code contract
-and separating those counters permanently.
+The producer counters now have a stable distinction: with
+`entries_failed = 0` and `rows_failed = 0`, `unresolved_*` counts only rows whose
+season is present in the NBA `core.seasons` scope, while the matching
+`out_of_scope_*` field records cache rows outside it. Out-of-scope counts do not
+fail the producer; any nonzero failed-entry, failed-row, or in-scope unresolved
+counter does. The rehearsal driver stops on any nonzero producer exit, so it no
+longer needs a report-reading exception for these diagnostic rows.
 
 The lineage half of the F4E-024 measured run is clean:
 `parser_lineage_violations` is **0**,

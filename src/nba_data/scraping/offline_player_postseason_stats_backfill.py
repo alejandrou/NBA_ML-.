@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Literal
 
@@ -17,6 +18,13 @@ from nba_data.scraping.player_page_cache import (
     discovery_status_for,
     required_html,
     resolve_player_cache_root,
+)
+from nba_data.scraping.player_page_scope import (
+    POSTSEASON_UNRESOLVED_REASONS,
+    EmptySeasonScopeError,
+    classify_unresolved_rows,
+    load_season_scope,
+    merge_out_of_scope_reasons,
 )
 from nba_data.validation.parser_contracts import current_parser_version
 
@@ -43,6 +51,8 @@ class OfflinePlayerPostseasonStatsBackfillEntry:
     unresolved_rows: int
     unsupported_rows: int
     reason: str | None = None
+    out_of_scope_rows: int = 0
+    out_of_scope_reasons: Mapping[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -60,6 +70,8 @@ class OfflinePlayerPostseasonStatsBackfillEntry:
             "unresolved_rows": self.unresolved_rows,
             "unsupported_rows": self.unsupported_rows,
             "reason": self.reason,
+            "out_of_scope_rows": self.out_of_scope_rows,
+            "out_of_scope_reasons": dict(self.out_of_scope_reasons),
         }
 
 
@@ -78,6 +90,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
     discovery_status: PlayerCacheDiscoveryStatus
     elapsed_seconds: float
     entries: tuple[OfflinePlayerPostseasonStatsBackfillEntry, ...]
+    out_of_scope_players_or_seasons_or_team_stints: int = 0
+    out_of_scope_reason_counts: Mapping[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -89,6 +103,8 @@ class OfflinePlayerPostseasonStatsBackfillReport:
             "entries_failed": self.entries_failed,
             "rows_failed": self.rows_failed,
             "unresolved_players_or_seasons_or_team_stints": self.unresolved_players_or_seasons_or_team_stints,
+            "out_of_scope_players_or_seasons_or_team_stints": self.out_of_scope_players_or_seasons_or_team_stints,
+            "out_of_scope_reason_counts": dict(self.out_of_scope_reason_counts),
             "unsupported_synthetic_or_tot_rows": self.unsupported_synthetic_or_tot_rows,
             "cache_root": self.cache_root,
             "discovery_status": self.discovery_status,
@@ -124,6 +140,9 @@ def run_offline_player_postseason_stats_backfill(
     discovery_status = discovery_status_for(cache_entries)
     if limit is not None:
         cache_entries = cache_entries[:limit]
+    # Only a run with pages to process depends on the season scope, and only
+    # such a run could be misread as a success against an unseeded database.
+    loaded_season_years = load_season_scope(session) if cache_entries else frozenset()
 
     entries = tuple(
         _process_one_player_page(
@@ -134,6 +153,7 @@ def run_offline_player_postseason_stats_backfill(
             start_year=start_year,
             end_year=end_year,
             parser_version=parser_version,
+            loaded_season_years=loaded_season_years,
         )
         for cache_path, player_identifier, source_url in cache_entries
     )
@@ -147,6 +167,12 @@ def run_offline_player_postseason_stats_backfill(
         entries_failed=sum(entry.status == "failed" for entry in entries),
         rows_failed=sum(entry.rows_failed for entry in entries),
         unresolved_players_or_seasons_or_team_stints=sum(entry.unresolved_rows for entry in entries),
+        out_of_scope_players_or_seasons_or_team_stints=sum(
+            entry.out_of_scope_rows for entry in entries
+        ),
+        out_of_scope_reason_counts=merge_out_of_scope_reasons(
+            [entry.out_of_scope_reasons for entry in entries]
+        ),
         unsupported_synthetic_or_tot_rows=sum(entry.unsupported_rows for entry in entries),
         cache_root=str(cache_root),
         discovery_status=discovery_status,
@@ -164,6 +190,7 @@ def _process_one_player_page(
     start_year: int | None,
     end_year: int | None,
     parser_version: str,
+    loaded_season_years: Collection[int],
 ) -> OfflinePlayerPostseasonStatsBackfillEntry:
     try:
         html = required_html(cache_path)
@@ -232,9 +259,10 @@ def _process_one_player_page(
     team_rows_selected = sum(
         row.get("stat_scope") == "player_team_postseason" for row in normalized.selected_rows
     )
-    unresolved_rows = sum(
-        entry.reason in {"missing_player", "missing_season", "missing_player_season", "missing_team_season", "missing_player_team_season"}
-        for entry in load_report.entries
+    unresolved = classify_unresolved_rows(
+        load_report.entries,
+        loaded_season_years=loaded_season_years,
+        unresolved_reasons=POSTSEASON_UNRESOLVED_REASONS,
     )
 
     if load_report.failed_rows:
@@ -259,14 +287,17 @@ def _process_one_player_page(
         aggregate_rows_loaded_or_updated=aggregate_rows_loaded,
         team_rows_loaded_or_updated=team_rows_loaded,
         rows_failed=load_report.failed_rows,
-        unresolved_rows=unresolved_rows,
+        unresolved_rows=unresolved.in_scope,
         unsupported_rows=normalized.unsupported_rows,
         reason=reason,
+        out_of_scope_rows=unresolved.out_of_scope,
+        out_of_scope_reasons=unresolved.out_of_scope_reasons,
     )
 
 
 __all__ = [
     "DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION",
+    "EmptySeasonScopeError",
     "OfflinePlayerPostseasonStatsBackfillEntry",
     "OfflinePlayerPostseasonStatsBackfillReport",
     "run_offline_player_postseason_stats_backfill",

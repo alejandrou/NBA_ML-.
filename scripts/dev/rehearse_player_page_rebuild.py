@@ -144,90 +144,40 @@ def _child_env(source_url, temp_url) -> dict[str, str]:
 
 def _rehearse(source_url, temp_url) -> int:
     child_env = _child_env(source_url, temp_url)
-    steps: list[tuple[list[str], Path | None, str | None]] = [
-        (["uv", "run", "alembic", "upgrade", "head"], None, None),
-        (["uv", "run", "alembic", "check"], None, None),
-        (
-            [
-                "uv", "run", "nba-data", "backfill", "offline",
-                "--execute-approved-backfill",
-                "--output", str(_REPORTS / "offline_backfill.json"),
-            ],
-            None,
-            None,
-        ),
-        (
-            [
-                "uv", "run", "nba-data", "backfill", "stats",
-                "--execute-approved-stats-backfill",
-                "--output", str(_REPORTS / "team_stats_backfill.json"),
-            ],
-            _REPORTS / "team_stats_backfill.json",
-            None,
-        ),
-        (
-            [
-                "uv", "run", "nba-data", "backfill", "player-stats",
-                "--execute-approved-player-stats-backfill",
-                "--output", str(_REPORTS / "player_stats_backfill.json"),
-            ],
-            _REPORTS / "player_stats_backfill.json",
-            "unresolved_players_or_seasons",
-        ),
-        (
-            [
-                "uv", "run", "nba-data", "backfill", "player-postseason-stats",
-                "--execute-approved-player-postseason-stats-backfill",
-                "--output", str(_REPORTS / "player_postseason_stats_backfill.json"),
-            ],
-            _REPORTS / "player_postseason_stats_backfill.json",
-            "unresolved_players_or_seasons_or_team_stints",
-        ),
+    steps: list[list[str]] = [
+        ["uv", "run", "alembic", "upgrade", "head"],
+        ["uv", "run", "alembic", "check"],
+        [
+            "uv", "run", "nba-data", "backfill", "offline",
+            "--execute-approved-backfill",
+            "--output", str(_REPORTS / "offline_backfill.json"),
+        ],
+        [
+            "uv", "run", "nba-data", "backfill", "stats",
+            "--execute-approved-stats-backfill",
+            "--output", str(_REPORTS / "team_stats_backfill.json"),
+        ],
+        [
+            "uv", "run", "nba-data", "backfill", "player-stats",
+            "--execute-approved-player-stats-backfill",
+            "--output", str(_REPORTS / "player_stats_backfill.json"),
+        ],
+        [
+            "uv", "run", "nba-data", "backfill", "player-postseason-stats",
+            "--execute-approved-player-postseason-stats-backfill",
+            "--output", str(_REPORTS / "player_postseason_stats_backfill.json"),
+        ],
     ]
-    for command, report_path, out_of_scope_field in steps:
+    for command in steps:
         stamp = datetime.now(UTC).isoformat(timespec="seconds")
         print(f"\n[{stamp}] $ {' '.join(command)}", flush=True)
         result = subprocess.run(command, env=child_env, check=False)
         _STEP_RESULTS.append({"command": " ".join(command), "exit_code": result.returncode})
-        if result.returncode != 0 and not _is_out_of_scope_only(
-            report_path, out_of_scope_field
-        ):
+        if result.returncode != 0:
             print(f"Step failed with exit code {result.returncode}.", file=sys.stderr)
             return result.returncode
 
     return _validate(child_env)
-
-
-def _is_out_of_scope_only(report_path: Path | None, field: str | None) -> bool:
-    """Is a producer's nonzero exit explained solely by out-of-scope seasons?
-
-    The cached player pages span 1983-2026; the archive is scoped to the seasons
-    in `core.seasons` (2000-2025). Rows for a season outside that range resolve
-    no grain and are counted as unresolved, so a complete cache-only rebuild
-    exits nonzero even when it loaded everything in scope. That is the archive's
-    scope showing through the exit-code contract, not a defect in the rebuild.
-
-    Continuing is only safe when the producer reported no failed entry and no
-    failed row: those are real defects and still stop the rehearsal.
-    """
-
-    if report_path is None or field is None or not report_path.exists():
-        return False
-    try:
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-    if report.get("entries_failed") or report.get("rows_failed"):
-        return False
-    if not report.get(field):
-        return False
-    print(
-        f"Continuing: the only failure signal is {field}={report[field]}, "
-        "which counts rows for seasons outside core.seasons. "
-        "entries_failed=0 and rows_failed=0.",
-        flush=True,
-    )
-    return True
 
 
 def _validate(child_env: dict[str, str]) -> int:

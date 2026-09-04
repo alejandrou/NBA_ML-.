@@ -53,6 +53,7 @@ from nba_data.scraping.player_page_cache import (
     PlayerCacheRootNotFoundError,
     discover_player_cache_entries,
 )
+from nba_data.scraping.player_page_scope import EmptySeasonScopeError
 
 FIXTURE = Path("tests/fixtures/html/player_page_harden_regular_season.html")
 PLAYER_URL = "https://www.basketball-reference.com/players/h/hardeja01.html"
@@ -180,6 +181,63 @@ def test_offline_player_stats_backfill_supports_real_cache_player_page_columns(
 
 
 @pytest.mark.unit
+def test_offline_player_stats_backfill_reports_out_of_scope_rows_separately(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    session.add(Season(league="NBA", season_year=2021, label="2021"))
+    session.flush()
+    cache = HtmlCache(tmp_path / "cache")
+    _write_gzip(cache.path_for_url(PLAYER_URL), _single_regular_season_html("1998-99"))
+
+    report = run_offline_player_stats_backfill(session, cache=cache)
+
+    assert report.rows_selected == 1
+    assert report.rows_loaded_or_updated == 0
+    assert report.unresolved_players_or_seasons == 0
+    assert report.out_of_scope_players_or_seasons == 1
+    assert report.entries_failed == 0
+    assert report.rows_failed == 0
+    assert report.entries[0].out_of_scope_rows == 1
+    assert report.to_dict()["out_of_scope_players_or_seasons"] == 1
+    assert report.to_dict()["entries"][0]["out_of_scope_rows"] == 1
+    assert report.out_of_scope_reason_counts == {"missing_season": 1}
+    assert report.to_dict()["out_of_scope_reason_counts"] == {"missing_season": 1}
+
+
+@pytest.mark.unit
+def test_offline_player_stats_backfill_refuses_an_empty_season_scope(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    """An unseeded `core.seasons` would call every row out of scope and pass."""
+
+    cache = HtmlCache(tmp_path / "cache")
+    _write_gzip(cache.path_for_url(PLAYER_URL), _single_regular_season_html("1998-99"))
+
+    with pytest.raises(EmptySeasonScopeError, match="backfill offline"):
+        run_offline_player_stats_backfill(session, cache=cache)
+
+
+@pytest.mark.unit
+def test_offline_player_stats_backfill_keeps_in_scope_unresolved_rows(
+    tmp_path: Path,
+    session: Session,
+) -> None:
+    session.add(Season(league="NBA", season_year=2021, label="2021"))
+    session.flush()
+    cache = HtmlCache(tmp_path / "cache")
+    _write_gzip(cache.path_for_url(PLAYER_URL), _single_regular_season_html("2020-21"))
+
+    report = run_offline_player_stats_backfill(session, cache=cache)
+
+    assert report.unresolved_players_or_seasons == 1
+    assert report.out_of_scope_players_or_seasons == 0
+    assert report.entries_failed == 0
+    assert report.rows_failed == 0
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     (
@@ -236,6 +294,7 @@ def test_cli_player_stats_runs_and_writes_report(
                 "entries_failed": 0,
                 "rows_failed": 0,
                 "unresolved_players_or_seasons": 0,
+                "out_of_scope_players_or_seasons": 19_692,
             }
 
     class FakeEngine:
@@ -335,6 +394,7 @@ def test_cli_player_stats_runs_and_writes_report(
         "entries_failed": 0,
         "rows_failed": 0,
         "unresolved_players_or_seasons": 0,
+        "out_of_scope_players_or_seasons": 19_692,
         "output_path": str(output_path.resolve()),
     }
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
@@ -343,13 +403,23 @@ def test_cli_player_stats_runs_and_writes_report(
         "entries_failed": 0,
         "rows_failed": 0,
         "unresolved_players_or_seasons": 0,
+        "out_of_scope_players_or_seasons": 19_692,
     }
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    "failure_counters",
+    (
+        {"entries_failed": 1, "rows_failed": 2, "unresolved_players_or_seasons": 0},
+        {"entries_failed": 0, "rows_failed": 0, "unresolved_players_or_seasons": 1},
+    ),
+    ids=("failed_entries_and_rows", "in_scope_unresolved"),
+)
 def test_cli_player_stats_prints_and_writes_before_nonzero_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    failure_counters: dict[str, int],
 ) -> None:
     output_path = tmp_path / "reports" / "player-stats-failure.json"
     monkeypatch.setenv("SCRAPER_CACHE_DIR", str(tmp_path / "cache"))
@@ -359,8 +429,8 @@ def test_cli_player_stats_prints_and_writes_before_nonzero_failure(
         def to_dict(self) -> dict[str, object]:
             return {
                 "rows_loaded_or_updated": 8,
-                "entries_failed": 1,
-                "rows_failed": 2,
+                **failure_counters,
+                "out_of_scope_players_or_seasons": 19_692,
             }
 
     class FakeEngine:
@@ -407,8 +477,14 @@ def test_cli_player_stats_prints_and_writes_before_nonzero_failure(
         get_settings.cache_clear()
 
     assert result.exit_code == 1
-    assert json.loads(result.output)["entries_failed"] == 1
-    assert json.loads(output_path.read_text(encoding="utf-8"))["rows_failed"] == 2
+    printed = json.loads(result.output)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    for counter, value in failure_counters.items():
+        assert printed[counter] == value
+        assert written[counter] == value
+    # The out-of-scope counter rides along without gating the exit code; the
+    # success test above proves 19,692 out-of-scope rows still exit 0.
+    assert written["out_of_scope_players_or_seasons"] == 19_692
 
 
 @pytest.mark.unit
@@ -433,6 +509,8 @@ def test_offline_player_stats_backfill_discovers_every_accepted_player_id_length
     tmp_path: Path,
     session: Session,
 ) -> None:
+    session.add(Season(league="NBA", season_year=2021, label="2021"))
+    session.flush()
     cache = HtmlCache(tmp_path / "cache")
     for player_id in PLAYER_IDS_BY_LENGTH:
         _write_gzip(cache.path_for_url(build_player_page_url(player_id)), MINIMAL_PLAYER_PAGE_HTML)
@@ -606,6 +684,25 @@ def _write_gzip(path: Path, html: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(path, "wt", encoding="utf-8") as file:
         file.write(html)
+
+
+def _single_regular_season_html(season: str) -> str:
+    return f"""
+    <html><body>
+      <table id="totals_stats">
+        <thead><tr>
+          <th data-stat="season">Season</th>
+          <th data-stat="team_id">Tm</th>
+          <th data-stat="games">G</th>
+        </tr></thead>
+        <tbody><tr>
+          <th data-stat="season">{season}</th>
+          <td data-stat="team_id">BOS</td>
+          <td data-stat="games">1</td>
+        </tr></tbody>
+      </table>
+    </body></html>
+    """
 
 
 def _count(session: Session, model: type) -> int:

@@ -282,6 +282,7 @@ Coverage failure codes, one per situation:
 | `coverage_cache_root_not_found` | `--coverage-cache-root` does not exist. |
 | `coverage_artifact_stale` | The recomputed cache fingerprint does not match the artifact's. |
 | `coverage_unexplained_source` | The artifact itself has cached seasons it could not classify. |
+| `coverage_scope_empty` | `core.seasons` has no rows for the NBA league, so the coverage comparison has no trustworthy season scope. |
 | `coverage_source_issues_present` | The artifact has unreadable/malformed cached sources — a degraded oracle. |
 | `coverage_missing_<dimension>_row` / `coverage_unexpected_<dimension>_row` | A natural key the artifact expects is absent from `stats.*`, or `stats.*` has one the artifact does not expect, for `regular_aggregate`, `postseason_aggregate`, `regular_team_stint`, or `postseason_team_stint`. |
 
@@ -357,12 +358,15 @@ anything less than the full offline backfill reports `unresolved_players_or_seas
 instead of recovering rows. The expected core counts are `core.players` 2,551,
 `core.player_seasons` 12,676, `core.player_team_seasons` 14,344.
 
-### Upsert-only leaves no residue — measured, not argued
+### Upsert-only leaves no residue — F4E-024 observed measurements
 
 `StatsRepository` exposes only `upsert_*` methods; there is no delete in the
 stats write path. A re-run therefore updates rows the new parser still selects
 and inserts the recoveries, but cannot remove a row the new parser no longer
-produces. The coverage comparison settles whether any such row exists:
+produces. The pre-F4E-029 coverage comparison settled whether any such row
+existed. The following values were measured during the F4E-024 rehearsal before
+season scoping was added; the full-cache artifact supplied the out-of-archive
+expectations:
 
 ```text
 regular_aggregate      expected 121,028  actual 101,336  unexpected 0
@@ -371,36 +375,67 @@ regular_team_stint     expected 129,000  actual 129,000  unexpected 0
 postseason_team_stint  expected  52,548  actual  42,408  unexpected 0
 ```
 
-**`unexpected` is 0 in all four dimensions**, and an independent before/after
+**`unexpected` was 0 in all four dimensions**, and an independent before/after
 diff of the regular-season grain keys found 625 recovered and **0 lost**. The
-upsert-only rebuild strands nothing. No delete step is needed, and no card should
-add one on speculation.
+upsert-only rebuild strands nothing according to that measured pre-scope run.
+No delete step is needed based on that evidence, and no card should add one on
+speculation.
 
-### Known finding: the coverage oracle is not season-scoped
+### F4E-029 projected comparison — not yet observed end to end
 
-The `missing` column above is nonzero, and `validate official-stats` therefore
-exits **1** on an otherwise clean rebuild. Every one of the 39,972 missing keys
-is a season outside `core.seasons`:
+F4E-029 changes only the expected side of the comparison. The following target
+is derived arithmetically from the measured F4E-024 artifact and the
+2000–2025 NBA scope; it is **expected, not a new measured result**:
 
-| Finding | Count | Seasons |
-|---|---|---|
-| `coverage_missing_regular_aggregate_row` | 19,692 | pre-2000 / 2026 |
-| `coverage_missing_postseason_aggregate_row` | 10,140 | pre-2000 / 2026 |
-| `coverage_missing_postseason_team_stint_row` | 10,140 | pre-2000 / 2026 |
+```text
+dimension               expected after scope  actual observed  projected missing  observed unexpected
+regular_aggregate                 101,336          101,336                  0                    0
+postseason_aggregate               42,408           42,408                  0                    0
+regular_team_stint                129,000          129,000                  0                    0
+postseason_team_stint              42,408           42,408                  0                    0
+```
 
-`build-stats-coverage` enumerates every season on every cached player page —
-1983 through 2026 — while the archive deliberately loads only 2000–2025. The
-oracle expects rows the archive was never meant to hold. Restricted to
-2000–2025, the artifact expects exactly 101,336 regular aggregate and 42,408
-postseason rows, which is precisely what the rebuild produced.
+The expected and projected-missing columns are arithmetic predictions, not
+output from a post-F4E-029 `validate official-stats` run. The actual and
+unexpected columns are retained observations from the F4E-024 rehearsal.
 
-This is a defect in the oracle's scope, not in the rebuild, and it is the reason
-`validate official-stats` cannot exit 0 today. Fixing it is owned by F4E-029,
-which scopes the comparison to `core.seasons`. Until it lands, judge a rebuild
-by `parser_lineage_violations`, by the four `unexpected` counts, and by the grain
-counts above — not by the command's exit code.
+### F4E-029 scope behavior — implementation complete, measurement pending
 
-The lineage half of the same run is clean: `parser_lineage_violations` is **0**,
+`build-stats-coverage` still records every season on every cached player page —
+1983 through 2026 — because the artifact is a faithful, database-free record
+of the cache. `validate official-stats` now compares its expected keys only for
+NBA season years present in `core.seasons`. The implemented comparison is
+expected to produce the projected target above when run against the F4E-024
+rebuild, but that end-to-end rerun has not happened yet.
+
+The JSON report keeps the scope visible under each
+`coverage_summary.dimensions.<dimension>.scope`: it includes the league, loaded
+season years, artifact entries in and out of scope, excluded season years, the
+number of excluded expected keys, and the reason
+(`season_not_loaded_for_league`). An empty NBA scope is a hard
+`coverage_scope_empty` finding; it cannot pass vacuously. Actual persisted keys
+are filtered to NBA seasons to prevent a same-year non-NBA row from satisfying
+an NBA expectation, but are not filtered to the artifact's expected keys, so a
+valid NBA row with no artifact expectation is still reported as unexpected.
+
+Until the end-to-end rerun is recorded, do not describe the projected table as
+an observed exit-0 result. For the already measured F4E-024 run, use
+`parser_lineage_violations`, the four observed `unexpected` counts, the measured
+grain counts, and the producer failure counters to judge residue; its exit 1 is
+explained by the pre-fix unscoped comparison. After F4E-029 is rerun, accept
+the validator only when it actually exits 0 with all four `missing` and
+`unexpected` counts at 0.
+
+The producer unresolved counters have a narrower meaning today: with
+`entries_failed = 0` and `rows_failed = 0`, the measured nonzero counts in the
+table above are cache rows outside the database's 2000–2025 season scope, not
+parse or write failures. Any nonzero failed-entry/failed-row counter, or an
+unresolved count that does not reconcile to the documented out-of-scope rows,
+still blocks acceptance. F4E-030 owns changing that producer exit-code contract
+and separating those counters permanently.
+
+The lineage half of the F4E-024 measured run is clean:
+`parser_lineage_violations` is **0**,
 and `select distinct parser_version` across all 33 `stats` tables returns exactly
 three values — `team-season-parser-v1`, `player-page-parser-v4`, and
 `player-page-postseason-parser-v4`. `coverage_summary.freshness_status` reports
@@ -440,13 +475,15 @@ uv run nba-data backfill player-postseason-stats \
   --output reports/player-postseason-stats-backfill-2000-2025.json
 ```
 
-Accept the run only if it reproduces the rehearsal: `entries_failed` 0 and
-`rows_failed` 0 from every producer, 101,336 regular and 42,408 + 42,408
-postseason rows loaded, 12,667 distinct regular-season player-seasons, all four
-`unexpected` counts 0, and `parser_lineage_violations` 0. Stop and investigate on
-any other shape — in particular, a nonzero `unexpected` count would mean the
-rebuild needs a delete step, which is a different change with a different blast
-radius.
+Accept the run only if it reproduces the measured producer/grain shape and the
+post-F4E-029 validator result: `entries_failed` 0 and `rows_failed` 0 from
+every producer, 101,336 regular and 42,408 + 42,408 postseason rows loaded,
+12,667 distinct regular-season player-seasons, all four `missing` and
+`unexpected` counts 0, `parser_lineage_violations` 0, and an actual validator
+exit code of 0. Until that rerun, the scoped expected counts remain projections
+and are not acceptance evidence. Stop and investigate on any other shape — in
+particular, a nonzero `unexpected` count would mean the rebuild needs a delete
+step, which is a different change with a different blast radius.
 
 ## Useful SQL Checks
 

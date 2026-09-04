@@ -58,10 +58,11 @@ between the oracle and the archive, not a defect in the rebuild:
   **every** artifact entry, and the dimension loop at `:978-1024` diffs them
   against the persisted keys. Nothing narrows either side to the loaded range.
 
-Restricted to 2000–2025 the artifact expects exactly **101,336** regular
-aggregate and **42,408** postseason aggregate rows — precisely what the rebuild
-produced. The oracle and the archive agree completely inside the archive's own
-scope; they only disagree about seasons the archive does not claim to hold.
+Restricting the artifact arithmetically to 2000–2025 gives **101,336** regular
+aggregate and **42,408** postseason aggregate expected rows, matching the
+measured persisted counts. Those scoped expected counts are a projection until
+F4E-029 is run against the rebuild; the oracle and archive are not yet recorded
+as agreeing through a post-scope validator exit code.
 
 This is not cosmetic. `validate official-stats` is the acceptance gate for
 applying the `-v4` rebuild to the persistent `nba` database, and it can never
@@ -91,14 +92,21 @@ criteria are recorded as unmet for this reason alone.
   reader can see how many artifact entries were excluded and why. A silent drop
   is not acceptable — an out-of-scope season must be visible as out-of-scope, not
   invisible.
+- An empty NBA scope is a named coverage failure, not a vacuous pass, and the
+  scope details remain present in the report.
 - A genuinely missing in-range row is still caught. A unit test deletes one
   in-range persisted key and asserts `coverage_missing_regular_aggregate_row`
   fires with that key in `examples`.
-- An out-of-scope row that *is* persisted still fails. A unit test persists a key
-  for a season outside `core.seasons` and asserts it is reported — scoping
-  narrows what is *expected*, never what is *allowed*.
+- A non-NBA row for the same year as an NBA expectation cannot satisfy that NBA
+  expectation; actual-key queries must filter the season chain to NBA.
+- A persisted NBA row with a valid `core.seasons` foreign key but no artifact
+  expectation still fails as unexpected — scoping narrows what is *expected*,
+  never what is *allowed*. A season outside `core.seasons` cannot be used for
+  this proof because the foreign key correctly prevents that state.
 - Tests cover the boundary years explicitly: 1999 (excluded), 2000 (included),
   2025 (included), 2026 (excluded).
+- A regular team-stint artifact entry outside the loaded season set is excluded
+  without changing the matching in-scope expected and actual team-stint counts.
 - `validate offline-database` still asserts `core.seasons` spans 2000–2025
   exactly, unchanged. That check is what stops season-scoping from becoming a
   blind spot, and this card must not weaken it.
@@ -132,6 +140,10 @@ Prefer scoping in the comparison over filtering at build time. The artifact's
 value is that it is a faithful, database-free record of what the cache contains;
 if a future season range widens, a build-time filter would silently produce a
 stale artifact, whereas a comparison-time scope adapts on the next run.
+Filter persisted key queries to `NBA_LEAGUE` before reducing them to the
+year-based natural key; the schema permits the same year under multiple leagues.
+Keep the persisted side unfiltered by artifact membership so a valid NBA row
+with no corresponding artifact expectation remains unexpected.
 
 Read `tasks/review/F4E-024-rebuild-the-player-page-stats-archive-at-parser-v4.md`
 (or `tasks/done/` once it moves) before starting. Its `# Review evidence` records
@@ -147,9 +159,10 @@ database only.
 
 # Durable knowledge updates
 
-- `docs/validation/OFFLINE_DATABASE_PREPARATION.md` — the "Known finding: the
-  coverage oracle is not season-scoped" subsection becomes a resolved note, and
-  the handover procedure's acceptance shape becomes "exits 0".
+- `docs/validation/OFFLINE_DATABASE_PREPARATION.md` — the pre-F4E-029 measured
+  findings remain measured, the post-scope counts are explicitly marked as
+  projections until the rehearsal is rerun, and the handover procedure's
+  acceptance shape requires an observed exit 0.
 - `docs/architecture/OFFICIAL_STATS_SCHEMA.md` — if it describes the coverage
   comparison, record that expectations are scoped to `core.seasons`.
 
@@ -159,25 +172,63 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_official_stats_validation.py tests/unit/test_stats_coverage_artifact.py`
+- Result: **passed** — 88 tests passed.
+
+- Command: `uv run ruff check src/nba_data/validation/official_stats.py tests/unit/test_official_stats_validation.py`
+- Result: **passed** — all checks passed.
+
+- Command: `uv run ruff check .`
+- Result: **passed** — all checks passed.
+
+- Command: `uv run pytest`
+- Result: **passed** — 845 tests passed, 25 skipped, 7 dependency warnings.
+
+- Command: `uv run pytest tests/unit/test_offline_database_validation.py`
+- Result: **passed** — 8 tests passed; the 2000–2025 core season-range check is unchanged.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **passed** — `Task validation passed.` after returning the corrected
+  card to `tasks/review/` (and it also passed after the temporary move to
+  `tasks/active/`).
+
+- Command: `git diff --check`
+- Result: **passed** — no whitespace errors.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Start the disposable local PostgreSQL service with `docker compose up -d postgres`.
+2. Build a cache-derived artifact with `uv run nba-data validate build-stats-coverage --output reports/stats-coverage.json`.
+3. Run `validate official-stats` against the completed F4E-024 scratch/rebuild reports, passing `--coverage-artifact reports/stats-coverage.json` and `--coverage-cache-root` for the cache.
 
-Expected result:
+Expected result after the end-to-end rerun: exit 0; all four coverage
+dimensions report zero `missing` and `unexpected` rows, and each dimension's
+`scope` names NBA plus the season years read from `core.seasons` and the
+excluded artifact entries. This result remains unobserved until that rerun.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. In a disposable validation database, delete one persisted in-range aggregate key and rerun `validate official-stats`.
+2. Add a same-year WNBA season/player/team-stint chain, remove the matching NBA rows, and rerun the validator.
+3. Persist a valid NBA stats row whose `core.seasons` row has no entry in the coverage artifact, then rerun the validator.
+4. Relabel all fixture seasons away from NBA and rerun the validator.
+5. Inspect the coverage issue examples and `coverage_summary.dimensions` scope data.
 
-Expected result:
+Expected result: step 1 reports `coverage_missing_<dimension>_row` with the
+deleted natural key; step 2 reports the NBA rows as missing rather than allowing
+same-year WNBA rows to satisfy them; step 3 reports the persisted NBA row as
+unexpected; step 4 reports `coverage_scope_empty`; and out-of-scope artifact
+entries are counted with their excluded season and reason, not silently treated
+as missing.
 
 ## Known limitations
 
-- None.
+- The optional 70-minute F4E-024 scratch re-rehearsal was not rerun; the scoped
+  counts and exit-0 result are therefore projections, validated offline with
+  deterministic boundary fixtures and the full test suite. No live source or
+  persistent database was contacted.
+- F4E-030 still owns the separate producer behavior where out-of-scope seasons
+  contribute to unresolved counters; until then, zero `entries_failed` and
+  `rows_failed` plus reconciliation to the documented out-of-scope counts is
+  the clean-run interpretation. This card changes only official-stats coverage
+  comparison.

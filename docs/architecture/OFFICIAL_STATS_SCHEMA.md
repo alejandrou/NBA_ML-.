@@ -846,6 +846,16 @@ and team all match, because the destination table name is part of every key:
   and skips key comparison entirely. Without it, comparison still runs and the
   report's `coverage_summary.freshness_status` is `unverified` — not itself a
   failure, and never reported as `verified`.
+- Expected keys are scoped at comparison time to the NBA season years present
+  in `core.seasons`. The artifact itself remains a complete record of the cache,
+  including seasons outside the archive's loaded range. Each
+  `coverage_summary.dimensions.<dimension>.scope` records the loaded season
+  years, in-scope and excluded artifact-entry counts, excluded season years,
+  excluded expected-key counts, and the exclusion reason. Actual persisted keys
+  are restricted to the NBA season chain but are not restricted to the
+  artifact's expected keys, so a valid NBA row with no artifact expectation
+  remains an unexpected-row violation. A same-year non-NBA row cannot satisfy an
+  NBA expectation, and an empty NBA season scope is a hard coverage finding.
 - Did-not-play evidence needs no special handling in the comparator: F4E-017
   already omits the matching aggregate table from an entry's expectations
   while leaving its team-stint and other-season-type expectations untouched,

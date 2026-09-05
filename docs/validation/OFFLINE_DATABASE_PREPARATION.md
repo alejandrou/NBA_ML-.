@@ -200,9 +200,9 @@ Two Phase 4E baselines exist, and they are not interchangeable:
 | `-v1` archive, as loaded in 2026-08 | 129,000 | 96,336 | 40,528 | 40,528 | 306,392 |
 | `-v4` rebuild, measured 2026-08-28 | 129,000 | **101,336** | **42,408** | **42,408** | **315,152** |
 
-The `-v1` row is what a database still carrying the original player-page load
-reports. The `-v4` row is what a full cache-only rebuild under the current parser
-contract produces, measured on a scratch database in the F4E-024 rehearsal. Use
+**The persistent `nba` database is at the `-v4` baseline as of 2026-09-05**, when
+F4E-031 applied the rebuild. The `-v1` row is retained only as the historical
+before-state; a database still reporting it has not had the rebuild applied. Use
 the row that matches the `parser_version` the database actually carries; a
 database at `-v1` fails `validate official-stats` on lineage regardless of its
 row counts.
@@ -396,32 +396,31 @@ upsert-only rebuild strands nothing according to that measured pre-scope run.
 No delete step is needed based on that evidence, and no card should add one on
 speculation.
 
-### F4E-029 projected comparison — not yet observed end to end
+### F4E-029 scoped comparison — observed end to end, 2026-09-05
 
-F4E-029 changes only the expected side of the comparison. The following target
-is derived arithmetically from the measured F4E-024 artifact and the
-2000–2025 NBA scope; it is **expected, not a new measured result**:
+F4E-029 changes only the expected side of the comparison. F4E-031 ran it end to
+end, first on a scratch database and then against `nba`. Both runs produced the
+same result, and `validate official-stats` **exited 0** in both. This is now a
+measured result, not a projection:
 
 ```text
-dimension               expected after scope  actual observed  projected missing  observed unexpected
-regular_aggregate                 101,336          101,336                  0                    0
-postseason_aggregate               42,408           42,408                  0                    0
-regular_team_stint                129,000          129,000                  0                    0
-postseason_team_stint              42,408           42,408                  0                    0
+dimension               expected after scope  actual  missing  unexpected
+regular_aggregate                 101,336   101,336        0           0
+postseason_aggregate               42,408    42,408        0           0
+regular_team_stint                129,000   129,000        0           0
+postseason_team_stint              42,408    42,408        0           0
 ```
 
-The expected and projected-missing columns are arithmetic predictions, not
-output from a post-F4E-029 `validate official-stats` run. The actual and
-unexpected columns are retained observations from the F4E-024 rehearsal.
+`coverage_summary.freshness_status` reported `verified` against the live cache,
+with `unexplained_count` and `source_issues_count` both 0.
 
-### F4E-029 scope behavior — implementation complete, measurement pending
+### F4E-029 scope behavior — measured
 
 `build-stats-coverage` still records every season on every cached player page —
 1983 through 2026 — because the artifact is a faithful, database-free record
-of the cache. `validate official-stats` now compares its expected keys only for
-NBA season years present in `core.seasons`. The implemented comparison is
-expected to produce the projected target above when run against the F4E-024
-rebuild, but that end-to-end rerun has not happened yet.
+of the cache. `validate official-stats` compares its expected keys only for
+NBA season years present in `core.seasons`. F4E-031 ran that comparison against
+the rebuilt archive and it produced the target above, exiting 0.
 
 The JSON report keeps the scope visible under each
 `coverage_summary.dimensions.<dimension>.scope`: it includes the league, loaded
@@ -433,13 +432,11 @@ are filtered to NBA seasons to prevent a same-year non-NBA row from satisfying
 an NBA expectation, but are not filtered to the artifact's expected keys, so a
 valid NBA row with no artifact expectation is still reported as unexpected.
 
-Until the end-to-end rerun is recorded, do not describe the projected table as
-an observed exit-0 result. For the already measured F4E-024 run, use
-`parser_lineage_violations`, the four observed `unexpected` counts, the measured
-grain counts, and the producer failure counters to judge residue; its exit 1 is
-explained by the pre-fix unscoped comparison. After F4E-029 is rerun, accept
-the validator only when it actually exits 0 with all four `missing` and
-`unexpected` counts at 0.
+Accept the validator only when it actually exits 0 with all four `missing` and
+`unexpected` counts at 0. The F4E-024 rehearsal predates F4E-029 and exited 1
+under the pre-fix unscoped comparison; judge that historical run by
+`parser_lineage_violations`, its four observed `unexpected` counts, the measured
+grain counts, and the producer failure counters instead.
 
 The producer counters now have a stable distinction: with
 `entries_failed = 0` and `rows_failed = 0`, `unresolved_*` counts only rows whose
@@ -459,15 +456,19 @@ three values — `team-season-parser-v1`, `player-page-parser-v4`, and
 ### Handover: running the rebuild against the persistent `nba` database
 
 **This procedure requires the owner's direct, current instruction naming the
-operation and its scope. No card authorizes it, and the F4E-024 rehearsal
-explicitly did not perform it.**
+operation and its scope. No card authorizes it.**
+
+**It was performed once, on 2026-09-05, by F4E-031 under the owner's direct
+instruction.** `nba` now carries the `-v4` archive at revision
+`0007_team_bref_id_not_null`. The record of that run is below; the procedure is
+kept because it is the one to follow if the archive is ever rebuilt again.
 
 Preflight, in order:
 
-1. **Close the migration gap.** `nba` reports `alembic_version =
-   0006_synthetic_team_codes`; the head is `0007_team_bref_id_not_null`. The
-   rehearsal ran at head. Applying `0007` to `nba` is itself a critical action
-   needing its own approval.
+1. **Close the migration gap.** `nba` is at `0007_team_bref_id_not_null` since
+   the F4E-031 run; before it, it reported `0006_synthetic_team_codes`. If the
+   head has moved since, applying the new revisions to `nba` is itself a
+   critical action needing its own approval.
 2. **Re-rehearse if the head moved.** F4E-020 and F4E-021 introduce `0008` and
    `0009`. Neither touches a `stats` table, but if either has landed, re-run the
    rehearsal at the new head before trusting these numbers.
@@ -491,14 +492,39 @@ uv run nba-data backfill player-postseason-stats \
 ```
 
 Accept the run only if it reproduces the measured producer/grain shape and the
-post-F4E-029 validator result: `entries_failed` 0 and `rows_failed` 0 from
-every producer, 101,336 regular and 42,408 + 42,408 postseason rows loaded,
-12,667 distinct regular-season player-seasons, all four `missing` and
-`unexpected` counts 0, `parser_lineage_violations` 0, and an actual validator
-exit code of 0. Until that rerun, the scoped expected counts remain projections
-and are not acceptance evidence. Stop and investigate on any other shape — in
-particular, a nonzero `unexpected` count would mean the rebuild needs a delete
-step, which is a different change with a different blast radius.
+scoped validator result: `entries_failed` 0 and `rows_failed` 0 from every
+producer, 101,336 regular and 42,408 + 42,408 postseason rows loaded, 12,667
+distinct regular-season player-seasons, all four `missing` and `unexpected`
+counts 0, `parser_lineage_violations` 0, and an actual validator exit code of 0.
+Stop and investigate on any other shape — in particular, a nonzero `unexpected`
+count would mean the rebuild needs a delete step, which is a different change
+with a different blast radius.
+
+### The applied run — `nba`, 2026-09-05
+
+F4E-031 ran the procedure above against `nba` after re-running the scratch
+rehearsal at head to confirm both validators exit 0 post-F4E-029/F4E-030. Every
+acceptance figure matched the rehearsal exactly.
+
+| Step | Wall clock |
+|---|---|
+| `backfill offline` | 8 min |
+| `backfill stats` | 24 min |
+| `backfill player-stats` | 29 min |
+| `backfill player-postseason-stats` | 27 min |
+| **Producers, end to end** | **88 min** |
+
+`build-stats-coverage` was rebuilt concurrently (~27 min) into
+`reports/stats-coverage.json`: 16,840 entries, 0 unexplained, 0 disagreements,
+0 source issues.
+
+Result: all four producers exit 0; `validate offline-database` exit 0 with an
+empty `issues` list; `validate official-stats` exit 0 with 0 missing and 0
+unexpected in all four dimensions and `parser_lineage_violations` 0. `nba` moved
+from 306,392 to **315,152** rows across the 33 `stats` tables, and from 12,042
+to **12,667** distinct regular-season player-seasons — **625 recovered, 0
+lost**. A `pg_dump -Fc` restore point was taken immediately before the first
+write. No delete or truncate was run.
 
 ## Useful SQL Checks
 

@@ -34,7 +34,7 @@ outside this repository.
 | Key | Defect | Status | Owning card |
 |---|---|---|---|
 | DB-01 † | `_season_end_year` rolls `1999-00` to **1900**, so season-2000 rows never resolve a grain and are silently dropped | fixed | [F4E-013](../../tasks/done/F4E-013-fix-season-century-rollover-in-player-page-parsing.md) |
-| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | fixed at the parser; repair rehearsed and measured, not yet applied to `nba` | [F4E-014](../../tasks/done/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md), rebuilt by [F4E-024](../../tasks/done/F4E-024-rebuild-the-player-page-stats-archive-at-parser-v4.md) |
+| DB-02 † | Multi-team markers hard-coded as `{2TM,3TM,4TM}` in three layers; `5TM` exists in the cache and its season is lost | fixed at the parser; **repair applied to `nba` 2026-09-05** (see the note below the table) | [F4E-014](../../tasks/done/F4E-014-treat-any-multi-team-marker-semantically-and-amend-adr-0007.md), rebuilt by [F4E-024](../../tasks/done/F4E-024-rebuild-the-player-page-stats-archive-at-parser-v4.md) |
 | DB-03 † | `core.teams.current_name` and `core.team_aliases.name` hold abbreviations; no loader ever supplies a real team name | confirmed, planned | [F4E-015](../../tasks/backlog/F4E-015-populate-real-team-names-from-cached-team-pages.md) |
 | DB-04 † | `validate official-stats` reconciles one backfill report against all stats tables; backfill commands exit 0 on partial row failure | implemented | [F4E-016](../../tasks/done/F4E-016-consolidate-backfill-report-validation.md) |
 | DB-05 | `player_name_display` is NULL across the player-page-fed stats tables, with nothing documenting why | confirmed as a documentation defect, planned | [F4E-019](../../tasks/backlog/F4E-019-document-player-name-display-source-semantics.md) |
@@ -44,6 +44,41 @@ outside this repository.
 | DB-09 | Boxscores are absent from the archive | accepted | — |
 
 † DB-nn key provisional; see the provenance caveat.
+
+### DB-02 repaired in `nba` — 2026-09-05
+
+`F4E-031` applied the `-v4` player-page rebuild to the persistent `nba`
+database. `DB-02` (and with it the `DB-01` season-2000 rollover, whose rows the
+same rebuild recovers) is no longer an open data defect in real data.
+
+The run applied `0007_team_bref_id_not_null` to close the migration gap, then
+ran the four producers in the documented order. Every producer exited 0, and
+both validators exited 0. Measured on `nba` after the run:
+
+| Grain | Before (`-v1`) | After (`-v4`) | Change |
+|---|---|---|---|
+| Distinct regular-season player-seasons | 12,042 | **12,667** | **+625** |
+| Distinct postseason player-seasons | 5,066 | **5,301** | **+235** |
+| Distinct postseason team stints | 5,066 | **5,301** | **+235** |
+| Distinct team-season stints | 14,332 | 14,332 | 0 |
+| Total rows across the 33 `stats` tables | 306,392 | **315,152** | **+8,760** |
+
+The before/after diff of the regular-season grain keys on `nba` reproduced the
+rehearsal exactly: **625 recovered, 0 lost, 0 unclassified**, decomposing as
+season 2000 **439**, short player ids **184**, `jonesbo02` 2008 **1**,
+`milleol01` 2004 **1**.
+
+`validate official-stats` exited 0 with `parser_lineage_violations` 0,
+`freshness_status` `verified`, and **0 missing and 0 unexpected** in all four
+dimensions — `regular_aggregate` 101,336, `postseason_aggregate` 42,408,
+`regular_team_stint` 129,000, `postseason_team_stint` 42,408. The census across
+all 33 `stats` tables returns exactly three parser versions —
+`team-season-parser-v1`, `player-page-parser-v4`,
+`player-page-postseason-parser-v4` — and zero rows carrying `-v1`, `-v2` or
+`-v3` player-page lineage.
+
+No delete or truncate was run. The upsert-only write path left no residue, as
+the rehearsal predicted.
 
 Owning-card links point at the card's **current lifecycle folder**, which moves
 as the card advances (`planning/` → `backlog/` → `active/` → `review/` →

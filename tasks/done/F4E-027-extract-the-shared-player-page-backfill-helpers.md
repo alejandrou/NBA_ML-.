@@ -11,7 +11,7 @@ read:
   - src/nba_data/scraping/offline_player_stats_backfill.py
   - src/nba_data/scraping/offline_player_postseason_stats_backfill.py
 validation:
-  - uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py
+  - uv run pytest tests/unit/test_player_page_cache.py tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py
   - uv run ruff check .
   - uv run pytest
 critical_actions: []
@@ -58,7 +58,7 @@ to need it first.
 
 # Acceptance criteria
 
-- A new module — `src/nba_data/scraping/player_page_backfill_common.py` or a name
+- A shared module — `src/nba_data/scraping/player_page_cache.py` or a name
   that reads as well — owns `PlayerCacheDiscoveryStatus`,
   `PlayerCacheRootNotFoundError`, `resolve_player_cache_root`,
   `discovery_status_for`, the cache-file pattern, the discovery function, the
@@ -129,24 +129,42 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_player_page_cache.py tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py`
+- Result: **47 passed**. The shared tests moved without changing the combined
+  test count, and the regular backfill's direct discovery assertion remains.
+- Command: `uv run pytest tests/unit/test_offline_player_stats_backfill.py tests/unit/test_offline_player_postseason_stats_backfill.py tests/unit/test_player_page_cache.py tests/unit/test_stats_coverage_artifact.py`
+- Result: **83 passed**, including the downstream cache-derived coverage builder
+  and the two-direction import-boundary regression test.
+- Command: `uv run ruff check .`
+- Result: **All checks passed**.
+- Command: `uv run pytest`
+- Result: **873 passed, 25 skipped**, with 7 existing dependency deprecation
+  warnings.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **Task validation passed** after the card moved to `tasks/review/`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_player_page_cache.py`.
+2. Run both `-k discovers_every_accepted_player_id_length` tests in the regular-
+   and postseason-backfill test modules.
+3. Inspect `src/nba_data/scraping/offline_player_stats_backfill.py` and its
+   postseason sibling and confirm both import the public helpers from
+   `player_page_cache`.
 
-Expected result:
+Expected result: the common helper tests pass, both backfills discover the same
+accepted player IDs in the same order, and neither backfill imports the other.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `uv run pytest tests/unit/test_player_page_cache.py -k rejects`.
+2. Run both backfill test modules with `-k cache_root_is_missing`.
+3. Search `src/` for `_discover_player_cache_entries`, `_required_html`, and
+   `_validate_inputs` imports.
 
-Expected result:
+Expected result: invalid inputs, malformed cache filenames, and missing cache
+roots retain their prior errors and messages; the private-import search returns
+no matches.
 
 ## Known limitations
 

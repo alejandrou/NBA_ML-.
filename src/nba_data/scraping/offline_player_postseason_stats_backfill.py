@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_postseason
-from nba_data.scraping.offline_player_stats_backfill import _validate_inputs
 from nba_data.scraping.parsers.player_page import parse_player_page_postseason
 from nba_data.scraping.player_page_cache import (
     PlayerCacheDiscoveryStatus,
@@ -19,6 +18,7 @@ from nba_data.scraping.player_page_cache import (
     discovery_status_for,
     required_html,
     resolve_player_cache_root,
+    validate_backfill_inputs,
 )
 from nba_data.scraping.player_page_scope import (
     POSTSEASON_UNRESOLVED_REASONS,
@@ -126,7 +126,7 @@ def run_offline_player_postseason_stats_backfill(
 ) -> OfflinePlayerPostseasonStatsBackfillReport:
     """Run cache-only player-page postseason backfill into postseason stats tables."""
 
-    _validate_inputs(
+    validate_backfill_inputs(
         limit=limit,
         player=player,
         start_year=start_year,

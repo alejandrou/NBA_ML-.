@@ -80,7 +80,7 @@ Every discovery path globs `*.html.gz` and matches the name against a regex that
 requires that ending:
 
 - [`cache_inventory.py:104`](../../src/nba_data/scraping/cache_inventory.py#L104)
-- [`player_page_cache.py:63`](../../src/nba_data/scraping/player_page_cache.py#L63)
+- [`player_page_cache.py:97`](../../src/nba_data/scraping/player_page_cache.py#L97)
 - [`stats_coverage.py:923`](../../src/nba_data/validation/stats_coverage.py#L923)
 - [`recount_player_page_candidates.py:303`](../../scripts/recount_player_page_candidates.py#L303)
   (`players-*.html.gz`)

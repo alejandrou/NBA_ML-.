@@ -98,7 +98,7 @@ a large gap means the cache root or the filters were not what you expected.
 
 Acquisition and offline discovery accept the same 6-10 character player ids.
 `PLAYER_ID_PATTERN` in `domain/player_id.py` is the single source of truth;
-`scraping/player_page_acquisition.py` and `_PLAYER_CACHE_FILE_RE` in
+`scraping/player_page_acquisition.py` and `PLAYER_CACHE_FILE_RE` in
 `scraping/player_page_cache.py` both import that fragment instead of restating
 a range, so the ends cannot drift apart again. F4E-012 closed the earlier
 mismatch, where discovery matched only 8-10 characters and 36 acquired pages

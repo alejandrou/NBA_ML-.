@@ -13,8 +13,6 @@ from typer.testing import CliRunner
 
 import nba_data.cli.main as cli_main
 import nba_data.scraping.offline_player_stats_backfill as offline_player_stats_backfill
-import nba_data.scraping.player_page_acquisition as player_page_acquisition
-import nba_data.scraping.player_page_cache as player_page_cache
 from nba_data.cli.main import app
 from nba_data.config.settings import get_settings
 from nba_data.db.models import (
@@ -235,26 +233,6 @@ def test_offline_player_stats_backfill_keeps_in_scope_unresolved_rows(
     assert report.out_of_scope_players_or_seasons == 0
     assert report.entries_failed == 0
     assert report.rows_failed == 0
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("kwargs", "match"),
-    (
-        ({"limit": 0}, "limit"),
-        ({"player": " "}, "player"),
-        ({"start_year": 2025, "end_year": 2024}, "start_year"),
-        ({"parser_version": " "}, "parser_version"),
-    ),
-)
-def test_offline_player_stats_backfill_rejects_invalid_arguments(
-    tmp_path: Path,
-    session: Session,
-    kwargs: dict[str, object],
-    match: str,
-) -> None:
-    with pytest.raises(ValueError, match=match):
-        run_offline_player_stats_backfill(session, cache=HtmlCache(tmp_path / "cache"), **kwargs)
 
 
 @pytest.mark.unit
@@ -522,62 +500,9 @@ def test_offline_player_stats_backfill_discovers_every_accepted_player_id_length
     assert report.player_pages_processed == len(PLAYER_IDS_BY_LENGTH)
     assert report.discovery_status == "ok"
     assert {entry.player_identifier for entry in report.entries} == set(PLAYER_IDS_BY_LENGTH)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("length", range(1, 14))
-def test_cache_discovery_and_acquisition_agree_on_player_id_length_range(length: int) -> None:
-    player_id = "a" * (length - 1) + "1"
-    filename = f"players-{player_id[0]}-{player_id}.html-{'0' * 16}.html.gz"
-
-    acquisition_accepts = player_page_acquisition._PLAYER_ID_RE.fullmatch(player_id) is not None
-    discovery_accepts = (
-        player_page_cache._PLAYER_CACHE_FILE_RE.fullmatch(filename) is not None
-    )
-
-    assert discovery_accepts == acquisition_accepts
-
-
-@pytest.mark.unit
-def test_offline_player_stats_backfill_still_rejects_malformed_cache_filenames(
-    tmp_path: Path,
-) -> None:
-    cache = HtmlCache(tmp_path / "cache")
-    _write_gzip(cache.path_for_url(PLAYER_URL), MINIMAL_PLAYER_PAGE_HTML)
-    cache_dir = cache.path_for_url(PLAYER_URL).parent
-    for malformed_name in (
-        "player-h-hardeja01.html-0123456789abcdef.html.gz",
-        "players-h-hardeja01.html.html.gz",
-        "players-h-hardeja01.html-0123456789abcdef.html",
-        "players-h-hardeja01.html-zzzzzzzzzzzzzzzz.html.gz",
-        "players-hh-hardeja01.html-0123456789abcdef.html.gz",
-    ):
-        _write_gzip(cache_dir / malformed_name, MINIMAL_PLAYER_PAGE_HTML)
-
-    discovered = discover_player_cache_entries(cache.root_dir, player_identifier=None)
-
-    assert [player_id for _, player_id, _ in discovered] == ["hardeja01"]
-
-
-@pytest.mark.unit
-def test_cache_discovery_rejects_player_ids_acquisition_cannot_write(
-    tmp_path: Path,
-) -> None:
-    # Discovery used to accept a leading digit; sharing PLAYER_ID_PATTERN narrows
-    # it to match acquisition. Acquisition can never write such an id, so nothing
-    # reachable is lost — but the narrowing is deliberate, so pin it.
-    cache = HtmlCache(tmp_path / "cache")
-    _write_gzip(cache.path_for_url(PLAYER_URL), MINIMAL_PLAYER_PAGE_HTML)
-    cache_dir = cache.path_for_url(PLAYER_URL).parent
-    _write_gzip(
-        cache_dir / "players-1-1ardeja01.html-0123456789abcdef.html.gz",
-        MINIMAL_PLAYER_PAGE_HTML,
-    )
-
-    discovered = discover_player_cache_entries(cache.root_dir, player_identifier=None)
-
-    assert [player_id for _, player_id, _ in discovered] == ["hardeja01"]
-    assert player_page_acquisition._PLAYER_ID_RE.fullmatch("1ardeja01") is None
+    assert {entry.source_url for entry in report.entries} == {
+        build_player_page_url(player_id) for player_id in PLAYER_IDS_BY_LENGTH
+    }
 
 
 @pytest.mark.unit

@@ -19,6 +19,7 @@ from nba_data.scraping.player_page_cache import (
     discovery_status_for,
     required_html,
     resolve_player_cache_root,
+    validate_backfill_inputs,
 )
 from nba_data.scraping.player_page_scope import (
     REGULAR_UNRESOLVED_REASONS,
@@ -118,7 +119,7 @@ def run_offline_player_stats_backfill(
 ) -> OfflinePlayerStatsBackfillReport:
     """Run cache-only player-page processing into regular-season player-season stats tables."""
 
-    _validate_inputs(
+    validate_backfill_inputs(
         limit=limit,
         player=player,
         start_year=start_year,
@@ -169,28 +170,6 @@ def run_offline_player_stats_backfill(
         elapsed_seconds=perf_counter() - started,
         entries=entries,
     )
-
-
-def _validate_inputs(
-    *,
-    limit: int | None,
-    player: str | None,
-    start_year: int | None,
-    end_year: int | None,
-    parser_version: str,
-) -> None:
-    if limit is not None and limit <= 0:
-        msg = "limit must be a positive integer"
-        raise ValueError(msg)
-    if player is not None and not player.strip():
-        msg = "player must be a non-empty basketball_reference_player_id"
-        raise ValueError(msg)
-    if start_year is not None and end_year is not None and start_year > end_year:
-        msg = "start_year must be less than or equal to end_year"
-        raise ValueError(msg)
-    if not parser_version.strip():
-        msg = "parser_version is required"
-        raise ValueError(msg)
 
 
 def _process_one_player_page(

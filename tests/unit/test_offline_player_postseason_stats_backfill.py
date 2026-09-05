@@ -35,8 +35,8 @@ from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.offline_player_postseason_stats_backfill import (
     run_offline_player_postseason_stats_backfill,
 )
-from nba_data.scraping.offline_player_stats_backfill import PlayerCacheRootNotFoundError
 from nba_data.scraping.player_page_acquisition import build_player_page_url
+from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
 from nba_data.scraping.player_page_scope import EmptySeasonScopeError
 
 HARDEN_FIXTURE = Path("tests/fixtures/html/player_page_harden_postseason.html")

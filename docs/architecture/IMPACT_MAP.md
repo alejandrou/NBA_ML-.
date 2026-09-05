@@ -44,7 +44,7 @@ schema.
    re-derived, not imported, by:
    - `scraping/cache_inventory.py` — `_CACHE_TEAM_SEASON_FILE_RE` (strict)
    - `scraping/cache_inventory.py` — `_TEAM_SEASON_LIKE_FILE_RE` (loose)
-   - `scraping/player_page_cache.py` — `_PLAYER_CACHE_FILE_RE`
+   - `scraping/player_page_cache.py` — `PLAYER_CACHE_FILE_RE`
 
    Change the slug, the digest length, or the extension and discovery silently
    returns zero entries instead of failing.
@@ -55,7 +55,7 @@ schema.
    `domain/team_codes.py`, so a pure consumer can use it without pulling in
    SQLAlchemy or the scraping client. `scraping/player_page_acquisition.py`'s
    `_PLAYER_ID_RE` and `scraping/player_page_cache.py`'s
-   `_PLAYER_CACHE_FILE_RE` both interpolate it rather than restating a range.
+   `PLAYER_CACHE_FILE_RE` both interpolate it rather than restating a range.
    Widen or narrow the accepted id there and all three ends move together;
    restate it anywhere else and the drift F4E-012 fixed comes back.
 
@@ -65,10 +65,8 @@ schema.
    `resolve_player_cache_root`, `discover_player_cache_entries`,
    `discovery_status_for`, `read_cached_gzip`, and `required_html` — pure, no
    database or HTTP import, so `validation/stats_coverage.py` can import it
-   too. `scraping/offline_player_postseason_stats_backfill.py` still imports
-   the private `_validate_inputs` from
-   `scraping/offline_player_stats_backfill.py` (F4E-027 tracks closing that
-   one remaining private cross-import). Any change to the shared module
+   too. It also owns `validate_backfill_inputs`, so neither backfill imports
+   implementation details from the other. Any change to the shared module
    changes both backfills and the coverage builder together.
 
 4. **`Settings.scraper_cache_dir` defaults to the relative `Path("data/raw/html")`**

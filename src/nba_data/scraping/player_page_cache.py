@@ -1,3 +1,12 @@
+"""Shared player-page cache discovery and backfill input validation.
+
+`PLAYER_CACHE_FILE_RE` and `PLAYER_CACHE_LIKE_FILE_RE` are public filename
+contracts used by cache discovery and coverage validation. The first recognizes
+valid cached player pages; the deliberately looser second recognizes malformed
+player-shaped candidates so validation can report rather than silently ignore
+them.
+"""
+
 from __future__ import annotations
 
 import gzip
@@ -10,23 +19,47 @@ from nba_data.domain.player_id import PLAYER_ID_PATTERN
 # The player-id fragment comes from the shared domain leaf so discovery accepts
 # every id acquisition is allowed to write, without importing acquisition's own
 # module (which pulls in SQLAlchemy, ORM models, and the scraping HTTP client).
-# Only the id range is shared — the rest of the cache filename shape stays strict.
-_PLAYER_CACHE_FILE_RE = re.compile(
+# Only the id range is shared; the rest of the cache filename shape stays strict.
+PLAYER_CACHE_FILE_RE = re.compile(
     rf"^players-(?P<initial>[a-z])-(?P<player_id>{PLAYER_ID_PATTERN})\.html-[0-9a-f]{{16}}\.html\.gz$",
     re.IGNORECASE,
 )
-# Looser than `_PLAYER_CACHE_FILE_RE`: matches any player-shaped filename
+# Looser than `PLAYER_CACHE_FILE_RE`: matches any player-shaped filename
 # regardless of whether the id or digest segment is well-formed, mirroring
 # `cache_inventory._TEAM_SEASON_LIKE_FILE_RE` — it lets a caller distinguish
 # "not a player cache file at all" from "player-shaped but malformed", the way
 # team-season candidates get `missing_metadata` instead of silently vanishing.
-_PLAYER_CACHE_LIKE_FILE_RE = re.compile(r"^players-.*\.html-.*\.html\.gz$", re.IGNORECASE)
+PLAYER_CACHE_LIKE_FILE_RE = re.compile(r"^players-.*\.html-.*\.html\.gz$", re.IGNORECASE)
 
 PlayerCacheDiscoveryStatus = Literal["ok", "no_matching_pages"]
 
 
 class PlayerCacheRootNotFoundError(ValueError):
     """Raised when the configured player-page cache root does not exist."""
+
+
+def validate_backfill_inputs(
+    *,
+    limit: int | None,
+    player: str | None,
+    start_year: int | None,
+    end_year: int | None,
+    parser_version: str,
+) -> None:
+    """Validate the arguments shared by both player-page backfills."""
+
+    if limit is not None and limit <= 0:
+        msg = "limit must be a positive integer"
+        raise ValueError(msg)
+    if player is not None and not player.strip():
+        msg = "player must be a non-empty basketball_reference_player_id"
+        raise ValueError(msg)
+    if start_year is not None and end_year is not None and start_year > end_year:
+        msg = "start_year must be less than or equal to end_year"
+        raise ValueError(msg)
+    if not parser_version.strip():
+        msg = "parser_version is required"
+        raise ValueError(msg)
 
 
 def resolve_player_cache_root(cache_root: Path) -> Path:
@@ -60,13 +93,16 @@ def discover_player_cache_entries(
     root = resolve_player_cache_root(cache_root)
 
     entries: list[tuple[Path, str, str]] = []
-    for path in sorted(root.rglob("*.html.gz"), key=lambda value: value.resolve(strict=False).as_posix().lower()):
+    for path in sorted(
+        root.rglob("*.html.gz"),
+        key=lambda value: value.resolve(strict=False).as_posix().lower(),
+    ):
         resolved = path.resolve(strict=False)
         if root not in resolved.parents and resolved != root:
             continue
         if "basketball-reference" not in resolved.parts:
             continue
-        match = _PLAYER_CACHE_FILE_RE.fullmatch(path.name)
+        match = PLAYER_CACHE_FILE_RE.fullmatch(path.name)
         if match is None:
             continue
 
@@ -120,9 +156,12 @@ def read_cached_gzip(path: Path) -> str | None:
 __all__ = [
     "PlayerCacheDiscoveryStatus",
     "PlayerCacheRootNotFoundError",
+    "PLAYER_CACHE_FILE_RE",
+    "PLAYER_CACHE_LIKE_FILE_RE",
     "discover_player_cache_entries",
     "discovery_status_for",
     "read_cached_gzip",
     "required_html",
     "resolve_player_cache_root",
+    "validate_backfill_inputs",
 ]

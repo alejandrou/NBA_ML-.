@@ -29,7 +29,6 @@ from types import MappingProxyType
 from typing import Literal
 
 from nba_data.domain.team_codes import is_aggregate_only_team_code, is_multi_team_marker
-from nba_data.scraping import player_page_cache
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.cache_inventory import build_cached_html_inventory
 from nba_data.scraping.normalizers.player_page import (
@@ -50,6 +49,8 @@ from nba_data.scraping.parsers.team_season import (
     parse_team_season_page,
 )
 from nba_data.scraping.player_page_cache import (
+    PLAYER_CACHE_FILE_RE,
+    PLAYER_CACHE_LIKE_FILE_RE,
     PlayerCacheRootNotFoundError,
     discover_player_cache_entries,
     read_cached_gzip,
@@ -990,7 +991,7 @@ def _scan_unreadable_player_source_issues(
             continue
         if resolved in discovered_paths:
             continue
-        if player_page_cache._PLAYER_CACHE_FILE_RE.fullmatch(path.name) is not None:
+        if PLAYER_CACHE_FILE_RE.fullmatch(path.name) is not None:
             issues.append(
                 StatsCoverageSourceIssue(
                     cache_path=str(resolved),
@@ -998,7 +999,7 @@ def _scan_unreadable_player_source_issues(
                     error_message="Cached player-page HTML file is unreadable or empty.",
                 )
             )
-        elif player_page_cache._PLAYER_CACHE_LIKE_FILE_RE.fullmatch(path.name) is not None:
+        elif PLAYER_CACHE_LIKE_FILE_RE.fullmatch(path.name) is not None:
             issues.append(
                 StatsCoverageSourceIssue(
                     cache_path=str(resolved),

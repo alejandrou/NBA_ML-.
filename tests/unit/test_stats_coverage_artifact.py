@@ -205,6 +205,31 @@ def test_stats_coverage_has_no_database_or_network_import_anywhere_in_its_depend
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("module_name", "forbidden_dependency"),
+    (
+        (
+            "nba_data.scraping.offline_player_stats_backfill",
+            "nba_data.scraping.offline_player_postseason_stats_backfill",
+        ),
+        (
+            "nba_data.scraping.offline_player_postseason_stats_backfill",
+            "nba_data.scraping.offline_player_stats_backfill",
+        ),
+    ),
+)
+def test_player_page_backfills_do_not_import_each_other(
+    module_name: str,
+    forbidden_dependency: str,
+) -> None:
+    src_root = Path(stats_coverage.__file__).resolve().parents[2]
+
+    visited_modules, _ = _transitive_imports(module_name, src_root=src_root)
+
+    assert forbidden_dependency not in visited_modules
+
+
+@pytest.mark.unit
 def test_stats_coverage_module_has_no_database_or_network_imports() -> None:
     source = Path(stats_coverage.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)

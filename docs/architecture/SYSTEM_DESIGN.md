@@ -96,8 +96,8 @@ Work after the read-only API, in order:
 directly or trigger scraping. See ADR 0008 for the stack decision.
 
 **Generated metrics, rankings, and OVR** — stored in the `features` schema,
-never mixed into `raw`, `core`, or official `stats` tables. Formula versions are
-recorded, assumptions and limitations documented, and metric generation must be
-leakage-safe and must never scrape live.
+never mixed into cached raw source material, `core`, or official `stats` tables.
+Formula versions are recorded, assumptions and limitations documented, and
+metric generation must be leakage-safe and must never scrape live.
 
 Concrete work is tracked as cards in `tasks/backlog/`, not as phase documents.

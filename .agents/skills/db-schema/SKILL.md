@@ -10,10 +10,11 @@ indexes, or Alembic revisions and explicitly authorizes that work.
 
 ## Boundaries
 
-Use SQLAlchemy 2.0 and Alembic for new schema changes. Keep raw, core, stats,
-features, ML, and app data separate. Define reversible upgrade and downgrade
-paths, appropriate foreign keys, unique constraints for idempotency, and indexes
-for supported lookup patterns. Do not introduce new Peewee code.
+Use SQLAlchemy 2.0 and Alembic for new schema changes. Keep cached raw source
+material, core, stats, features, ML, and app data separate. Define reversible
+upgrade and downgrade paths, appropriate foreign keys, unique constraints for
+idempotency, and indexes for supported lookup patterns. Do not introduce new
+Peewee code.
 
 ## Approval and validation
 

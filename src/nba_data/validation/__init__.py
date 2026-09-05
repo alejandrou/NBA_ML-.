@@ -114,8 +114,8 @@ def __getattr__(name: str) -> object:
     import importlib
 
     if name in _ATTRIBUTE_SOURCE_NAMES:
-        module_name, real_name = _ATTRIBUTE_SOURCE_NAMES[name]
-        return getattr(importlib.import_module(module_name), real_name)
+        source_module, real_name = _ATTRIBUTE_SOURCE_NAMES[name]
+        return getattr(importlib.import_module(source_module), real_name)
     module_name = _ATTRIBUTE_SOURCE_MODULES.get(name)
     if module_name is None:
         msg = f"module {__name__!r} has no attribute {name!r}"

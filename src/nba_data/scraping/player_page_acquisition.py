@@ -410,7 +410,10 @@ def _build_unfiltered_entries(
     *,
     player: str | None,
 ) -> list[PlayerPageManifestEntry]:
-    statement: Select[tuple[str]] = (
+    # `basketball_reference_player_id` is nullable in the model, so the select
+    # is typed as optional even with the `is_not(None)` filter; the None guard
+    # below is what narrows it.
+    statement: Select[tuple[str | None]] = (
         select(Player.basketball_reference_player_id)
         .where(Player.basketball_reference_player_id.is_not(None))
         .order_by(Player.basketball_reference_player_id.asc())

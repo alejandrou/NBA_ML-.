@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import MappingProxyType
 
+from bs4 import BeautifulSoup
+
 from nba_data.scraping.parsers.team_season import _parse_table, _soup_with_commented_tables
 
 SUPPORTED_PLAYER_PAGE_REGULAR_SEASON_TABLES = MappingProxyType(
@@ -46,7 +48,7 @@ def parse_player_page_postseason(html: str) -> dict[str, list[dict[str, str]]]:
 
 
 def _parse_player_page_tables(
-    soup: object,
+    soup: BeautifulSoup,
     supported_tables: MappingProxyType[str, str],
 ) -> dict[str, list[dict[str, str]]]:
     return {

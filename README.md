@@ -22,6 +22,7 @@ docker compose up -d postgres # local database
 ```bash
 uv run python scripts/validate_tasks.py
 uv run ruff check .
+uv run mypy src/nba_data
 uv run pytest
 git diff --check
 ```

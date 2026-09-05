@@ -107,11 +107,12 @@ migration chain is **already stale**, stopping at `0005` when the head is
 - `0001`'s `upgrade` does `CREATE SCHEMA IF NOT EXISTS raw`, creates the three
   tables, and creates `ix_raw_scraper_requests_url`. Its `downgrade` is the
   exact drop order to copy.
-- The disposable validation lane already runs `alembic upgrade head` →
-  `alembic check` → `downgrade -1` → `upgrade head` → `alembic check`
-  ([`validate_postgres_local.py:83-90`](../../scripts/validate_postgres_local.py#L83-L90)),
-  so `bash scripts/validate_database.sh` exercises the new revision's downgrade
-  round-trip and proves no model drift, without touching any real database.
+- The disposable validation lane migrates to `0007`, snapshots the full `raw`
+  catalog, upgrades and downgrades `0008`, and compares the restored columns,
+  types, nullability, defaults, constraints, and indexes with that snapshot. It
+  also injects an unexpected `raw` table and requires the no-`CASCADE` upgrade
+  to fail without deleting it. `alembic check` alone cannot prove either fact
+  because `alembic/env.py` deliberately excludes the retired `raw` schema.
 
 # Human decisions or resources
 
@@ -149,9 +150,10 @@ migration chain is **already stale**, stopping at `0005` when the head is
 - That revision's `downgrade` recreates the `raw` schema and all three tables
   with the same columns, nullability, server defaults, unique constraint
   `uq_raw_pages_url_content_hash`, foreign key to `raw.scraper_runs.id`, and
-  index `ix_raw_scraper_requests_url` that `0001` created. Proven by the
-  `downgrade -1` → `upgrade head` → `alembic check` round trip inside
-  `bash scripts/validate_database.sh`, which must pass clean.
+  index `ix_raw_scraper_requests_url` that `0001` created. Proven inside
+  `bash scripts/validate_database.sh` by comparing a PostgreSQL catalog snapshot
+  at `0007` with the snapshot after the `0008` downgrade; the command must pass
+  clean.
 - `alembic/versions/0001_initial_raw_core.py` is byte-identical to its current
   content: `git diff` over that path is empty.
 - `src/nba_data/db/models/raw.py` is deleted; `RawPage`, `ScraperRun`, and
@@ -189,8 +191,9 @@ migration chain is **already stale**, stopping at `0005` when the head is
 `src/nba_data/db/models/raw.py` (deleted),
 `src/nba_data/db/models/__init__.py`, `tests/unit/test_raw_models.py` (deleted),
 `docs/decisions/0003-cache-raw-html.md`, `docs/architecture/IMPACT_MAP.md`,
-and `docs/specs/PROJECT_SPEC.md`. The option-4 line in `F4E-028` is already
-gone; that card now lives at
+`docs/architecture/SYSTEM_DESIGN.md`, `docs/specs/PROJECT_SPEC.md`,
+`.agents/skills/db-schema/SKILL.md`, and `scripts/validate_postgres_local.py`.
+The option-4 line in `F4E-028` is already gone; that card now lives at
 `tasks/backlog/F4E-028-record-fetch-provenance-in-the-html-cache.md` and needs
 no edit from this one.
 
@@ -226,9 +229,10 @@ Write the `0008` downgrade by copying the three `op.create_table` calls out of
 `0001`'s `upgrade` verbatim, including `server_default=sa.func.now()` on
 `fetched_at`, `started_at`, and `requested_at`, and the `postgresql.JSONB()`
 type on `config_json`. A downgrade that quietly changes a default or a
-nullability is a silent schema fork; the `downgrade -1` → `upgrade head` →
-`alembic check` sequence in the disposable lane is what proves it did not
-happen.
+nullability is a silent schema fork; the disposable lane's before-and-after
+PostgreSQL catalog comparison proves it did not happen. The Alembic drift check
+does not inspect `raw` after this revision because the schema is excluded from
+`include_name`.
 
 Order matters in `upgrade`: drop the index, then `scraper_requests` (it holds
 the foreign key), then `scraper_runs`, then `raw_pages`, then the schema.
@@ -236,10 +240,9 @@ the foreign key), then `scraper_runs`, then `raw_pages`, then the schema.
 Use `DROP SCHEMA IF EXISTS raw` without `CASCADE` — if anything unexpected still
 lives in that schema, the migration should fail loudly rather than delete it.
 
-Do not remove the `raw` mentions at `SYSTEM_DESIGN.md:99` or `IMPACT_MAP.md:183`
-and `:199`. Those state the separation invariant between raw, core, official
-stats, and future features; the invariant survives the schema. Re-read them and
-adjust wording only if a sentence now claims a `raw` schema exists.
+Preserve the separation invariant at `SYSTEM_DESIGN.md:99` and
+`IMPACT_MAP.md:183` and `:199`, but name the retired layer "cached raw source
+material" rather than implying that `raw` tables or a `raw` schema still exist.
 
 # Durable knowledge updates
 
@@ -255,25 +258,48 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_impact_map_documentation.py tests/unit/test_migration_snapshots.py`
+- Result: Passed, 11 tests.
+- Command: `uv run ruff check .`
+- Result: Passed with no findings.
+- Command: `uv run pytest`
+- Result: Passed, 871 tests; 25 environment-dependent integration tests skipped.
+- Command: `& 'C:\Program Files\Git\bin\bash.exe' scripts/validate_database.sh`
+- Result: Passed. The exact wrapper migrated a disposable database to `0007`,
+  proved the `0008` downgrade restored an identical `raw` catalog, proved an
+  unexpected `raw` table makes the upgrade fail without deleting that table,
+  upgraded to `0008`, passed Alembic's drift check, and passed all 26 PostgreSQL
+  integration tests. The disposable database was dropped.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Passed after activation; run again after the move to review.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Start the repository's disposable PostgreSQL service with
+   `docker compose up -d postgres`.
+2. Run `uv run python scripts/validate_postgres_local.py`.
+3. Confirm the output includes the `0008_drop_raw_schema` upgrade, the
+   downgrade to `0007_team_bref_id_not_null`, the re-upgrade, and two clean
+   Alembic drift checks.
 
-Expected result:
+Expected result: The disposable migration round trip and PostgreSQL integration
+suite pass, and the temporary database is removed.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `bash scripts/validate_database.sh`; it migrates an isolated disposable
+   database to `0007` and creates `raw._unexpected_0008_guard`.
+2. The validator attempts to upgrade to `0008_drop_raw_schema` and requires a
+   nonzero exit.
+3. It confirms the unexpected table remains, removes it, completes the clean
+   upgrade, and drops the disposable database.
 
-Expected result:
+Expected result: The final `DROP SCHEMA IF EXISTS raw` fails because it does not
+use `CASCADE`, and transactional DDL preserves the unrecognized object. This
+path passed in the recorded automated validation.
 
 ## Known limitations
 
-- None.
+- No persistent database was inspected or migrated. Before applying `0008` to
+  one, the owner must confirm all three legacy tables are empty and decide
+  whether a backup is warranted.

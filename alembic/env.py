@@ -28,9 +28,6 @@ from nba_data.db.models import (
     PlayerTeamSeasonRoster,
     PlayerTeamSeasonShooting,
     PlayerTeamSeasonTotals,
-    RawPage,
-    ScraperRequest,
-    ScraperRun,
     Season,
     Team,
     TeamAlias,
@@ -58,9 +55,6 @@ _ = (
     PlayerTeamSeasonRoster,
     PlayerTeamSeasonShooting,
     PlayerTeamSeasonTotals,
-    RawPage,
-    ScraperRequest,
-    ScraperRun,
     Season,
     Team,
     TeamAlias,
@@ -77,7 +71,7 @@ target_metadata = Base.metadata
 
 def include_name(name: str | None, type_: str, parent_names: dict[str, str]) -> bool:
     if type_ == "schema":
-        return name in {"raw", "core", "stats"}
+        return name in {"core", "stats"}
     return True
 
 

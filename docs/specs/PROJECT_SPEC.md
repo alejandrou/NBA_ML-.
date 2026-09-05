@@ -10,7 +10,7 @@
 - Database: PostgreSQL.
 - New ORM: SQLAlchemy 2.0.
 - Migrations: Alembic.
-- Initial schemas: `raw`, `core`; future schemas: `stats`, `features`, `ml`, `app`.
+- Live schemas: `core`, `stats`; future schemas: `features`, `ml`, `app`.
 - Package manager: `uv`.
 - Tests and CI must not call Basketball Reference.
 

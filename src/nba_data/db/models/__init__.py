@@ -7,7 +7,6 @@ from nba_data.db.models.core import (
     TeamAlias,
     TeamSeason,
 )
-from nba_data.db.models.raw import RawPage, ScraperRequest, ScraperRun
 from nba_data.db.models.stats import (
     PlayerPostseasonAdjShooting,
     PlayerPostseasonAdvanced,
@@ -81,9 +80,6 @@ __all__ = [
     "PlayerTeamPostseasonPerPoss",
     "PlayerTeamPostseasonShooting",
     "PlayerTeamPostseasonTotals",
-    "RawPage",
-    "ScraperRequest",
-    "ScraperRun",
     "Season",
     "Team",
     "TeamAlias",

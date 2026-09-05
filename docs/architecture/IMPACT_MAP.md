@@ -170,17 +170,18 @@ schema.
 
 ### Database
 
-- **Implementation:** `db/base.py`, `db/session.py`, `db/models/{raw,core,stats}.py`, `db/repositories/{core,stats}.py`, `alembic/env.py`
-- **Schemas:** `raw` (3 tables), `core` (7), `stats` (33 wide tables in 4
+- **Implementation:** `db/base.py`, `db/session.py`, `db/models/{core,stats}.py`, `db/repositories/{core,stats}.py`, `alembic/env.py`
+- **Schemas:** `core` (7), `stats` (33 wide tables in 4
   families — `player_season_*` 8, `player_team_season_*` 9,
   `player_postseason_*` 8, `player_team_postseason_*` 8; 16 of the 33 are
   postseason). There is **no `features` schema yet.**
-- **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables`
+- **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables` → `0006_synthetic_team_codes` → `0007_team_bref_id_not_null` → `0008_drop_raw_schema`
 - **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only `0007` data preflight)
-- **Tests:** `test_core_models.py`, `test_raw_models.py`, `test_stats_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`
+- **Tests:** `test_core_models.py`, `test_stats_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`
 - **Docs:** `docs/architecture/SYSTEM_DESIGN.md` (loader invariants and natural keys), `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - **Critical actions:** applying a migration to a shared, persistent, or production-like database
-- **Invariants:** `raw`, `core`, official `stats`, and future `features` stay separate. Coupling 5 applies.
+- **Invariants:** cached raw source material, `core`, official `stats`, and future
+  `features` stay separate. Coupling 5 applies.
 
 ### FastAPI
 
@@ -196,4 +197,6 @@ schema.
 
 - Nothing exists yet: no `features` schema, no `src/nba_data/features/`, no migration, no command.
 - **Docs:** `docs/architecture/SYSTEM_DESIGN.md` "Planned Direction", ADR 0008
-- **Invariants when it lands:** `features` stays separate from `raw`, `core`, and official `stats`; formula versions are recorded; generation is leakage-safe and never scrapes live.
+- **Invariants when it lands:** `features` stays separate from cached raw source
+  material, `core`, and official `stats`; formula versions are recorded;
+  generation is leakage-safe and never scrapes live.

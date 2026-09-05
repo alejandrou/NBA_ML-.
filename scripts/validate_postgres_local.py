@@ -23,7 +23,7 @@ import sys
 from uuid import uuid4
 
 from sqlalchemy import create_engine, func, select, text
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
 from nba_data.config.settings import get_settings
 
@@ -79,29 +79,125 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     child_env[_REQUIRE_ENV] = "1"
     child_env[_TEST_DATABASE_ENV] = "1"
 
-    steps = [
-        ["uv", "run", "alembic", "upgrade", "head"],
-        ["uv", "run", "alembic", "check"],
-        # Prove the newest revision is reversible on real PostgreSQL, not only
-        # that it applies. A revision that cannot be undone is a one-way door,
-        # and the offline SQLite tests never exercise `downgrade` at all.
-        ["uv", "run", "alembic", "downgrade", "-1"],
+    if result := _run(
+        child_env,
+        ["uv", "run", "alembic", "upgrade", "0007_team_bref_id_not_null"],
+    ):
+        return result
+    raw_before = _raw_schema_snapshot(temp_url)
+    if not raw_before:
+        raise RuntimeError("Revision 0007 did not create the expected raw schema catalog")
+
+    for command in (
+        ["uv", "run", "alembic", "upgrade", "0008_drop_raw_schema"],
+        ["uv", "run", "alembic", "downgrade", "0007_team_bref_id_not_null"],
+    ):
+        if result := _run(child_env, command):
+            return result
+
+    raw_after = _raw_schema_snapshot(temp_url)
+    if raw_after != raw_before:
+        raise RuntimeError("Revision 0008 downgrade did not recreate the raw schema exactly")
+    print("Revision 0008 downgrade exactly restored the raw schema catalog.")
+
+    _create_unexpected_raw_table(temp_url)
+    guard_result = _run(child_env, ["uv", "run", "alembic", "upgrade", "head"])
+    if guard_result == 0:
+        raise RuntimeError("Revision 0008 unexpectedly dropped an unrecognized raw object")
+    if not _unexpected_raw_table_exists(temp_url):
+        raise RuntimeError("Failed revision 0008 upgrade deleted the unrecognized raw object")
+    print("Revision 0008 rejected an unrecognized raw object without deleting it.")
+    _drop_unexpected_raw_table(temp_url)
+
+    for command in (
         ["uv", "run", "alembic", "upgrade", "head"],
         ["uv", "run", "alembic", "check"],
         # The whole directory, not a list of modules: a new integration test is
         # then covered the moment it is written, rather than whenever someone
         # remembers to add it here.
         ["uv", "run", "pytest", "-ra", "tests/integration"],
-    ]
-    for command in steps:
-        print(f"$ {' '.join(command)}")
-        result = subprocess.run(command, env=child_env, check=False)
-        if result.returncode != 0:
-            return result.returncode
+    ):
+        if result := _run(child_env, command):
+            return result
 
     _verify_empty(temp_url)
     print(f"PostgreSQL validation passed against {temp_db_name!r}.")
     return 0
+
+
+def _run(child_env: dict[str, str], command: list[str]) -> int:
+    print(f"$ {' '.join(command)}")
+    return subprocess.run(command, env=child_env, check=False).returncode
+
+
+def _raw_schema_snapshot(database_url: URL) -> tuple[tuple[object, ...], ...]:
+    """Return the catalog details needed to prove an exact 0008 downgrade."""
+
+    statements = (
+        """
+        SELECT table_name, column_name, ordinal_position, data_type, udt_name,
+               is_nullable, column_default, character_maximum_length,
+               datetime_precision
+        FROM information_schema.columns
+        WHERE table_schema = 'raw'
+        ORDER BY table_name, ordinal_position
+        """,
+        """
+        SELECT c.relname, con.conname, con.contype,
+               pg_get_constraintdef(con.oid, true)
+        FROM pg_constraint AS con
+        JOIN pg_class AS c ON c.oid = con.conrelid
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'raw'
+        ORDER BY c.relname, con.conname
+        """,
+        """
+        SELECT tablename, indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname = 'raw'
+        ORDER BY tablename, indexname
+        """,
+    )
+    engine = create_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            return tuple(
+                (statement_index, *row)
+                for statement_index, statement in enumerate(statements)
+                for row in connection.execute(text(statement)).tuples()
+            )
+    finally:
+        engine.dispose()
+
+
+def _create_unexpected_raw_table(database_url: URL) -> None:
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE raw._unexpected_0008_guard (id integer)"))
+    finally:
+        engine.dispose()
+
+
+def _unexpected_raw_table_exists(database_url: URL) -> bool:
+    engine = create_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            return (
+                connection.scalar(text("SELECT to_regclass('raw._unexpected_0008_guard')"))
+                is not None
+            )
+    finally:
+        engine.dispose()
+
+
+def _drop_unexpected_raw_table(database_url: URL) -> None:
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE raw._unexpected_0008_guard"))
+    finally:
+        engine.dispose()
 
 
 def _verify_empty(temp_url) -> None:

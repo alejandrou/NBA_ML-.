@@ -7,7 +7,7 @@ from email.utils import parsedate_to_datetime
 
 import httpx
 
-from nba_data.config.settings import Settings
+from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
 from nba_data.scraping.cache import HtmlCache
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class BasketballReferenceClient:
         http_client: httpx.Client | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
-        max_429_retries: int = 1,
+        max_429_retries: int = 0,
         max_5xx_retries: int = 2,
     ) -> None:
         self.settings = settings
@@ -108,7 +108,11 @@ class BasketballReferenceClient:
         if self._last_request_at is None:
             return
         rpm_delay = 60.0 / min(self.settings.scraper_max_requests_per_minute, 20)
-        required_delay = max(self.settings.scraper_min_delay_seconds, rpm_delay)
+        required_delay = max(
+            self.settings.scraper_min_delay_seconds,
+            rpm_delay,
+            MINIMUM_SCRAPER_DELAY_SECONDS,
+        )
         elapsed = self._clock() - self._last_request_at
         if elapsed < required_delay:
             self._sleeper(required_delay - elapsed)

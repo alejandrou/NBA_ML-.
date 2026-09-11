@@ -459,19 +459,35 @@ three values — `team-season-parser-v1`, `player-page-parser-v4`, and
 operation and its scope. No card authorizes it.**
 
 **It was performed once, on 2026-09-05, by F4E-031 under the owner's direct
-instruction.** `nba` now carries the `-v4` archive at revision
-`0007_team_bref_id_not_null`. The record of that run is below; the procedure is
-kept because it is the one to follow if the archive is ever rebuilt again.
+instruction.** `nba` carries the `-v4` archive that run produced. It was at
+revision `0007_team_bref_id_not_null` from then until 2026-09-12, when a
+separately authorized upgrade brought it to `0008_drop_raw_schema`, the head —
+see [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md). The record of the
+F4E-031 run is below; the procedure is kept because it is the one to follow if
+the archive is ever rebuilt again.
 
 Preflight, in order:
 
-1. **Close the migration gap.** `nba` is at `0007_team_bref_id_not_null` since
-   the F4E-031 run; before it, it reported `0006_synthetic_team_codes`. If the
-   head has moved since, applying the new revisions to `nba` is itself a
-   critical action needing its own approval.
-2. **Re-rehearse if the head moved.** F4E-020 and F4E-021 introduce `0008` and
-   `0009`. Neither touches a `stats` table, but if either has landed, re-run the
-   rehearsal at the new head before trusting these numbers.
+1. **Close the migration gap.** `nba` is at `0008_drop_raw_schema` since the
+   2026-09-12 upgrade; the F4E-031 run had left it at
+   `0007_team_bref_id_not_null`. If the head has moved since, applying the new
+   revisions to `nba` is itself a critical action needing its own approval.
+   Check where the target actually stands, read-only, before asking for that
+   approval:
+
+   ```bash
+   uv run python scripts/preflight_migration_data.py \
+     --database-url postgresql+psycopg://nba:nba@localhost:5432/nba
+   ```
+
+   It reports one verdict per pending revision and exits nonzero if any
+   precondition blocks. The ordered procedure for applying them — back up,
+   preflight, apply, verify — is
+   [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md).
+2. **Re-rehearse if the head moved.** `0008` has landed and touches no `stats`
+   table — it only drops the unused `raw` schema — so the numbers below still
+   hold. If a later revision lands, re-run the rehearsal at the new head before
+   trusting them.
 3. **Capture the lineage baseline.** Record `select parser_version, count(*)`
    across the player-page stats tables before starting. It is the only evidence
    that will later show what changed.

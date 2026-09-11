@@ -31,7 +31,8 @@ over a full read.
 | `docs/architecture/IMPACT_MAP.md` | 190 | a task spans several areas, or its blast radius is unclear |
 | `docs/architecture/OFFICIAL_STATS_SCHEMA.md` | 750 | changing `stats` schema, loaders, or stats validation |
 | `docs/architecture/PLAYER_PAGE_STATS_MAPPING.md` | 96 | changing player-page parsing or normalization |
-| `docs/validation/OFFLINE_DATABASE_PREPARATION.md` | 258 | running or changing the offline backfill path |
+| `docs/validation/OFFLINE_DATABASE_PREPARATION.md` | 647 | running or changing the offline backfill path |
+| `docs/validation/MIGRATION_HEAD_HANDOVER.md` | 190 | applying a migration to the persistent `nba` database, or changing the preflight that gates it |
 | `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md` | 95 | reviewing the completed team-season acquisition |
 | `docs/validation/PLAYER_PAGE_CACHE_ACQUISITION.md` | 120 | performing an approved player-page acquisition |
 

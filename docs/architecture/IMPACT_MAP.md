@@ -174,7 +174,7 @@ schema.
   `player_postseason_*` 8, `player_team_postseason_*` 8; 16 of the 33 are
   postseason). There is **no `features` schema yet.**
 - **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables` → `0006_synthetic_team_codes` → `0007_team_bref_id_not_null` → `0008_drop_raw_schema`
-- **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only `0007` data preflight)
+- **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only preflight, one verdict per pending revision)
 - **Tests:** `test_core_models.py`, `test_stats_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`
 - **Docs:** `docs/architecture/SYSTEM_DESIGN.md` (loader invariants and natural keys), `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - **Critical actions:** applying a migration to a shared, persistent, or production-like database

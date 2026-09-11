@@ -155,29 +155,128 @@ different decision from one who reads "raw contains an unrecognized table".
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## What was and was not done
+
+The preflight, its tests, and the procedure ship. The apply step was **not** part
+of the card's implementation: `alembic upgrade head` against `nba` needs the
+owner's direct, current instruction, and the card does not supply it. The whole
+four-step procedure was rehearsed against a scratch database created and dropped
+for the purpose, so the document records observed output rather than predicted
+output.
+
+**The owner then gave that instruction, and the upgrade was applied on
+2026-09-12.** `nba` is at `0008_drop_raw_schema (head)`, readiness answers 200,
+and the run — backup, preflight, apply, verify — is recorded in
+[`MIGRATION_HEAD_HANDOVER.md`](../../docs/validation/MIGRATION_HEAD_HANDOVER.md#2026-09-12--0008_drop_raw_schema).
+The final acceptance criterion is met, by that separate instruction rather than
+by this card.
 
 ## Automated validation
 
-- Command:
-- Result:
+| Command | Result |
+|---|---|
+| `uv run pytest tests/unit/test_preflight_migration_data.py` | 17 passed |
+| `uv run ruff check .` | All checks passed |
+| `uv run mypy src/nba_data` | Success: no issues found in 70 source files |
+| `uv run pytest` | 892 passed, 27 skipped |
+| `bash scripts/validate_database.sh` | PostgreSQL validation passed; 28 integration tests passed, including the 4 in `test_preflight_migration_data_postgres.py`. The existing 0008 round trip still holds: "Revision 0008 downgrade exactly restored the raw schema catalog" and "Revision 0008 rejected an unrecognized raw object without deleting it" |
+| `uv run python scripts/validate_tasks.py` | Passed |
+
+Docker Desktop was not running; it was started so the database lane could run.
+
+### Rehearsal on a disposable database, 2026-09-11
+
+Scratch database `nba_test_tmp_preflightdoc` on the same server, dropped
+afterwards; `select datname from pg_database where datname like 'nba_test_tmp%'`
+returned nothing, and `nba` — untouched by the rehearsal — still reported
+`0007_team_bref_id_not_null` at that point.
+
+1. Readiness at `0007`: **503** `{"detail": "Database schema not ready"}` — the
+   audit inferred this from the code; it is now observed.
+2. Preflight at `0007`: exit **0**, `schema raw holds 3 relation(s) and 0
+   routine(s): raw_pages, scraper_requests, scraper_runs`, all three row counts 0.
+   Three relations, not the tables plus their indexes and owned sequences.
+3. Preflight with one row inserted into `raw.raw_pages`, one extra table, and one
+   view added to `raw`: exit **1**, three separate blockers.
+4. `alembic upgrade head`, then preflight: exit **0**, `schema raw is absent`.
+5. Readiness at head: **200** `{"status": "ready"}`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+Read-only against the real `nba`. Nothing here changes it.
 
-Expected result:
+1. `docker compose up -d postgres`
+2. Run the preflight against `nba`:
+   ```bash
+   uv run python scripts/preflight_migration_data.py \
+     --database-url postgresql+psycopg://nba:nba@localhost:5432/nba
+   ```
+3. Confirm `nba` is where it was:
+   ```bash
+   docker compose exec -T postgres psql -U nba -d nba -tAc "select version_num from alembic_version"
+   ```
+
+Expected result: step 2 exits 0 and prints a verdict for each migration — the
+`0007` NULL count at 0, then `Preflight passed` for both. Step 3 prints the
+revision unchanged: the command applied nothing.
+
+The `0008` verdict depends on when you run this. Since the 2026-09-12 upgrade the
+honest answer is `schema raw is absent; the revision has nothing left to drop.`
+and step 3 prints `0008_drop_raw_schema`. Before it, the same command printed
+`schema raw holds 3 relation(s) and 0 routine(s): raw_pages, scraper_requests,
+scraper_runs` with all three row counts 0, and step 3 printed
+`0007_team_bref_id_not_null`. Both are passes; only the shape of the schema
+differs.
 
 ## Manual sad path
 
-1.
-2.
-3.
+Part A — the argument guards, which need no database at all:
 
-Expected result:
+1. `uv run python scripts/preflight_migration_data.py --database-url ""`
+2. `uv run python scripts/preflight_migration_data.py --database-url sqlite:///./local.db`
+
+Expected result: both exit 2 before any connection is opened, naming the problem
+(`cannot be empty`, `not 'sqlite'`). No password is echoed back.
+
+Part B — the blockers. **Use a disposable database, never `nba`:**
+
+1. `docker compose exec -T postgres psql -U nba -d nba -c 'CREATE DATABASE nba_test_tmp_sadpath'`
+2. `DATABASE_URL=postgresql+psycopg://nba:nba@localhost:5432/nba_test_tmp_sadpath uv run alembic upgrade 0007_team_bref_id_not_null`
+3. Seed the two different kinds of problem:
+   ```bash
+   docker compose exec -T postgres psql -U nba -d nba_test_tmp_sadpath \
+     -c "insert into raw.raw_pages (url, source, cache_path, content_hash, status) values ('u','s','p','h','ok')" \
+     -c "create table raw._unexpected_guard (id integer)"
+   ```
+4. Run the preflight against `nba_test_tmp_sadpath`.
+5. `docker compose exec -T postgres psql -U nba -d nba -c 'DROP DATABASE nba_test_tmp_sadpath'`
+
+Expected result: step 4 exits 1 and reports the two problems *separately* —
+`raw contains an unrecognized table 'raw._unexpected_guard'; DROP SCHEMA raw runs
+without CASCADE and would abort the upgrade.` and `raw.raw_pages has 1 row(s);
+0008_drop_raw_schema discards them.` — followed by `Migration 0008_drop_raw_schema
+must not be applied.` and `Remediation is a separate decision for the user.`
+Nothing is repaired, and the seeded objects are still there at step 5.
 
 ## Known limitations
 
-- None.
+- **The apply step is not done.** `nba` remains at `0007` and
+  `GET /api/v1/health/ready` still answers 503 against it. Everything needed to
+  authorize it is in place; the instruction is yours to give.
+- The integration lane runs at head, where `raw` is already gone, so it can only
+  exercise the schema-absent branch on a real server. The populated-table and
+  unknown-object branches are covered by unit tests against a stub, and were
+  additionally exercised against real PostgreSQL in the rehearsal above. Wiring a
+  `0007`-stage preflight call into `scripts/validate_postgres_local.py` would
+  close that gap permanently, but changing that script is out of this card's
+  scope.
+- The `0008` check enumerates relations (`pg_class`) and routines (`pg_proc`) in
+  `raw`. A standalone enum type or domain in that schema would not be listed; it
+  would still abort the upgrade safely, which
+  `scripts/validate_postgres_local.py` already proves leaves the object intact.
+- One file outside the card's stated scope changed: `.agents/index.md` gained a
+  row for the new document, which would otherwise be unroutable. The line count
+  it records for `OFFLINE_DATABASE_PREPARATION.md` (258) was already stale before
+  this card — that file is 642 lines — and was left alone.
+- `git mv` staged the card's move out of `tasks/backlog/`. Nothing is committed,
+  and unstaging it needs a Git command this card does not authorize.

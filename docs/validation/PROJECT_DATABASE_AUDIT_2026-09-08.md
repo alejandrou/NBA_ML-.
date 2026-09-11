@@ -28,6 +28,8 @@ The main issues are an unapplied migration, broadly privileged database access a
 
 **Follow-up:** Plan a separately authorized migration after reviewing its effect. Migration 0008 removes the raw tables/schema. Nothing was applied during this audit.
 
+**Resolved 2026-09-12.** The owner authorized the upgrade and it was applied: `nba` is at `0008_drop_raw_schema (head)`, the `raw` schema is gone, and the readiness probe now answers 200 where this report inferred 503. The run — backup, preflight, apply, verify — is recorded in [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md). The observations in this report remain as recorded on 2026-09-08; where they count `raw` objects, see that record for the post-upgrade shape.
+
 Evidence: [migration 0008](../../alembic/versions/0008_drop_raw_schema.py), [readiness service](../../src/nba_data/api/services/readiness.py).
 
 ### 2. Medium — local database access is broader than the API requires
@@ -71,7 +73,7 @@ These are documentation conflicts, not reasons to remove working features. Updat
 | Area | Observed result |
 | --- | --- |
 | Schemas | `core`, `stats`, `raw`, `public` |
-| Tables | 44: 7 core, 33 stats, 3 raw, 1 migration-version table |
+| Tables | 44: 7 core, 33 stats, 3 raw, 1 migration-version table (41 since `0008` dropped the 3 raw tables on 2026-09-12) |
 | Columns inspected | 1,229 across those tables |
 | ORM comparison | All 40 application tables present; no column name, type, length, numeric precision/scale, or nullability differences |
 | Keys | All 121 application primary/unique/foreign-key definitions match by columns and FK targets |

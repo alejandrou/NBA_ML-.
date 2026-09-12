@@ -121,24 +121,85 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run ruff check .`
+- Result: `All checks passed!`
+- Command: `uv run pytest`
+- Result: `949 passed, 27 skipped, 7 warnings in 15.36s`
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: `Task validation passed.`
+- Command: `git diff --check`
+- Result: clean (only Git's LF→CRLF working-copy notices).
+
+## Edits
+
+- `.agents/skills/api-fastapi/SKILL.md:33` — liveness rule kept verbatim;
+  "Readiness is a separate future task." replaced by a pointer to
+  `API_CONTRACT.md` (public shape) and `API_ARCHITECTURE.md` (runtime boundaries).
+- `docs/architecture/API_ARCHITECTURE.md:58` — "App foundation tests do not need
+  PostgreSQL" kept; "a future, separate layer" replaced by the PostgreSQL lane
+  under `tests/integration/`, gated in CI by the `PostgreSQL integration` job.
+- Sweep finds, same subject (integration lane), fixed in the same change:
+  - `.agents/skills/testing/SKILL.md:12` — "future DB integrations" → the
+    PostgreSQL integration lane under `tests/integration/`.
+  - `.agents/skills/api-fastapi/references/testing.md:3` — "future real-DB
+    integrations" → the real-DB integration lane under `tests/integration/`.
+
+Facts checked before editing: `tests/integration/` holds six test modules
+(`test_api_postgres.py`, `test_api_unreachable_database.py`,
+`test_preflight_migration_data_postgres.py`,
+`test_synthetic_team_code_constraints_postgres.py`,
+`test_team_schema_contract_postgres.py`, `test_team_season_loader_postgres.py`);
+`.github/workflows/ci.yml:38-39` defines job `postgres-integration` named
+`PostgreSQL integration`, running `uv run pytest -ra tests/integration` against
+`nba_test_ci`.
+
+## Sweep record
+
+Searched `.agents/**` and `docs/architecture/**` for
+`future|planned|not yet|separate task|later task` and for
+`readiness|health/ready|integration|PostgreSQL CI|nba_test_ci`.
+
+Remaining hits, judged not stale on readiness / the integration lane / the CI job:
+`.agents/index.md` (no such claim); `backlog-planning`, `prepare-task`,
+`plan-task` skills ("future critical action" — generic card wording);
+`SYSTEM_DESIGN.md:39,94` (genuine future work, out of scope);
+`IMPACT_MAP.md:191,204,207` (features/OVR); `PLAYER_PAGE_STATS_MAPPING.md:5`,
+`OFFICIAL_STATS_SCHEMA.md:50,516,621,676,678` (stats/parsing subjects);
+`API_CONTRACT.md:92` (team-name remediation), `:143` (player routes, genuinely
+not yet served in that section; audit found the contract accurate).
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `git diff main -- .agents docs` on this branch.
+2. Read `.agents/skills/api-fastapi/SKILL.md` line 33 and follow both pointers.
+3. Read `docs/architecture/API_ARCHITECTURE.md` line 58 and compare with
+   `ls tests/integration` and the `postgres-integration` job in `.github/workflows/ci.yml`.
 
-Expected result:
+Expected result: four one-line changes, each only a tense/fact correction; the
+pointers land on the readiness section of `API_CONTRACT.md` and the "Health and
+readiness" section of `API_ARCHITECTURE.md`; the described lane and CI job exist.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `rg -n "future task|future, separate layer|future DB integrations|future real-DB" .agents docs/architecture`
+2. `git diff main --stat -- src tests .github alembic scripts`
+3. Confirm the liveness sentence in `SKILL.md:33` and "HTTP tests use offline
+   `TestClient`..." in `API_ARCHITECTURE.md:58` are unchanged.
 
-Expected result:
+Expected result: step 1 returns nothing; step 2 shows no changes; step 3 shows
+the still-binding rules intact, with no new rule, endpoint, or constraint added.
+
+## Review decisions
+
+- `.agents/skills/api-fastapi/references/session-lifecycle.md:5` was also stale:
+  it called per-app Engine wiring future work that "belongs in F5-002", which
+  shipped. It is outside the card's two named subjects but squarely the finding
+  this card is titled after, in the same skill folder, so it was fixed here rather
+  than split into a card: the sentence now points at the lifespan in
+  `src/nba_data/api/app.py`, and the code sample moves Engine creation inside
+  `lifespan` to match that file and `API_ARCHITECTURE.md` ("Lifespan builds the
+  Engine and the sessionmaker"). The `get_request_session` sample already matched
+  `src/nba_data/api/dependencies.py` and was left as is.
 
 ## Known limitations
 

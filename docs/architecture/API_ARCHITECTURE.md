@@ -55,4 +55,4 @@ ORM entities are not public contracts. Responses use explicit Pydantic schemas a
 
 ## Testing strategy
 
-HTTP tests use offline `TestClient`, local fixtures, and dependency overrides. App foundation tests do not need PostgreSQL; real DB integration is a future, separate layer.
+HTTP tests use offline `TestClient`, local fixtures, and dependency overrides. App foundation tests do not need PostgreSQL; real DB integration is the separate PostgreSQL lane under `tests/integration/`, gated in CI by the `PostgreSQL integration` job.

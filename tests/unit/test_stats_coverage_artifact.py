@@ -3,12 +3,13 @@ from __future__ import annotations
 import ast
 import gzip
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 import nba_data.validation.stats_coverage as stats_coverage
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
 from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
 from nba_data.validation.official_stats import STATS_TABLE_SPECS
 from nba_data.validation.stats_coverage import (
@@ -870,3 +871,40 @@ def test_write_stats_coverage_artifact_is_atomic_and_leaves_no_temp_file(tmp_pat
     assert output_path.exists()
     leftover_temp_files = list(output_path.parent.glob(".*.tmp"))
     assert leftover_temp_files == []
+
+
+@pytest.mark.unit
+def test_provenance_sidecars_do_not_change_the_coverage_artifact(tmp_path: Path) -> None:
+    """Counts, source issues, and the fingerprint all derive from `*.html.gz`."""
+    cache = HtmlCache(tmp_path / "cache")
+    _write_team_season_page(cache, TEAM_SEASON_BOS_2000)
+    _write_player_page(cache, "hardeja01", HARDEN_REGULAR)
+    without_sidecars = build_stats_coverage_artifact(cache_root=cache.root_dir).to_dict()
+
+    metadata = CacheFetchMetadata(
+        fetched_at=datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC),
+        http_status=200,
+        final_url=BOS_2000_URL,
+    )
+    for url in (
+        BOS_2000_URL,
+        "https://www.basketball-reference.com/players/h/hardeja01.html",
+    ):
+        path = cache.metadata_path_for_url(url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "fetched_at": metadata.fetched_at.isoformat(),
+                    "http_status": metadata.http_status,
+                    "final_url": url,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    with_sidecars = build_stats_coverage_artifact(cache_root=cache.root_dir).to_dict()
+
+    assert cache.metadata_path_for_url(BOS_2000_URL).exists()
+    assert with_sidecars == without_sidecars

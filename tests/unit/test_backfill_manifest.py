@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 from copy import deepcopy
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,8 @@ from nba_data.scraping.backfill_manifest import (
     run_backfill_acquisition,
     validate_backfill_manifest,
 )
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
+from nba_data.scraping.client import FetchResult
 
 MANIFEST = Path("tests/fixtures/manifests/approved_team_season_manifest.json")
 BOS_URL = "https://www.basketball-reference.com/teams/BOS/2024.html"
@@ -34,6 +36,9 @@ def _write_manifest(tmp_path: Path, data: dict[str, object]) -> Path:
     return path
 
 
+FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
+
+
 class FakeBackfillClient:
     def __init__(self, html: str = "<html>network</html>", fail_on: str | None = None) -> None:
         self.html = html
@@ -41,11 +46,21 @@ class FakeBackfillClient:
         self.calls: list[tuple[str, bool]] = []
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
+        return self.fetch(url, force_refresh=force_refresh).html
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
         self.calls.append((url, force_refresh))
         if url == self.fail_on:
             msg = f"planned failure for {url}"
             raise RuntimeError(msg)
-        return self.html
+        return FetchResult(
+            html=self.html,
+            metadata=CacheFetchMetadata(
+                fetched_at=FETCHED_AT,
+                http_status=200,
+                final_url=url,
+            ),
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -308,3 +323,35 @@ def test_cli_backfill_acquire_uses_fake_client_only(
     report = json.loads(result.output)
     assert report["fetched"] == 2
     assert report["live_request_count"] == 2
+
+
+@pytest.mark.unit
+def test_acquisition_records_provenance_beside_the_page_it_fetched(tmp_path) -> None:
+    data = _manifest_data()
+    data["entries"] = [data["entries"][0]]
+    manifest_path = _write_manifest(tmp_path, data)
+    cache = HtmlCache(tmp_path / "cache")
+    client = FakeBackfillClient("<html>fresh</html>")
+
+    run_backfill_acquisition(manifest_path, cache=cache, client=client)
+
+    assert cache.get_metadata(BOS_URL) == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url=BOS_URL,
+    )
+
+
+@pytest.mark.unit
+def test_acquisition_records_no_provenance_for_a_page_it_did_not_fetch(tmp_path) -> None:
+    data = _manifest_data()
+    data["entries"] = [data["entries"][0]]
+    manifest_path = _write_manifest(tmp_path, data)
+    cache = HtmlCache(tmp_path / "cache")
+    cache.set(BOS_URL, "<html>cached</html>")
+    client = FakeBackfillClient()
+
+    run_backfill_acquisition(manifest_path, cache=cache, client=client)
+
+    assert client.calls == []
+    assert cache.get_metadata(BOS_URL) is None

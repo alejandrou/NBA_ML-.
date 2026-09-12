@@ -1,9 +1,13 @@
 import inspect
+from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 
-from nba_data.scraping.cache import HtmlCache
+from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
+from nba_data.scraping.client import BasketballReferenceClient, FetchResult
 from nba_data.scraping.team_season_pages import (
     CachedBasketballReferencePageProvider,
     CachedTeamSeasonHtmlProvider,
@@ -19,14 +23,27 @@ FIXTURE = Path("tests/fixtures/html/team_season_minimal.html")
 REALISTIC_FIXTURE = Path("tests/fixtures/html/team_season_realistic.html")
 
 
+FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
+
+
 class FakeClient:
     def __init__(self, html: str = "<html>network</html>") -> None:
         self.html = html
         self.calls: list[tuple[str, bool]] = []
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
+        return self.fetch(url, force_refresh=force_refresh).html
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
         self.calls.append((url, force_refresh))
-        return self.html
+        return FetchResult(
+            html=self.html,
+            metadata=CacheFetchMetadata(
+                fetched_at=FETCHED_AT,
+                http_status=200,
+                final_url=url,
+            ),
+        )
 
 
 @pytest.mark.unit
@@ -216,3 +233,65 @@ def test_parse_cached_team_season_page_does_not_accept_client() -> None:
     signature = inspect.signature(parse_cached_team_season_page)
 
     assert "client" not in signature.parameters
+
+
+@pytest.mark.unit
+def test_fetch_basketball_reference_html_records_provenance_on_a_miss(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+    client = FakeClient("<html>fresh</html>")
+
+    fetch_basketball_reference_html(url, cache=cache, client=client)
+
+    assert cache.get_metadata(url) == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url=url,
+    )
+
+
+@pytest.mark.unit
+def test_fetch_basketball_reference_html_records_no_provenance_on_a_cache_hit(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+    cache.set(url, "<html>cached</html>")
+    client = FakeClient()
+
+    fetch_basketball_reference_html(url, cache=cache, client=client)
+
+    assert client.calls == []
+    assert cache.get_metadata(url) is None
+
+
+@pytest.mark.unit
+def test_a_client_owned_cache_write_and_the_caller_write_leave_one_body_and_one_sidecar(
+    tmp_path,
+) -> None:
+    """The client and the caller can both own the same cache; the second write
+    must not delete the provenance the first one recorded."""
+    cache = HtmlCache(tmp_path)
+    url = build_team_season_url("BOS", 2024)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>fresh</html>")
+
+    settings = Settings(
+        _env_file=None,
+        scraper_user_agent="nba-data-tests/0.1",
+        scraper_min_delay_seconds=MINIMUM_SCRAPER_DELAY_SECONDS,
+        scraper_max_requests_per_minute=10,
+    )
+    client = BasketballReferenceClient(
+        settings,
+        cache=cache,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleeper=lambda _: None,
+        now=lambda: FETCHED_AT,
+    )
+
+    assert fetch_basketball_reference_html(url, cache=cache, client=client) == "<html>fresh</html>"
+
+    written = sorted(path.name for path in tmp_path.rglob("*") if path.is_file())
+
+    assert written == sorted([cache.path_for_url(url).name, cache.metadata_path_for_url(url).name])
+    assert cache.get_metadata(url) is not None

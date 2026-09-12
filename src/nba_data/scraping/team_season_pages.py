@@ -99,9 +99,9 @@ def fetch_basketball_reference_html(
         if cached is not None:
             return cached
 
-    html = client.get(url, force_refresh=force_refresh)
-    cache.set(url, html)
-    return html
+    result = client.fetch(url, force_refresh=force_refresh)
+    cache.set(url, result.html, metadata=result.metadata)
+    return result.html
 
 
 def fetch_team_season_html(

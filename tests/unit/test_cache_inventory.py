@@ -1,11 +1,12 @@
 import gzip
 import inspect
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 import nba_data.scraping.cache_inventory as cache_inventory
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
 from nba_data.scraping.cache_inventory import build_cached_html_inventory
 
 BOS_2024_URL = "https://www.basketball-reference.com/teams/BOS/2024.html"
@@ -196,6 +197,27 @@ def test_inventory_returns_empty_report_when_cache_root_is_missing(tmp_path) -> 
     assert inventory.entries == ()
     assert inventory.valid_candidates == 0
     assert inventory.to_dict()["entries"] == []
+
+
+@pytest.mark.unit
+def test_a_provenance_sidecar_is_invisible_to_discovery(tmp_path) -> None:
+    """The sidecar sits outside the `*.html.gz` glob discovery depends on."""
+    cache = HtmlCache(tmp_path / "cache")
+    cache.set(BOS_2024_URL, VALID_HTML)
+    without_sidecar = build_cached_html_inventory(cache=cache).to_dict()
+
+    cache.set(
+        BOS_2024_URL,
+        VALID_HTML,
+        metadata=CacheFetchMetadata(
+            fetched_at=datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC),
+            http_status=200,
+            final_url=BOS_2024_URL,
+        ),
+    )
+
+    assert cache.metadata_path_for_url(BOS_2024_URL).exists()
+    assert build_cached_html_inventory(cache=cache).to_dict() == without_sidecar
 
 
 @pytest.mark.unit

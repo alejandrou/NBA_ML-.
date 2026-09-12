@@ -1,9 +1,13 @@
+from datetime import UTC, datetime, timedelta
+
 import httpx
 import pytest
 
 from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient, RateLimitExceededError
+
+FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
 
 
 class FakeClock:
@@ -205,3 +209,125 @@ def test_client_raises_after_repeated_429() -> None:
 
     with pytest.raises(RateLimitExceededError):
         client.get("https://www.basketball-reference.com/teams/BOS/2024.html")
+
+
+@pytest.mark.unit
+def test_fetch_records_status_final_url_and_the_injected_now() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>ok</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(
+        _settings(),
+        http_client=http_client,
+        sleeper=lambda _: None,
+        now=lambda: FETCHED_AT,
+    )
+
+    result = client.fetch("https://www.basketball-reference.com/teams/BOS/2024.html")
+
+    assert result.html == "<html>ok</html>"
+    assert result.metadata == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url="https://www.basketball-reference.com/teams/BOS/2024.html",
+    )
+
+
+@pytest.mark.unit
+def test_fetch_records_the_url_actually_served_after_a_redirect() -> None:
+    requested = "https://www.basketball-reference.com/teams/BOS/2024.html"
+    served = "https://www.basketball-reference.com/teams/BOS/2024_final.html"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == requested:
+            return httpx.Response(301, headers={"Location": served})
+        return httpx.Response(200, text="<html>ok</html>")
+
+    http_client = httpx.Client(
+        transport=httpx.MockTransport(handler),
+        follow_redirects=True,
+    )
+    client = BasketballReferenceClient(
+        _settings(),
+        http_client=http_client,
+        sleeper=lambda _: None,
+        now=lambda: FETCHED_AT,
+    )
+
+    result = client.fetch(requested)
+
+    assert result.metadata is not None
+    assert result.metadata.final_url == served
+    assert result.metadata.http_status == 200
+
+
+@pytest.mark.unit
+def test_fetch_reports_no_provenance_and_writes_nothing_on_a_cache_hit(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = "https://www.basketball-reference.com/teams/BOS/2024.html"
+    cache.set(url, "<html>cached</html>")
+    metadata_path = cache.metadata_path_for_url(url)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("network should not be called")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(_settings(), cache=cache, http_client=http_client)
+
+    result = client.fetch(url)
+
+    assert result.html == "<html>cached</html>"
+    assert result.metadata is None
+    assert not metadata_path.exists()
+
+
+@pytest.mark.unit
+def test_a_client_that_owns_the_cache_writes_provenance_on_a_live_fetch(tmp_path) -> None:
+    cache = HtmlCache(tmp_path)
+    url = "https://www.basketball-reference.com/teams/BOS/2024.html"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>fresh</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(
+        _settings(),
+        cache=cache,
+        http_client=http_client,
+        sleeper=lambda _: None,
+        now=lambda: FETCHED_AT,
+    )
+
+    assert client.get(url) == "<html>fresh</html>"
+    assert cache.get_metadata(url) == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url=url,
+    )
+
+
+@pytest.mark.unit
+def test_get_returns_only_html_and_is_a_thin_wrapper_over_fetch() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>ok</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(_settings(), http_client=http_client, sleeper=lambda _: None)
+
+    assert client.get("https://www.basketball-reference.com/teams/BOS/2024.html") == "<html>ok</html>"
+
+
+@pytest.mark.unit
+def test_the_default_fetch_time_is_timezone_aware_utc() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>ok</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(_settings(), http_client=http_client, sleeper=lambda _: None)
+
+    result = client.fetch("https://www.basketball-reference.com/teams/BOS/2024.html")
+
+    assert result.metadata is not None
+    assert result.metadata.fetched_at.tzinfo is not None
+    assert result.metadata.fetched_at.utcoffset() == timedelta(0)

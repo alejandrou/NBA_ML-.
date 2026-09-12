@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -13,13 +14,16 @@ import nba_data.cli.main as cli_main
 from nba_data.cli.main import app
 from nba_data.config.settings import get_settings
 from nba_data.db.models import Player, PlayerSeason, Season
-from nba_data.scraping.cache import HtmlCache
-from nba_data.scraping.client import RateLimitExceededError
+from nba_data.scraping import player_page_acquisition as acquisition
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
+from nba_data.scraping.client import FetchResult, RateLimitExceededError
 from nba_data.scraping.player_page_acquisition import (
     PlayerPageAcquisitionConfigurationError,
     PlayerPageAcquisitionStopped,
+    PlayerPageCacheWriteError,
     PlayerPageManifest,
     PlayerPageManifestEntry,
+    _write_html_to_cache_safely,
     acquire_player_page_manifest,
     build_player_page_dry_run_report,
     build_player_page_manifest,
@@ -28,6 +32,13 @@ from nba_data.scraping.player_page_acquisition import (
 )
 
 PLAYER_URL = "https://www.basketball-reference.com/players/h/hardeja01.html"
+
+
+FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
+
+
+def _metadata(url: str) -> CacheFetchMetadata:
+    return CacheFetchMetadata(fetched_at=FETCHED_AT, http_status=200, final_url=url)
 
 
 class FakeAcquisitionClient:
@@ -44,12 +55,15 @@ class FakeAcquisitionClient:
         self.calls: list[tuple[str, bool]] = []
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
+        return self.fetch(url, force_refresh=force_refresh).html
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
         self.calls.append((url, force_refresh))
         if url == self.rate_limit_on:
             raise RateLimitExceededError(f"planned rate limit for {url}")
         if url == self.fail_on:
             raise RuntimeError(f"planned failure for {url}")
-        return self.html
+        return FetchResult(html=self.html, metadata=_metadata(url))
 
 
 @pytest.fixture(autouse=True)
@@ -507,3 +521,119 @@ def test_cli_acquire_player_pages_runs_and_writes_report(
     assert full_report["live_request_count"] == 1
     assert summary["entries"] == len(full_report["entries"])
     assert HtmlCache(tmp_path / "cache").get(PLAYER_URL) == "<!doctype html><html>cli fresh</html>"
+
+
+@pytest.mark.unit
+def test_player_page_acquisition_records_provenance_beside_the_page_it_fetched(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest(
+        PlayerPageManifestEntry(
+            player_id="hardeja01",
+            first_letter="h",
+            url=PLAYER_URL,
+            matched_season_years=(2021,),
+        )
+    )
+    cache = HtmlCache(tmp_path / "cache")
+    client = FakeAcquisitionClient("<!doctype html><html>fresh</html>")
+
+    acquire_player_page_manifest(manifest, cache=cache, client=client)
+
+    assert cache.get_metadata(PLAYER_URL) == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url=PLAYER_URL,
+    )
+
+
+@pytest.mark.unit
+def test_player_page_acquisition_records_no_provenance_for_a_cache_hit(tmp_path: Path) -> None:
+    manifest = _manifest(
+        PlayerPageManifestEntry(
+            player_id="hardeja01",
+            first_letter="h",
+            url=PLAYER_URL,
+            matched_season_years=(2021,),
+        )
+    )
+    cache = HtmlCache(tmp_path / "cache")
+    cache.set(PLAYER_URL, "<html>cached</html>")
+    client = FakeAcquisitionClient("<!doctype html><html>fresh</html>")
+
+    acquire_player_page_manifest(manifest, cache=cache, client=client)
+
+    assert client.calls == []
+    assert cache.get_metadata(PLAYER_URL) is None
+
+
+@pytest.mark.unit
+def test_player_page_safe_write_refuses_an_existing_sidecar_with_no_body(tmp_path: Path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    metadata_path = cache.metadata_path_for_url(PLAYER_URL)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(PlayerPageCacheWriteError, match="cache metadata file"):
+        _write_html_to_cache_safely(
+            cache,
+            PLAYER_URL,
+            "<html>fresh</html>",
+            metadata=_metadata(PLAYER_URL),
+        )
+
+    assert not cache.path_for_url(PLAYER_URL).exists()
+    assert metadata_path.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.unit
+def test_player_page_safe_write_writes_body_and_sidecar_together(tmp_path: Path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+
+    _write_html_to_cache_safely(
+        cache,
+        PLAYER_URL,
+        "<html>fresh</html>",
+        metadata=_metadata(PLAYER_URL),
+    )
+
+    written = sorted(path.name for path in (tmp_path / "cache").rglob("*") if path.is_file())
+
+    assert written == sorted(
+        [
+            cache.path_for_url(PLAYER_URL).name,
+            cache.metadata_path_for_url(PLAYER_URL).name,
+        ]
+    )
+    assert cache.get_metadata(PLAYER_URL) == _metadata(PLAYER_URL)
+
+
+@pytest.mark.unit
+def test_player_page_failed_sidecar_write_leaves_neither_file_behind(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    final_path = cache.path_for_url(PLAYER_URL)
+    metadata_path = cache.metadata_path_for_url(PLAYER_URL)
+    real_replace = acquisition.os.replace
+
+    def fail_on_metadata_replace(source, target) -> None:
+        if str(target).endswith(".meta.json"):
+            msg = f"planned replace failure for {target}"
+            raise OSError(msg)
+        real_replace(source, target)
+
+    monkeypatch.setattr(acquisition.os, "replace", fail_on_metadata_replace)
+
+    with pytest.raises(OSError, match="planned replace failure"):
+        _write_html_to_cache_safely(
+            cache,
+            PLAYER_URL,
+            "<html>fresh</html>",
+            metadata=_metadata(PLAYER_URL),
+        )
+
+    assert not final_path.exists()
+    assert not metadata_path.exists()
+    assert list(final_path.parent.glob(".*.tmp")) == []

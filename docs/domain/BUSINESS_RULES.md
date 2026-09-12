@@ -14,8 +14,12 @@
 - Real teams change name, city, abbreviation, and franchise affiliation over
   time. The rules below settle how that history is modeled.
 - A `core.teams` row is a **code-era identity**: one row per Basketball Reference
-  team code. `SEA` and `OKC` are two rows, as are `NJN` and `BRK`, and `CHH`,
-  `NOH`, and `NOP`.
+  team code. `SEA` and `OKC` are two rows, as are `NJN` and `BRK`, and as are
+  Charlotte's `CHH`, `CHA`, and `CHO`.
+- The rule applies uniformly to all five code transitions the archive contains:
+  `VAN` to `MEM`, `SEA` to `OKC`, `NJN` to `BRK`, `CHA` to `CHO` (a rename in
+  place), and the `CHH` to `NOH` to `NOK` to `NOP` chain. New Orleans' codes are
+  `NOH`, `NOK`, and `NOP`; none of them is Charlotte's.
 - Aliases carry the per-row history. `core.team_aliases`, populated by the
   team-season loader, holds the name and abbreviation a team used over a range of
   seasons.
@@ -27,6 +31,65 @@
 - Team aliases may have `from_season_year` and `to_season_year`.
 - `TOT` and every multi-team marker are not real teams and must not be inserted
   into `core.teams` or `core.team_seasons`.
+
+### Every team code resolves to exactly one name
+
+All 775 cached team-season pages were parsed with the repository's own team-name
+selector — `TEAM_NAME_SELECTOR`, `h1 > span:nth-of-type(2)`, in
+`src/nba_data/scraping/parsers/team_season.py` — and the parsed name grouped by
+the code in the cache filename. **37 distinct codes, zero parse failures, and
+every code resolves to exactly one team name.** No code is reused by a different
+club and no code changes name mid-archive, so a plain code-to-name map is correct
+for every code present and **effective-dated franchise edges are not required.**
+
+Two qualifications make the map safe to rely on:
+
+- **A code's season set is not always an interval.** `NOH` covers 2003–2005 and
+  2008–2013, interrupted by `NOK` for 2006–2007. It is the only such code, and it
+  carries the same name across both runs, so this narrows nothing about the
+  code-to-name result — but never infer a contiguous season range from a code.
+- **The map runs from code to name and never the reverse.** `CHH` and `CHO` both
+  render *Charlotte Hornets*, the one name in the archive carried by two codes,
+  so a lookup by name is ambiguous for exactly this pair.
+
+The measurement covers the 2000–2025 archive. Acquiring earlier seasons changes
+the evidence base and reopens it.
+
+### Charlotte has two lineages, and they disagree
+
+The NBA separated Charlotte's organizational and statistical history on purpose:
+
+- **Organizational continuity** — the 1988 Charlotte expansion franchise
+  relocated to New Orleans in 2002 and is the legal entity that is today the
+  Pelicans; the 2004 Bobcats were a new expansion franchise. This lineage runs
+  `CHH` to `NOH` to `NOK` to `NOP`.
+- **Official statistical history** — on the 2013 renaming the NBA assigned the
+  1988–2002 Charlotte Hornets records to the Charlotte club, joined to the
+  Bobcats' 2004–2014 history, so the New Orleans franchise's official history
+  begins in 2002-03. This lineage runs `CHH` plus `CHA` to `CHO`.
+
+Sources:
+<https://www.nba.com/hornets/charlotte-hornets-name-returns-carolinas> and
+<https://www.nba.com/pelicans/news/countdown-pelicans-training-camp-18-days>.
+
+`VAN`/`MEM`, `SEA`/`OKC`, and `NJN`/`BRK` are ordinary relocations where the two
+lineages agree. Charlotte is the one case in this archive where they diverge,
+because the league moved the history without moving the entity. A single lineage
+column can carry one of the two, so it would have to pick a side silently in the
+one case where the choice is visible. The code-era rule asserts neither, which is
+why it is the right shape here rather than a smaller answer; both lineages are
+recorded above so later work starts from the distinction.
+
+### `core.teams.franchise_id` stays, unwritten
+
+`franchise_id` remains a nullable column on `core.teams`, created by migration
+`0001` and written by nothing in `src/`. That is the standing disposition. The
+column is kept because a real generator for it exists — curated lineage data —
+and it stays empty and unserved because the archive asserts no lineage. It is
+withdrawn from the v1 teams response; see `docs/architecture/API_CONTRACT.md`.
+Reinstating it takes a card that names **which** of the two lineages above it
+carries, states where the curated data comes from, and carries its own backfill
+approval.
 
 ## Players
 

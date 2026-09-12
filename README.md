@@ -17,6 +17,11 @@ cp .env.example .env          # when you need local overrides
 docker compose up -d postgres # local database
 ```
 
+`docker compose up -d postgres` publishes the database on the loopback address
+only, so it is reachable from this machine and no other. To reach it from
+another host, set `POSTGRES_BIND_HOST` (for example `0.0.0.0`) before bringing
+the container up.
+
 ## Validation
 
 ```bash

@@ -129,29 +129,128 @@ review evidence rather than silently widening the binding again.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `docker compose config` with no variables set
+- Result: passed. Renders `host_ip: 127.0.0.1`, `published: "5432"`,
+  `target: 5432`, `protocol: tcp`.
+
+- Command: `POSTGRES_BIND_HOST=0.0.0.0 POSTGRES_PORT=5433 docker compose config`
+- Result: passed. Renders `host_ip: 0.0.0.0`, `published: "5433"` — the operator
+  override works and `POSTGRES_PORT` keeps its independent meaning.
+
+- Command: `uv run ruff check .`
+- Result: passed. `All checks passed!`
+
+- Command: `uv run pytest`
+- Result: passed. 892 passed, 27 skipped, 7 warnings in 20.57s.
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: passed. `Task validation passed.`
+
+- Command: `bash scripts/validate_database.sh`
+- Result: passed, exit code 0. Brought the container up, created
+  `nba_test_tmp_788ee423c6664ecf`, ran `0007 -> 0008`, the `0008` downgrade
+  (raw schema catalog exactly restored), the unrecognized-raw-object rejection,
+  `upgrade head`, `alembic check`, then 28 integration tests in 405s, and dropped
+  the temporary database. Zero `nba_test_tmp%` databases remain. The 405s is the
+  freshly recreated container running cold, not a regression from this card; the
+  same lane took seconds against the warm container before the recreate.
+
+- Command: connect to the default `DATABASE_URL`
+  (`postgresql+psycopg://nba:nba@localhost:5432/nba`) after the recreate
+- Result: passed. Connected, 41 application tables, 310 MB, `alembic_version` at
+  `0008_drop_raw_schema`. The archive is intact.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Confirm the default binding with nothing set:
 
-Expected result:
+   ```bash
+   docker compose config
+   ```
+
+   Expected result: the `ports` entry shows `host_ip: 127.0.0.1` and
+   `published: "5432"`.
+
+2. Confirm the running container picked it up:
+
+   ```bash
+   docker ps --filter name=nba_postgres --format "{{.Ports}}"
+   ```
+
+   Expected result: `127.0.0.1:5432->5432/tcp` — one mapping, no `0.0.0.0`, no
+   `[::]`. Before this card it was `0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp`.
+
+3. Confirm the application still connects unchanged:
+
+   ```bash
+   uv run python -c "from sqlalchemy import create_engine, text; e = create_engine('postgresql+psycopg://nba:nba@localhost:5432/nba'); c = e.connect(); print(c.execute(text('select 1')).scalar())"
+   ```
+
+   Expected result: prints `1`. No connection string anywhere changed, because
+   every consumer was already on `localhost`.
+
+Expected result: the database is published on loopback only, and every local
+consumer works exactly as before.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Ask for the old, wide binding explicitly and confirm it is still available:
 
-Expected result:
+   ```bash
+   POSTGRES_BIND_HOST=0.0.0.0 docker compose config
+   ```
+
+   Expected result: `host_ip: 0.0.0.0`. The wide option was not removed — it
+   stopped being the default. Nothing is applied; `docker compose config` renders
+   and starts nothing.
+
+2. Confirm the port is no longer served on a non-loopback interface, from the
+   host, with the container running under the new binding:
+
+   ```bash
+   powershell -Command "Test-NetConnection -ComputerName (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' } | Select-Object -First 1).IPAddress -Port 5432 -InformationLevel Quiet"
+   ```
+
+   Expected result: `False`. The same probe against `127.0.0.1` returns `True`.
+
+3. Confirm a stale `.env` cannot silently re-widen the binding. `.env.example`
+   ships `POSTGRES_BIND_HOST=127.0.0.1`; an existing `.env` written before this
+   card has no such key.
+
+   Expected result: the Compose default `127.0.0.1` applies, so an old `.env`
+   gets the safe binding rather than the old wide one.
+
+Expected result: widening stays possible and deliberate; forgetting to decide
+gets loopback.
 
 ## Known limitations
 
-- None.
+- **The IPv4-only question was tested, not assumed.** `127.0.0.1` binds IPv4
+  loopback only, and on this machine `localhost` resolves to `::1` first
+  (`getaddrinfo` returns `::1` then `127.0.0.1`). A disposable probe container
+  published on `127.0.0.1:5433` still accepted
+  `postgresql+psycopg://...@localhost:5433/...`, confirming libpq walks past the
+  refused `::1` to the IPv4 address. The probe was removed. If some future client
+  does not fall back, the fix is `POSTGRES_BIND_HOST=::1` or a second mapping —
+  not reverting to a wide default.
+- **Reach from another machine is gone until the variable is set.** Anyone using
+  this database from a second device, a VM, or a container on another network
+  loses it until they set `POSTGRES_BIND_HOST`. The audit found no such consumer
+  in the repository, and none exists in the code, but the repository cannot see
+  the owner's own habits.
+- **The container was recreated** under the owner's direct instruction during this
+  card. `nba_postgres` now reports `127.0.0.1:5432->5432/tcp`. The
+  `nba_postgres_data` volume was never deleted and `docker compose down -v` was
+  never run; the 310 MB archive verified intact at 41 tables afterwards.
+- **PostgreSQL's own `listen_addresses` is still `*`** inside the container, and
+  SSL is still disabled. Neither is what limits exposure here — the published
+  port is — and both are explicitly out of scope. The privilege half of audit
+  finding 2 remains open as F6-018.
+- **`docs/validation/OFFLINE_DATABASE_PREPARATION.md` was not touched.** Its
+  `docker compose up -d postgres` instruction and its `localhost` URL are both
+  still accurate, which was the card's stated condition for editing it.
+- **This card did not pass through `tasks/review/`.** It was moved from
+  `tasks/active/` straight to `tasks/done/` by the owner, so this evidence was
+  written after the move rather than before it.

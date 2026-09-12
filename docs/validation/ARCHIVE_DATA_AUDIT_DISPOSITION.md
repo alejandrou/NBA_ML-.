@@ -299,8 +299,12 @@ They are recorded here so they are not reintroduced.
    2000, so the "CHA 1988–2002 Hornets vs CHA 2005– Bobcats" case is outside it.
    Measured: `CHH` = Charlotte Hornets 2000–2002, `CHA` = Charlotte Bobcats
    2005–2014, `CHO` = Charlotte Hornets 2015–2025. No code is reused. The
-   surviving question — one franchise or three teams — is smaller and is
-   [F5-008](../../tasks/planning/F5-008-decide-charlotte-franchise-lineage.md).
+   surviving question — one franchise or three teams — is settled as **three
+   teams**, one per code, by
+   [F5-008](../../tasks/done/F5-008-record-the-franchise-disposition-and-correct-the-charlotte-codes.md).
+   The rule, the 775-page / 37-code measurement behind it, the two Charlotte
+   lineages that disagree, and the standing `core.teams.franchise_id`
+   disposition are recorded in [BUSINESS_RULES.md](../domain/BUSINESS_RULES.md).
 
 3. **`TeamSeasonLoadBatch.team_name` is not un-set — it has no producer.** An
    earlier revision claimed nothing in `src/` ever sets it. It is in fact set at

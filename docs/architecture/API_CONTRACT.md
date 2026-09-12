@@ -101,7 +101,9 @@ The code is the key because it is reproducible. Rebuilding the database from the
 
 Codes are matched **exactly**, in the canonical uppercase Basketball Reference form. `/api/v1/teams/atl` is not `/api/v1/teams/ATL` and returns 404. Uppercase is the only form a stored code takes — the loader normalizes it before insert — so case-insensitive lookup would not reach a single row that exact matching misses. It is deliberately not offered: it would widen the spellings the key accepts without widening what the key can address, and `uq_core_teams_bref_id` is itself case-sensitive, so the route would be promising an equivalence the storage layer does not hold.
 
-**A code is an era, not a franchise.** One row exists per code, so a relocation produces separate, unlinked teams. Seattle (`SEA`, through 2008) and Oklahoma City (`OKC`, from 2009) are **two public teams** in v1: both are reachable at their own codes, neither references the other, and no field, link, or query joins them. The same holds for New Jersey (`NJN`) and Brooklyn (`BRK`), and for Charlotte's `CHH`, `NOH`, and `NOP`.
+**A code is an era, not a franchise.** One row exists per code, so a relocation produces separate, unlinked teams. Seattle (`SEA`, through 2008) and Oklahoma City (`OKC`, from 2009) are **two public teams** in v1: both are reachable at their own codes, neither references the other, and no field, link, or query joins them. The same holds for New Jersey (`NJN`) and Brooklyn (`BRK`), for Vancouver (`VAN`) and Memphis (`MEM`), and for New Orleans, whose `NOH`, `NOK`, and `NOP` are three public teams rather than one.
+
+Charlotte is the sharpest case, and its codes are `CHH` (2000–2002), `CHA` (2005–2014), and `CHO` (2015–2025) — three public teams, none of them linked to another. `CHH` and `CHO` both carry the name *Charlotte Hornets*, the only name in the archive two codes share, so a client matching teams by name would merge two teams this key keeps apart. Only the code tells them apart, and only the code is keyed.
 
 That is what v1 promises, not a gap awaiting repair. Franchise lineage — the assertion that `SEA` and `OKC` are one club — is unmodeled and unpromised. Per-row name and abbreviation history is recorded in `core.team_aliases` with `from_season_year` and `to_season_year`, but that history is not served by this resource in v1.
 
@@ -112,7 +114,7 @@ That is what v1 promises, not a gap awaiting repair. Franchise lineage — the a
 Two fields that earlier revisions of this contract described are withdrawn from the teams response. Both were removed by decision, not by oversight:
 
 - **`team_id`** — the surrogate primary key of `core.teams`. It is stable within one database but not reproducible: a rebuild may hand the same team a different value. That is precisely the property the natural key has and this one lacks, so publishing both would hand clients a second key the contract has to tell them not to rely on. The internal identifier is now private, matching how `core.seasons.id` has always been treated.
-- **`franchise_id`** — it was served on every team and was null on every team. Nothing in `src/` ever wrote it, so it promised lineage the data cannot back, and the identity rules above state that v1 makes no lineage promise at all. It may return only alongside a loader that populates it.
+- **`franchise_id`** — it was served on every team and was null on every team. Nothing in `src/` ever wrote it, so it promised lineage the data cannot back, and the identity rules above state that v1 makes no lineage promise at all. The column remains in `core.teams`, unwritten, and that is the standing disposition rather than pending work. It may return only alongside a loader that populates it and a revision that names **which** lineage it carries: organizational continuity and the NBA's official statistical history disagree for Charlotte, and one column cannot hold both. See `docs/domain/BUSINESS_RULES.md`.
 
 ## Seasons
 

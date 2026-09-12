@@ -300,29 +300,120 @@ Expect 775 pages, 37 codes, one name each, no issues.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_team_api.py`
+- Result: **12 passed** in 0.77s. The teams response shape is untouched, and the
+  `franchise_id` withdrawal assertions at `tests/unit/test_team_api.py:275-288`
+  still hold.
+- Command: `uv run ruff check .`
+- Result: **All checks passed!**
+- Command: `uv run pytest`
+- Result: **949 passed, 27 skipped** in 17.33s. No test changed in this card.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: recorded below, run after this card moved to `tasks/review/`.
+- Command: `git diff --stat`
+- Result: three files, all named in `# Scope` —
+  `docs/architecture/API_CONTRACT.md`, `docs/domain/BUSINESS_RULES.md`, and
+  `docs/validation/ARCHIVE_DATA_AUDIT_DISPOSITION.md`. Nothing under `src/`,
+  `alembic/`, or `tests/`. `git diff --check` is clean.
+
+### Review pass
+
+A review of the diff against the acceptance criteria found two defects, both
+fixed in place before closing:
+
+1. `API_CONTRACT.md` — the new Charlotte paragraph ended on "the code is what v1
+   promises", which collided with the following paragraph's "That is what v1
+   promises, not a gap awaiting repair" and left that "That" with two possible
+   antecedents. The clause now reads "Only the code tells them apart, and only
+   the code is keyed."
+2. `ARCHIVE_DATA_AUDIT_DISPOSITION.md` — the repaired reference named the card by
+   ID without linking it. With the card in `tasks/done/` the link target is
+   permanent, so the hyperlink is restored.
+
+The review also confirmed no other document in `docs/`, `README.md`, or
+`.agents/` repeats the wrong Charlotte triple, and that `franchise` appears only
+in the three files this card touches.
+
+### The measurement was re-run, not copied
+
+The card's numbers were reproduced offline against the existing cache before any
+document was edited — 775 files matching
+`data/raw/html/basketball-reference/teams-<code>-<season>.html-<hash>.html.gz`,
+each parsed with `parse_team_season_page`, grouped by the code in the filename:
+
+- **775 pages, 37 distinct codes, 0 parse failures or team-name issues.**
+- Every code resolves to exactly one name; no code carries two.
+- One name is carried by two codes: *Charlotte Hornets* by `CHH` and `CHO`.
+- Exactly one code has a non-interval season set: `NOH` (2003–2005, 2008–2013).
+- Charlotte and New Orleans measured: `CHH` 2000–2002, `CHA` 2005–2014,
+  `CHO` 2015–2025, `NOH` 2003–2005 + 2008–2013, `NOK` 2006–2007, `NOP`
+  2014–2025 — matching the card's table exactly.
+
+No network access was involved. The script was disposable and lives outside the
+repository.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run
+   `grep -n "CHH" docs/architecture/API_CONTRACT.md docs/domain/BUSINESS_RULES.md`.
+   Expected: no line presents `CHH` as one city's codes together with `NOH` or
+   `NOP`. Two `BUSINESS_RULES.md` lines do name them on one line — the
+   `CHH` to `NOH` to `NOK` to `NOP` transition chain and the organizational
+   lineage — and both say explicitly that these are different cities.
+2. Read `docs/architecture/API_CONTRACT.md:104-106` ("Team identity"). Expected:
+   the worked example still makes the "a code is an era, not a franchise" point,
+   New Orleans now owns `NOH`/`NOK`/`NOP`, and Charlotte is `CHH`/`CHA`/`CHO`
+   with the shared-name warning that makes it the better example.
+3. Read the three new `###` subsections at the end of the "Teams" section of
+   `docs/domain/BUSINESS_RULES.md`. Expected: the 775-page / 37-code measurement
+   with the `h1 > span:nth-of-type(2)` selector named, the statement that
+   effective-dated franchise edges are **not required**, the two qualifications
+   (`NOH` non-interval, `CHH`/`CHO` share a name), the 2000–2025 scope bound, both
+   Charlotte lineages with the two nba.com sources, and the standing
+   `franchise_id` disposition.
+4. Read the `franchise_id` bullet under "Fields withdrawn from v1" in
+   `API_CONTRACT.md`. Expected: it agrees with `BUSINESS_RULES.md` and states
+   that reinstating the field requires naming which lineage it carries.
+5. Start the API and request a team: the response still carries only
+   `basketball_reference_team_id`, `current_abbreviation`, and `current_name`.
 
-Expected result:
+Expected result: both documents state the same Charlotte and New Orleans code
+sets, the measurement is reproducible from what is written, and no served
+behaviour changed.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Run `grep -rni "deferred\|open decision\|no permanent"` over
+   `docs/architecture/API_CONTRACT.md` and `docs/domain/BUSINESS_RULES.md`.
+   Expected: **no matches** — `F5-006` removed that register and this card does
+   not reintroduce it.
+2. Run `git diff --stat` and look for any path under `src/`, `alembic/`, or
+   `tests/`. Expected: none.
+3. Search either document for a claim that code season ranges are contiguous, or
+   that a name can be mapped back to a code. Expected: neither claim appears;
+   `BUSINESS_RULES.md` states the opposite of both.
+4. Search `docs/` for `tasks/planning/F5-008`. Expected: no match — the stale
+   link in `ARCHIVE_DATA_AUDIT_DISPOSITION.md` is gone.
 
-Expected result:
+Expected result: nothing reopens `F5-006`'s decisions, no code or schema moved,
+and no superseded claim survives.
 
 ## Known limitations
 
-- None.
+- **The card link points at `tasks/done/`, not `tasks/backlog/`.** The criterion
+  asked for this card's path under `tasks/backlog/`, which was already stale when
+  implementation began — the card moves on to `active/`, `review/`, and `done/`,
+  so a `backlog/` link would break on the next move exactly as the original one
+  did. With the card closed, `tasks/done/` is its permanent path, so the link
+  resolves and matches the `F4E-012` link convention already used in that file.
+  The reference also points at `docs/domain/BUSINESS_RULES.md`, which is where
+  the answer itself lives.
+- `ARCHIVE_DATA_AUDIT_DISPOSITION.md` rows DB-06 and DB-07 still carry stale
+  `tasks/planning/` links. Left untouched per `# Out of scope`.
+- The measurement is bounded by the cache as it stands: 2000–2025, 775 pages.
+  Acquiring earlier seasons would reopen the code-uniqueness claim, and both the
+  card and `BUSINESS_RULES.md` say so.
+- `core.teams.franchise_id` is documented, not dropped. Nothing about the column,
+  its nullability, or its emptiness changed.

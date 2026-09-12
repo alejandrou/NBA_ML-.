@@ -110,29 +110,71 @@ proceed rather than keeping a runtime dependency for it.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## Changes
+
+- `pyproject.toml`: removed `requests` and `tenacity` from
+  `[project.dependencies]`, with one comment saying why (HTTP is `httpx`; retries
+  are hand-written in `scraping/client.py`). Moved `peewee` to the `dev` group,
+  with a comment naming the legacy tests that need it.
+- `uv.lock`: regenerated with `uv lock`. No `--upgrade`. It removes four packages:
+  `requests` 2.34.0, `tenacity` 9.1.4, and the two packages only `requests` pulled
+  in, `urllib3` 2.7.0 and `charset-normalizer` 3.4.7. `peewee` moves to the dev
+  group. No other package's version changed. `idna` and `certifi` stay because
+  `httpx` needs them.
+- Legacy tree not touched. `rg` found no use of any of the three in
+  `etl_process.ipynb`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Baseline before any change: `uv run pytest` gave **949 passed, 27 skipped, 7 warnings**.
+- `uv tree --invert --package requests --package tenacity --package peewee` (before):
+  all three are direct dependencies of `nba-data-platform` only. Nothing else
+  depends on them.
+- `uv run pytest tests/unit/test_legacy_team_scrapers.py tests/unit/test_legacy_team_season_scrapers.py`:
+  **10 passed, 6 warnings** (the six peewee `to_field` warnings). Both modules
+  still import `db_manager` and `scrap`.
+- `uv run ruff check .`: **All checks passed!**
+- `uv run pytest`: **949 passed, 27 skipped, 7 warnings**, the same count as the baseline.
+- `uv sync --all-groups` (exact sync, the same command as CI) uninstalled
+  `charset-normalizer`, `requests`, `tenacity`, and `urllib3` from `.venv` and kept
+  `peewee`. Running `uv run pytest` again on that pruned environment gave
+  **949 passed, 27 skipped, 7 warnings**.
+- No-dev check, `uv tree --no-dev`: no `peewee`, `tenacity`, `requests`,
+  `urllib3`, or `charset-normalizer`. `uv tree` (with dev): `peewee v4.0.5 (group: dev)`.
+- Throwaway install: `uv venv --python 3.11 <scratch>/nodev-venv` then
+  `uv pip install --python <scratch>/nodev-venv .`. `uv pip list` shows 37
+  packages and none of the five removed ones. `find_spec` reports `peewee`,
+  `tenacity`, and `requests` as absent, and `httpx`, `lxml`, `rich`, and `uvicorn`
+  as present. `nba-data --help` from that venv exits 0.
+- `git diff --check`: clean. The only warning is Git's LF→CRLF notice for `uv.lock`.
+- `uv run python scripts/validate_tasks.py`: passed after each card move.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv sync --all-groups`
+2. `uv run pytest`
+3. `uv tree --no-dev | Select-String 'peewee|tenacity|requests'`
 
-Expected result:
+Expected result: the sync removes `requests`, `tenacity`, `urllib3`, and
+`charset-normalizer` if they are still installed, and keeps `peewee`. The tests
+report 949 passed, 27 skipped, 7 warnings. Step 3 prints nothing.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Create a fresh venv and install the project without the dev group:
+   `uv venv $env:TEMP\f6010; uv pip install --python $env:TEMP\f6010 .`
+2. `& $env:TEMP\f6010\Scripts\python.exe -c "import peewee"`
+3. `& $env:TEMP\f6010\Scripts\python.exe -c "import sys; sys.path.insert(0, '.'); import db_manager.db_conf"`
 
-Expected result:
+Expected result: steps 2 and 3 both fail with `ModuleNotFoundError: No module named 'peewee'`.
+The legacy prototype needs the dev group, and the platform package does not.
+`nba-data --help` from the same venv still works.
 
 ## Known limitations
 
-- None.
+- The peewee `to_field` deprecation warning still appears six times per test
+  run, as the card's out-of-scope section expects.
+- An existing `.venv` keeps `requests` and `tenacity` until someone runs an exact
+  `uv sync`. `uv run` alone does not remove extra packages.
+- The `uv.lock` diff shows an LF→CRLF warning on this Windows checkout. The file
+  itself is still LF.

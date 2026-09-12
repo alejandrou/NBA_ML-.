@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Protocol
 
 from nba_data.config.settings import Settings
-from nba_data.scraping.cache import HtmlCache
-from nba_data.scraping.client import RateLimitExceededError
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache, write_cache_fetch_metadata
+from nba_data.scraping.client import FetchResult, RateLimitExceededError
 from nba_data.scraping.nba_team_season_manifest import (
     EXPECTED_MANIFEST_URLS,
     MANIFEST_ID,
@@ -41,6 +41,9 @@ class NbaTeamSeasonAcquisitionStopped(RuntimeError):
 class NbaTeamSeasonAcquisitionClient(Protocol):
     def get(self, url: str, *, force_refresh: bool = False) -> str:
         """Return raw HTML for one URL."""
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
+        """Return raw HTML for one URL plus the provenance of the fetch."""
 
 
 @dataclass(frozen=True)
@@ -240,9 +243,14 @@ def acquire_nba_team_season_manifest(
             continue
 
         try:
-            html = client.get(manifest_entry.url, force_refresh=False)
-            _validate_html_for_cache(html)
-            written_path = _write_html_to_cache_safely(cache, manifest_entry.url, html)
+            fetch_result = client.fetch(manifest_entry.url, force_refresh=False)
+            _validate_html_for_cache(fetch_result.html)
+            written_path = _write_html_to_cache_safely(
+                cache,
+                manifest_entry.url,
+                fetch_result.html,
+                metadata=fetch_result.metadata,
+            )
         except RateLimitExceededError as exc:
             results.append(
                 _stopped_entry(
@@ -317,14 +325,26 @@ def _validate_html_for_cache(html: str) -> None:
         raise ValueError(msg)
 
 
-def _write_html_to_cache_safely(cache: HtmlCache, url: str, html: str) -> Path:
+def _write_html_to_cache_safely(
+    cache: HtmlCache,
+    url: str,
+    html: str,
+    *,
+    metadata: CacheFetchMetadata | None = None,
+) -> Path:
     final_path = cache.path_for_url(url)
+    metadata_path = cache.metadata_path_for_url(url)
     if final_path.exists():
         msg = f"Refusing to overwrite existing cache file: {final_path}"
+        raise NbaTeamSeasonCacheWriteError(msg)
+    if metadata_path.exists():
+        msg = f"Refusing to overwrite existing cache metadata file: {metadata_path}"
         raise NbaTeamSeasonCacheWriteError(msg)
 
     final_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = final_path.with_name(f".{final_path.name}.{uuid.uuid4().hex}.tmp")
+    metadata_temp_path = metadata_path.with_name(f".{metadata_path.name}.{uuid.uuid4().hex}.tmp")
+    body_written = False
 
     try:
         with gzip.open(temp_path, "wt", encoding="utf-8", newline="") as file:
@@ -333,12 +353,23 @@ def _write_html_to_cache_safely(cache: HtmlCache, url: str, html: str) -> Path:
             if file.read() != html:
                 msg = f"Cache write verification failed for {final_path}"
                 raise NbaTeamSeasonCacheWriteError(msg)
+        if metadata is not None:
+            write_cache_fetch_metadata(metadata_temp_path, metadata)
         if final_path.exists():
             msg = f"Refusing to overwrite existing cache file: {final_path}"
             raise NbaTeamSeasonCacheWriteError(msg)
+        if metadata_path.exists():
+            msg = f"Refusing to overwrite existing cache metadata file: {metadata_path}"
+            raise NbaTeamSeasonCacheWriteError(msg)
         os.replace(temp_path, final_path)
+        body_written = True
+        if metadata is not None:
+            os.replace(metadata_temp_path, metadata_path)
     except Exception:
         temp_path.unlink(missing_ok=True)
+        metadata_temp_path.unlink(missing_ok=True)
+        if body_written:
+            final_path.unlink(missing_ok=True)
         raise
 
     return final_path

@@ -47,7 +47,15 @@ schema.
    - `scraping/player_page_cache.py` — `PLAYER_CACHE_FILE_RE`
 
    Change the slug, the digest length, or the extension and discovery silently
-   returns zero entries instead of failing.
+   returns zero entries instead of failing. `validation/stats_coverage.py`'s
+   own `rglob("*.html.gz")` is the fourth consumer of that shape.
+
+   The provenance sidecar (F4E-028) is named `<body>.html.gz.meta.json` and is
+   therefore **deliberately outside** the `*.html.gz` glob those regexes depend
+   on: nothing in discovery, parsing, coverage, or loading sees it. Keep it that
+   way. `.meta.json` appears only in `scraping/cache.py`; the acquisition paths
+   address it through `HtmlCache.metadata_path_for_url` rather than restating the
+   suffix.
 
 2. **Player-id length is shared across the acquire/discover boundary.**
    `PLAYER_ID_PATTERN` in `domain/player_id.py` (`[a-z][a-z0-9]{5,9}`, 6-10
@@ -92,12 +100,13 @@ schema.
   the generic `backfill dry-run|acquire <MANIFEST_PATH> --execute-approved-manifest`
 - **Inputs:** the deterministic team/season catalog; approved manifests under `tasks/manifests/`
 - **Implementation:** `scraping/nba_team_season_manifest.py`, `nba_team_season_acquisition.py`, `backfill_manifest.py`, `client.py`, `cache.py`
-- **Outputs:** `.html.gz` under `data/raw/html/basketball-reference/`; a JSON report
+- **Outputs:** `.html.gz` under `data/raw/html/basketball-reference/`, each newly
+  fetched body beside a `.html.gz.meta.json` provenance sidecar; a JSON report
 - **Tables:** none — acquisition never writes database rows
 - **Tests:** `test_nba_team_season_manifest.py`, `test_nba_team_season_acquisition.py`, `test_backfill_manifest.py`, `test_rate_limited_client.py`, `test_html_cache.py`
 - **Docs:** `docs/validation/NBA_TEAM_SEASON_CACHE_ACQUISITION.md` (record of the completed 2000-2025 run)
 - **Critical actions:** contacts Basketball Reference — needs the user's direct, current instruction
-- **Invariants:** 10 requests/minute default, hard cap 20, at least 6 seconds apart, honor `Retry-After`, stop on 429, never overwrite a cache file, both approval flags required
+- **Invariants:** 10 requests/minute default, hard cap 20, at least 6 seconds apart, honor `Retry-After`, stop on 429, never overwrite a cache file **or its sidecar**, both approval flags required
 
 ### Offline processing
 
@@ -137,12 +146,13 @@ schema.
   (both accept `--limit`, `--player`, `--start-year`, `--end-year`, `--output`)
 - **Inputs:** `core.players.basketball_reference_player_id`, optionally filtered by season through `core.player_seasons`
 - **Implementation:** `scraping/player_page_acquisition.py`, `client.py`, `cache.py`
-- **Outputs:** player-page `.html.gz` under the cache root; a JSON report
+- **Outputs:** player-page `.html.gz` under the cache root, each newly fetched
+  body beside a `.html.gz.meta.json` provenance sidecar; a JSON report
 - **Tables:** reads `core`; writes no rows
 - **Tests:** `test_player_page_acquisition.py`
 - **Docs:** `docs/validation/PLAYER_PAGE_CACHE_ACQUISITION.md`
 - **Critical actions:** contacts Basketball Reference — needs the user's direct, current instruction
-- **Invariants:** URLs only `https://www.basketball-reference.com/players/{initial}/{player_id}.html`; cache-first; never overwrite; sequential; resumable; stop on 429 with a partial report. Couplings 1, 2, and 4 apply.
+- **Invariants:** URLs only `https://www.basketball-reference.com/players/{initial}/{player_id}.html`; cache-first; never overwrite a body or its sidecar; sequential; resumable; stop on 429 with a partial report. Couplings 1, 2, and 4 apply.
 
 ### Regular-season player stats
 

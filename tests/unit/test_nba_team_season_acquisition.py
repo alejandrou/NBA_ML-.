@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -10,8 +11,8 @@ from typer.testing import CliRunner
 from nba_data.cli.main import app
 from nba_data.config.settings import get_settings
 from nba_data.scraping import nba_team_season_acquisition as acquisition
-from nba_data.scraping.cache import HtmlCache
-from nba_data.scraping.client import RateLimitExceededError
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
+from nba_data.scraping.client import FetchResult, RateLimitExceededError
 from nba_data.scraping.nba_team_season_acquisition import (
     NbaTeamSeasonAcquisitionConfigurationError,
     NbaTeamSeasonAcquisitionStopped,
@@ -31,6 +32,13 @@ BOS_2024_URL = "https://www.basketball-reference.com/teams/BOS/2024.html"
 DEN_2023_URL = "https://www.basketball-reference.com/teams/DEN/2023.html"
 
 
+FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
+
+
+def _metadata(url: str) -> CacheFetchMetadata:
+    return CacheFetchMetadata(fetched_at=FETCHED_AT, http_status=200, final_url=url)
+
+
 class FakeAcquisitionClient:
     def __init__(
         self,
@@ -45,6 +53,9 @@ class FakeAcquisitionClient:
         self.calls: list[tuple[str, bool]] = []
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
+        return self.fetch(url, force_refresh=force_refresh).html
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
         self.calls.append((url, force_refresh))
         if url == self.rate_limit_on:
             msg = f"planned rate limit for {url}"
@@ -52,7 +63,7 @@ class FakeAcquisitionClient:
         if url == self.fail_on:
             msg = f"planned failure for {url}"
             raise RuntimeError(msg)
-        return self.html
+        return FetchResult(html=self.html, metadata=_metadata(url))
 
 
 @pytest.fixture(autouse=True)
@@ -527,3 +538,111 @@ def test_cli_acquire_uses_fake_basketball_reference_client_only(
     assert written_report["live_request_count"] == 1
     assert summary["entries"] == len(written_report["entries"])
     assert HtmlCache(tmp_path / "cache").get(BOS_2024_URL) == "<html>cli fresh</html>"
+
+
+@pytest.mark.unit
+def test_acquisition_records_provenance_beside_the_page_it_fetched(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = _manifest(_entry("BOS", 2024))
+    _allow_small_manifest(monkeypatch, manifest)
+    cache = HtmlCache(tmp_path / "cache")
+    client = FakeAcquisitionClient("<!doctype html><html>fresh</html>")
+
+    acquire_nba_team_season_manifest(manifest, cache=cache, client=client)
+
+    assert cache.get_metadata(BOS_2024_URL) == CacheFetchMetadata(
+        fetched_at=FETCHED_AT,
+        http_status=200,
+        final_url=BOS_2024_URL,
+    )
+
+
+@pytest.mark.unit
+def test_acquisition_records_no_provenance_for_a_page_it_did_not_fetch(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = _manifest(_entry("BOS", 2024))
+    _allow_small_manifest(monkeypatch, manifest)
+    cache = HtmlCache(tmp_path / "cache")
+    cache.set(BOS_2024_URL, "<html>cached</html>")
+    client = FakeAcquisitionClient()
+
+    acquire_nba_team_season_manifest(manifest, cache=cache, client=client)
+
+    assert client.calls == []
+    assert cache.get_metadata(BOS_2024_URL) is None
+
+
+@pytest.mark.unit
+def test_safe_cache_write_refuses_an_existing_sidecar_with_no_body(tmp_path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    metadata_path = cache.metadata_path_for_url(BOS_2024_URL)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(acquisition.NbaTeamSeasonCacheWriteError, match="cache metadata file"):
+        _write_html_to_cache_safely(
+            cache,
+            BOS_2024_URL,
+            "<html>fresh</html>",
+            metadata=_metadata(BOS_2024_URL),
+        )
+
+    assert not cache.path_for_url(BOS_2024_URL).exists()
+    assert metadata_path.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.unit
+def test_safe_cache_write_writes_body_and_sidecar_together(tmp_path) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+
+    _write_html_to_cache_safely(
+        cache,
+        BOS_2024_URL,
+        "<html>fresh</html>",
+        metadata=_metadata(BOS_2024_URL),
+    )
+
+    written = sorted(path.name for path in (tmp_path / "cache").rglob("*") if path.is_file())
+
+    assert written == sorted(
+        [
+            cache.path_for_url(BOS_2024_URL).name,
+            cache.metadata_path_for_url(BOS_2024_URL).name,
+        ]
+    )
+    assert cache.get_metadata(BOS_2024_URL) == _metadata(BOS_2024_URL)
+
+
+@pytest.mark.unit
+def test_a_failed_sidecar_write_leaves_neither_file_behind(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    final_path = cache.path_for_url(BOS_2024_URL)
+    metadata_path = cache.metadata_path_for_url(BOS_2024_URL)
+    real_replace = acquisition.os.replace
+
+    def fail_on_metadata_replace(source, target) -> None:
+        if str(target).endswith(".meta.json"):
+            msg = f"planned replace failure for {target}"
+            raise OSError(msg)
+        real_replace(source, target)
+
+    monkeypatch.setattr(acquisition.os, "replace", fail_on_metadata_replace)
+
+    with pytest.raises(OSError, match="planned replace failure"):
+        _write_html_to_cache_safely(
+            cache,
+            BOS_2024_URL,
+            "<html>fresh</html>",
+            metadata=_metadata(BOS_2024_URL),
+        )
+
+    assert not final_path.exists()
+    assert not metadata_path.exists()
+    assert list(final_path.parent.glob(".*.tmp")) == []

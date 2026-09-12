@@ -12,6 +12,7 @@ read:
   - src/nba_data/scraping/team_season_pages.py
   - src/nba_data/scraping/backfill_manifest.py
   - src/nba_data/scraping/player_page_acquisition.py
+  - src/nba_data/scraping/nba_team_season_acquisition.py
   - docs/decisions/0003-cache-raw-html.md
   - docs/architecture/IMPACT_MAP.md
 validation:
@@ -222,7 +223,9 @@ invariant of the approved-acquisition flow.
 # Scope
 
 `src/nba_data/scraping/cache.py`, `client.py`, `team_season_pages.py`,
-`backfill_manifest.py`, `player_page_acquisition.py`; the unit tests listed in
+`backfill_manifest.py`, `player_page_acquisition.py`,
+`nba_team_season_acquisition.py` (**added during implementation** — see the
+scope correction in `# Review evidence`); the unit tests listed in
 `validation:`; `docs/decisions/0003-cache-raw-html.md`,
 `docs/architecture/SYSTEM_DESIGN.md`, `docs/architecture/IMPACT_MAP.md`.
 
@@ -245,8 +248,9 @@ are read and preserved, never relaxed to make plumbing easier.
   sidecars alongside *n* new bodies.
 - **Discovery and coverage:** unchanged by construction, and pinned by a test
   that puts a sidecar in a fixture cache root.
-- **Client API:** `get` is unchanged; `fetch` is additive. Two Protocols gain a
-  method, so three test fakes need it.
+- **Client API:** `get` is unchanged; `fetch` is additive. Three Protocols gain
+  a method (the card said two; see `# Review evidence`), so three test fakes
+  need it.
 - **Acquisition reports:** unchanged. `PlayerPageDryRunEntry` and its
   acquisition counterparts keep carrying `cache_path`, `cache_status`, and
   counts.
@@ -288,29 +292,161 @@ argument, but no guard, flag, or manifest check changes shape.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## Scope correction found during implementation
+
+The card's evidence section says there are **three** `cache.set` writers and
+then names **four** modules. There are in fact **five** modules that write a
+cache body: `client.py`, `team_season_pages.py`, `backfill_manifest.py`,
+`player_page_acquisition.py`, and the one the card never names —
+`src/nba_data/scraping/nba_team_season_acquisition.py`, which has its own
+`NbaTeamSeasonAcquisitionClient` Protocol (`:41-46`) and its own
+`_write_html_to_cache_safely` (`:328`), and is the module the
+`acquisition acquire-nba-team-seasons` CLI (`cli/main.py:671`) actually drives.
+
+The card's own acceptance criteria and `validation:` list already require
+`tests/unit/test_nba_team_season_acquisition.py` and its fake client to gain
+`fetch`, so that path was in scope in substance. It is now changed the same way
+as `player_page_acquisition.py` — Protocol gains `fetch`, the loop passes
+metadata, the safe writer refuses a pre-existing sidecar. Without it, the
+team-season acquisition CLI would have been the one live path still writing
+pages with no provenance.
+
+No approval guard, `--owner-approved` flag, manifest check, or rate-limit
+behaviour was touched in either acquisition module.
+
+## Sidecar version check added after the first hand-off
+
+`serialize_cache_fetch_metadata` wrote `schema_version` but
+`_metadata_from_payload` never read it, so a future version-2 sidecar would have
+been parsed as version 1 and a missing version accepted. The field was
+decorative. `_metadata_from_payload` now refuses any `schema_version` that is
+not exactly the supported integer — bool and non-integral values included, the
+same strictness the reader already applies to `http_status` — raising
+`CacheMetadataError`, which keeps it inside the card's existing "a malformed
+sidecar is an error, not unknown provenance" contract. This mirrors
+`validation/stats_coverage.py:568`, the repo's existing precedent for the same
+problem. Nine tests cover it, including a round-trip test that fails if the
+writer's version is bumped without the reader's.
+
+## Known duplication, deliberately not addressed here
+
+`nba_team_season_acquisition._write_html_to_cache_safely` (`:328`) and
+`player_page_acquisition._write_html_to_cache_safely` (`:528`) are now
+line-for-line identical apart from the exception class each raises (~45 lines).
+Both already existed separately before this card; this card widened both the
+same way. Extracting a shared writer touches two live acquisition paths and is
+its own card, in the style of `066e513 Extract shared player-page backfill
+helpers`. Left as a follow-up rather than folded into a provenance card.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_html_cache.py tests/unit/test_rate_limited_client.py tests/unit/test_team_season_pages.py tests/unit/test_backfill_manifest.py tests/unit/test_player_page_acquisition.py tests/unit/test_nba_team_season_acquisition.py`
+- Result: **127 passed** (re-run after the version check; was 118)
+
+- Command: `uv run pytest tests/unit/test_cache_inventory.py tests/unit/test_stats_coverage_artifact.py`
+- Result: **46 passed** in 0.95s
+
+- Command: `uv run ruff check .`
+- Result: **All checks passed!**
+
+- Command: `uv run pytest`
+- Result: **948 passed, 28 deselected** (`-m "not integration and not live"`)
+
+- Command: `uv run mypy src/nba_data` (not in `validation:`; run because two
+  Protocols and a safe-writer signature changed)
+- Result: **Success: no issues found in 70 source files**
+
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: **Task validation passed.**
+
+- Command: `grep -rn "meta.json" src/ scripts/`
+- Result: two hits, both in `src/nba_data/scraping/cache.py` — the
+  `METADATA_SUFFIX` constant and a docstring. No discovery, parsing, coverage,
+  or loading path names the suffix; the acquisition writers address the sidecar
+  through `HtmlCache.metadata_path_for_url`.
+
+- Command: `git status --short` and `git diff --check`
+- Result: no file under `data/` modified; no whitespace errors. The 3,326
+  existing cached pages are byte-identical and got no sidecar.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv run pytest tests/unit/test_html_cache.py -q` — 28 pass. This is the
+   contract: the body filename for a known URL is still
+   `teams-bos-2024.html-8ef926a311c6bcbf.html.gz`, the sidecar is that name plus
+   `.meta.json`, and `tmp_path.rglob("*.html.gz")` finds only the body.
+2. `uv run pytest tests/unit/test_rate_limited_client.py -q` — 14 pass, the 7
+   pre-existing rate-limit, 429, `Retry-After`, and delay-floor tests unmodified.
+   `fetch` records the injected `now()`, `response.status_code`, and the
+   post-redirect `str(response.url)`.
+3. `uv run pytest tests/unit/test_cache_inventory.py tests/unit/test_stats_coverage_artifact.py -q`
+   — 46 pass, including two new tests that build the inventory and the coverage
+   artifact twice, once with sidecars beside the discovered pages, and assert the
+   two `to_dict()` results are equal.
 
-Expected result:
+Expected result: every command above passes, and the read path for an old page
+is unchanged.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Corrupt a sidecar and read it:
 
-Expected result:
+   ```bash
+   uv run python -c "
+   from datetime import UTC, datetime
+   from pathlib import Path
+   from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
+   root = Path('.tmp-provenance-check')
+   cache = HtmlCache(root)
+   url = 'https://www.basketball-reference.com/teams/BOS/2024.html'
+   cache.set(url, '<html>ok</html>', metadata=CacheFetchMetadata(
+       fetched_at=datetime.now(UTC), http_status=200, final_url=url))
+   print('provenance:', cache.get_metadata(url))
+   cache.metadata_path_for_url(url).write_text('{', encoding='utf-8')
+   print('body still readable:', cache.get(url))
+   print('exists still true:', cache.exists(url))
+   try:
+       cache.get_metadata(url)
+   except Exception as exc:
+       print(type(exc).__name__, exc)
+   "
+   rm -rf .tmp-provenance-check
+   ```
+
+   Expected result: the provenance prints, the body still reads and `exists`
+   still returns `True`, and `get_metadata` raises `CacheMetadataError` naming
+   the file. A corrupt sidecar is an error, never "never fetched".
+
+2. Drop provenance by rewriting a body without it:
+   `cache.set(url, html)` after a `cache.set(url, html, metadata=...)` leaves no
+   sidecar at all. Expected result: `get_metadata` returns `None` and the
+   sidecar file is gone — a sidecar never describes a body it did not come from.
+
+3. Feed the acquisition writer a pre-existing sidecar with no body:
+   `uv run pytest tests/unit/test_player_page_acquisition.py -k sidecar -q` and
+   the same `-k` against `tests/unit/test_nba_team_season_acquisition.py`.
+   Expected result: `PlayerPageCacheWriteError` /
+   `NbaTeamSeasonCacheWriteError` naming the metadata file; the orphan sidecar is
+   left untouched and no body is created. A forced failure on the sidecar
+   `os.replace` leaves neither the body, the sidecar, nor any `.tmp` behind.
 
 ## Known limitations
 
-- None.
+- The 3,326 pages already in `data/raw/html/` have no sidecar and are never
+  given one (decision 4). Their provenance stays unknown, represented by
+  `get_metadata` returning `None`.
+- No sidecar has been observed from a real Basketball Reference response. That
+  would need an owner-approved live acquisition, which this card neither needed
+  nor authorized; every path is validated offline with fake clients and
+  `tmp_path` caches.
+- `get_metadata`'s `OSError` branch (a sidecar that exists but cannot be opened)
+  has no test — it is not portably reproducible on Windows. The
+  `UnicodeDecodeError`, invalid-JSON, wrong-type, and missing-field branches are
+  all covered.
+- Nothing consumes the sidecar yet. It is written and readable; no report, CLI
+  command, or validator surfaces it. Putting provenance into the acquisition
+  JSON reports was explicitly out of scope.
+- A sidecar write that fails after the body has been replaced deletes the body
+  again, so the entry is reported as failed and re-fetched on the next run
+  rather than left with unknown provenance. That is the card's "leaves neither
+  file behind" rule, and it costs one extra request in that rare case.

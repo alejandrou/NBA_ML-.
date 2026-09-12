@@ -3,18 +3,36 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import httpx
 
 from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
 
 logger = logging.getLogger(__name__)
 
 
 class RateLimitExceededError(Exception):
     """Raised when the remote site keeps responding with rate-limit errors."""
+
+
+@dataclass(frozen=True)
+class FetchResult:
+    """One page plus the provenance of the fetch that produced it.
+
+    `metadata` is `None` when the HTML came from the cache: nothing was
+    fetched, so there is no fetch to record.
+    """
+
+    html: str
+    metadata: CacheFetchMetadata | None
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 class BasketballReferenceClient:
@@ -28,6 +46,7 @@ class BasketballReferenceClient:
         http_client: httpx.Client | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime] = _utc_now,
         max_429_retries: int = 0,
         max_5xx_retries: int = 2,
     ) -> None:
@@ -41,6 +60,7 @@ class BasketballReferenceClient:
         self._owns_client = http_client is None
         self._sleeper = sleeper
         self._clock = clock
+        self._now = now
         self._last_request_at: float | None = None
         self._max_429_retries = max_429_retries
         self._max_5xx_retries = max_5xx_retries
@@ -54,17 +74,20 @@ class BasketballReferenceClient:
             raise ValueError(msg)
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
+        return self.fetch(url, force_refresh=force_refresh).html
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
         should_force = force_refresh or self.settings.scraper_force_refresh
         if self.cache is not None and not should_force:
             cached = self.cache.get(url)
             if cached is not None:
                 logger.info("HTML cache hit for %s", url)
-                return cached
+                return FetchResult(html=cached, metadata=None)
 
-        html = self._get_from_network(url)
+        html, metadata = self._get_from_network(url)
         if self.cache is not None:
-            self.cache.set(url, html)
-        return html
+            self.cache.set(url, html, metadata=metadata)
+        return FetchResult(html=html, metadata=metadata)
 
     def close(self) -> None:
         if self._owns_client:
@@ -76,7 +99,7 @@ class BasketballReferenceClient:
     def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
         self.close()
 
-    def _get_from_network(self, url: str) -> str:
+    def _get_from_network(self, url: str) -> tuple[str, CacheFetchMetadata]:
         too_many_requests = 0
         server_errors = 0
 
@@ -102,7 +125,12 @@ class BasketballReferenceClient:
                 continue
 
             response.raise_for_status()
-            return response.text
+            metadata = CacheFetchMetadata(
+                fetched_at=self._now(),
+                http_status=response.status_code,
+                final_url=str(response.url),
+            )
+            return response.text, metadata
 
     def _wait_for_rate_limit(self) -> None:
         if self._last_request_at is None:

@@ -9,6 +9,7 @@ from typing import Any, Protocol
 from urllib.parse import urlparse
 
 from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.client import FetchResult
 
 SUPPORTED_PAGE_TYPE = "team_season"
 MAX_INITIAL_TEAM_SEASON_URLS = 5
@@ -26,6 +27,9 @@ class ManifestValidationError(ValueError):
 class BackfillClient(Protocol):
     def get(self, url: str, *, force_refresh: bool = False) -> str:
         """Return raw HTML for one URL."""
+
+    def fetch(self, url: str, *, force_refresh: bool = False) -> FetchResult:
+        """Return raw HTML for one URL plus the provenance of the fetch."""
 
 
 class BackfillAcquisitionError(RuntimeError):
@@ -298,7 +302,7 @@ def acquire_backfill_manifest(
             continue
 
         try:
-            html = client.get(manifest_entry.url, force_refresh=False)
+            fetch_result = client.fetch(manifest_entry.url, force_refresh=False)
         except Exception as exc:
             results.append(
                 AcquisitionEntryResult(
@@ -314,7 +318,11 @@ def acquire_backfill_manifest(
             msg = f"Backfill acquisition failed for {manifest_entry.url}"
             raise BackfillAcquisitionError(msg, report) from exc
 
-        written_path = cache.set(manifest_entry.url, html)
+        written_path = cache.set(
+            manifest_entry.url,
+            fetch_result.html,
+            metadata=fetch_result.metadata,
+        )
         results.append(
             AcquisitionEntryResult(
                 page_type=manifest_entry.page_type,

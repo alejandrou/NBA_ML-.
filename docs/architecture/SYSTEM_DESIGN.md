@@ -49,7 +49,10 @@ apps/
 
 - Scraper jobs plan URLs and orchestrate work.
 - The HTTP client is the only place for real Basketball Reference requests.
-- Cache stores raw HTML as `.html.gz`.
+- Cache stores raw HTML as `.html.gz`, each body optionally accompanied by a
+  `<body>.html.gz.meta.json` provenance sidecar (`fetched_at`, `http_status`,
+  `final_url`). The sidecar is written only for pages fetched after F4E-028;
+  it is an index, not an invariant, and reading a body never requires it.
 - Parsers are pure functions from HTML to structured data.
 - Normalizers convert raw parsed rows into canonical shapes.
 - Validators check row counts, keys, ranges, and historical missing metrics.

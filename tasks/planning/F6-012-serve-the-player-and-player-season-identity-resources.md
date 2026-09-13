@@ -1,6 +1,7 @@
 ---
 id: F6-012
 title: Serve the player and player-season identity resources
+track: app
 areas:
   - planning
   - api

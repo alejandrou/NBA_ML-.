@@ -1,6 +1,7 @@
 ---
 id: F7-001
 title: Define the frontend MVP scope and contract
+track: app
 areas:
   - planning
 priority: 110
@@ -43,7 +44,8 @@ described as a later phase in ADR 0008.
 - `docs/decisions/0006-separate-scraper-api-web.md` requires the frontend to
   consume API data only — it may never query the database directly.
 - No frontend directory, `package.json`, or `.agents` skill exists anywhere in
-  the repository yet. `.agents/index.md` has no `frontend`/`web` area entry.
+  the repository yet. `.agents/index.md` has a `web` area (added by WF-007,
+  routing to ADRs 0006 and 0008) but no skill behind it.
 - A DB-readiness endpoint (distinct from the existing liveness-only
   `/api/v1/health`) was delivered by `F6-003`, now in `tasks/done/`.
 
@@ -60,8 +62,8 @@ described as a later phase in ADR 0008.
 - [ ] Decide the CORS origin(s) the API must allow once a frontend exists,
       and who owns adding `CORSMiddleware` to `src/nba_data/api/app.py` —
       this card's follow-up, or a small independent API task.
-- [ ] Decide whether a new `frontend`/`web` area and skill should be added to
-      `.agents/index.md` before implementation starts.
+- [ ] Decide whether a `web` skill should be written and routed from the `web`
+      area in `.agents/index.md` before implementation starts.
 - [ ] Confirm no auth or rate-limiting is required for this first pass
       (local/dev use only).
 

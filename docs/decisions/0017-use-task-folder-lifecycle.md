@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; single slot superseded by ADR 0018
 
 ## Context
 

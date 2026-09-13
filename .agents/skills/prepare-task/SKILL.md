@@ -1,6 +1,6 @@
 ---
 name: prepare-task
-description: Use when the user says "Prepare <TASK-ID> for implementation"; resolves a planning card's open questions from code and tests, splits it if oversized, and promotes it to tasks/backlog/ only when it is genuinely ready to start.
+description: Use when the user says "Prepare <TASK-ID> for implementation"; resolves a planning card's open questions from code and tests, splits it if oversized or mixed across tracks, and promotes it to tasks/backlog/ only when it is genuinely ready to start.
 ---
 
 Command: `Prepare <TASK-ID> for implementation.`
@@ -14,6 +14,10 @@ blocked card is a success, not a failure.
 1. `AGENTS.md` and `.agents/index.md`.
 2. The card in `tasks/planning/`.
 3. The skills and durable documents its `areas` route to, plus its `read:` list.
+
+**A parked card is not preparable.** If `# Implementation notes` holds
+`## Parked` without `- Resumed:`, stop: it comes back only through
+`Resume <TASK-ID>.` (`.agents/skills/park-resume/`). Never promote it.
 
 ## Resolve
 
@@ -32,9 +36,13 @@ an answer to unblock yourself.
 ## Split
 
 Split when the card exceeds one branch and one review cycle, mixes unrelated
-concerns, or has acceptance criteria that cannot all be verified together.
+concerns, has acceptance criteria that cannot all be verified together, or
+**mixes areas of the `data` and `app` tracks**. A mixed card becomes one card per
+track wired by `depends_on`; when the pieces cannot ship separately — or the
+change would break the other track — mark it `track: shared` instead.
 
-Mint the new IDs here, in the same numbering family, and wire `depends_on` in
+Mint the new IDs here, each in its track's family (F4E, F5, or F8 for `data`; F6
+or F7 for `app`; WF or any family for `shared`), and wire `depends_on` in
 dependency order. Each piece must independently satisfy the readiness checklist
 below. Pieces that are still uncertain stay in `planning/`.
 
@@ -45,10 +53,12 @@ A card is ready for `tasks/backlog/` only when all of this holds:
 - the goal is concrete;
 - acceptance criteria are specific and verifiable, not restated goals;
 - scope and out-of-scope are explicit;
+- `track:` is set, and a `data` or `app` card's ID family matches it;
 - `depends_on` names real card IDs;
 - `read:` lists the documents an implementer actually needs;
-- `areas:` routes correctly through `.agents/index.md`, and covers everything the
-  task will change;
+- `areas:` routes correctly through `.agents/index.md`, covers everything the
+  task will change, and fits the track — a `data` or `app` card uses only its
+  track's areas plus the neutral ones;
 - `validation:` lists **real commands that exist**, focused ones before global
   ones;
 - `critical_actions:` names any future live scraping, backfill, shared-database

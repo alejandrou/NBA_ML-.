@@ -21,7 +21,7 @@ changes a flow.
 | `data-quality` | `src/nba_data/validation/` | `BUSINESS_RULES.md`, the matching backfill report shape |
 | `testing` | `tests/` | `docs/validation/TESTING_STRATEGY.md`, pytest markers |
 | `documentation` | `docs/`, `AGENTS.md`, `.agents/` | `.agents/index.md` routing rows |
-| `planning` | `tasks/planning/` | `scripts/validate_tasks.py`, `tasks/TEMPLATE.md` |
+| `planning` | `tasks/planning/`, `tasks/CROSS_TRACK.md` | `scripts/validate_tasks.py`, `scripts/claim_task.py`, `tasks/TEMPLATE.md`, the workflow skills in `.agents/skills/` |
 
 ## The only entry point
 

@@ -1,6 +1,7 @@
 ---
 id: F4E-033
 title: Drop the redundant core.teams lookup index
+track: data
 areas:
   - database-schema
   - testing

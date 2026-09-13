@@ -1,6 +1,7 @@
 ---
 id: F6-018
 title: Give the API a least-privilege database role
+track: app
 areas:
   - planning
   - api
@@ -136,6 +137,12 @@ carry two URLs — and leave the rest to the owner.
 If the answer is "not worth it", the useful deliverable is a short ADR recording
 why the code-level read-only guarantee is considered sufficient, so the same
 finding is not re-raised by the next audit.
+
+The card is `track: app`, but role provisioning is `database-schema` work that
+belongs to the `data` track (ADR 0018). When preparing it, either split the
+provisioning into its own `data` card that this one depends on, or mark the
+whole card `shared`; a `track: app` card cannot reach `tasks/backlog/` while it
+keeps the `database-schema` area.
 
 # Durable knowledge updates
 

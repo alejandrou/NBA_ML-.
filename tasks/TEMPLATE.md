@@ -1,6 +1,7 @@
 ---
 id: XX-000
 title: Concise imperative title
+track: app
 areas:
   - api
 priority: 50
@@ -45,6 +46,18 @@ What it deliberately does not touch.
 
 Components, commands, tables, schemas, documents, interfaces, and tests this
 change affects.
+
+# Cross-track impact
+
+- None.
+
+What this change means for the other track — a table, column, or data contract
+the `app` track reads, or an API need the `data` track must serve. Before the
+card moves to `tasks/review/`, keep `- None.` or write one bullet per impact
+naming the handoff card it created, and delete this paragraph: in `review/` the
+section holds only bullets. An additive impact gets a handoff card in the
+consumer track's `tasks/planning/` and an Open entry in `tasks/CROSS_TRACK.md`.
+A breaking change belongs to a `shared` card.
 
 # Implementation notes
 

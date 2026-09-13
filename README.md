@@ -32,10 +32,12 @@ uv run pytest
 git diff --check
 ```
 
-`scripts/validate_tasks.py` checks the task lifecycle: one card at a time across
-`active/` and `review/`, unique IDs, required and forbidden frontmatter,
-dependencies that resolve, and no unresolved decisions in `backlog/`. It is
-standard-library only and `uv run pytest` runs the same checks.
+`scripts/validate_tasks.py` checks the task lifecycle: one card per track across
+`active/` and `review/` (a `shared` card alone), each card's track, areas, and ID
+family, unique IDs, required and forbidden frontmatter, dependencies that
+resolve, parked cards, the cross-track log, and no unresolved decisions in
+`backlog/`. It is standard-library only and `uv run pytest` runs the same checks;
+`--all-worktrees` also joins the slots of every Git worktree.
 
 Database validation — starts PostgreSQL, creates a uniquely named disposable
 database, round-trips the migrations there, runs the whole integration lane,
@@ -85,9 +87,12 @@ tasks/planning/ → tasks/backlog/ → tasks/active/ → tasks/review/ → tasks
 `tasks/planning/` holds work that is not ready yet — it still needs research, a
 decision from you, resources, or splitting. `tasks/backlog/` holds only work that
 can be started immediately, and it is the roadmap; there is no separate roadmap
-document. At most one card exists across `active/` and `review/` at a time, and
-only you move a card from `review/` to `done/`. `tasks/TEMPLATE.md` is the card
-format, and `tasks/README.md` explains the folders.
+document. Work runs on two tracks — `data` (scraping, schema, ML) and `app` (API
+and web) — each in its own Git worktree, with at most one card per track across
+`active/` and `review/`; a `shared` card, such as a dependency or workflow
+change, runs alone. Only you move a card from `review/` to `done/`.
+`tasks/TEMPLATE.md` is the card format, and `tasks/README.md` explains the
+folders, the tracks, and the worktree setup.
 
 ## Working with an AI agent
 
@@ -97,9 +102,11 @@ the skills and documents it actually needs. Short commands:
 | Command | What happens |
 |---|---|
 | `Plan this task: <description>` | Researches one idea and writes a card to `tasks/planning/`, recording evidence, unknowns, and any decision it needs from you. No branch, no code. |
-| `Prepare <TASK-ID> for implementation.` | Resolves a planning card's open questions from the code, splits it if oversized, and promotes it to `tasks/backlog/` — or reports what it still needs from you and leaves it in `planning/`. |
-| `Start the next task.` | Picks the next eligible **backlog** card, creates its branch, implements it, validates it, moves it to `review/`, and stops. Never picks from `planning/`. |
-| `Refill the backlog.` | Sweeps the repository for real gaps and writes cards: ready ones to `backlog/`, uncertain ones to `planning/`. No branch, no code. |
+| `Prepare <TASK-ID> for implementation.` | Resolves a planning card's open questions from the code, splits it if oversized or mixed across tracks, and promotes it to `tasks/backlog/` — or reports what it still needs from you and leaves it in `planning/`. |
+| `Start the next task.` · `Start the next data task.` · `Start the next app task.` | In this folder's track, picks the next eligible **backlog** card, claims its slot, branches from `origin/main`, implements it, validates it, moves it to `review/`, and stops. Never picks from `planning/`. |
+| `Park the current task.` | When a task turns out to need `shared` work: commits its code as `WIP:`, writes the `shared` card, parks the task in `planning/`, and frees the slot. |
+| `Resume <TASK-ID>.` | Once the `shared` card is done: switches back to the parked branch, merges `origin/main`, claims the slot again, and continues. |
+| `Refill the backlog.` | Sweeps the repository for real gaps in this folder's track and writes cards: ready ones to `backlog/`, uncertain ones to `planning/`. No branch, no code. |
 | `Review the current task.` | Reviews the diff against acceptance criteria and prepares manual test steps. |
 | `Move the review task to done, commit it and push it.` | Closes the card and performs exactly those Git operations. |
 
@@ -110,8 +117,10 @@ files to read.
 
 The agent never stages, commits, pushes, pulls, merges, rebases, resets,
 restores, cleans, stashes, or opens pull requests unless you ask for that
-specific operation. The single exception: `Start the next task.` may create and
-switch to the task's `feature/<id>-<slug>` branch.
+specific operation. The exceptions are exact: `Start the next task.` may fetch,
+detach onto `origin/main`, and create the task's `feature/<id>-<slug>` branch;
+`Park the current task.` and `Resume <TASK-ID>.` perform only the operations
+listed in `AGENTS.md`.
 
 Live scraping, backfills against real data, shared-database migrations, and
 other destructive or external actions always require your explicit go-ahead. A

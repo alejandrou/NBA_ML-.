@@ -5,8 +5,11 @@ description: Use when reviewing a diff, a task's completeness, or a pull request
 
 ## Workflow
 
-1. Read the active card and inspect the diff (`git diff`, plus `git diff --cached`
-   if anything is staged).
+1. Read this worktree's card in `tasks/active/` or `tasks/review/` and inspect
+   the diff (`git diff`, plus `git diff --cached` if anything is staged). On a
+   branch resumed after a Park, review against `origin/main`
+   (`git diff origin/main...HEAD` plus the working tree), never against the WIP
+   commit alone.
 2. Compare the change against the card's acceptance criteria and scope, one
    criterion at a time.
 3. Run or verify the card's `validation:` commands. Report real output, not
@@ -29,6 +32,20 @@ database) · secrets or `.env` content · `data/` or `reports/` artifacts in the
 diff · domain invariants (`TOT` is not a real team, `player_name` is not a stable
 key) · raw / core / stats / features separation · the live-scraping approval gate
 still intact · unrelated refactoring.
+
+### Tracks
+
+- **Areas and files fit the track.** An `app` card that changes models,
+  `alembic/`, scraping, or validation — or a `data` card that changes the API or
+  web — is a finding, as is any `shared` file (`pyproject.toml`, `uv.lock`,
+  `.github/`, `AGENTS.md`, `.agents/`) in a non-`shared` card.
+- **`# Cross-track impact` matches the diff.** A table, column, data contract,
+  or API need the other track consumes is not `- None.`
+- **Every additive impact has its handoff** — a card in the consumer track's
+  `tasks/planning/` and an `## Open` entry in `tasks/CROSS_TRACK.md`. A breaking
+  impact in a non-`shared` card is a finding.
+- **No migration applied from the branch.** New Alembic revisions come only from
+  `data` cards and are validated on a disposable database, never on `nba`.
 
 ## Documentation changes
 

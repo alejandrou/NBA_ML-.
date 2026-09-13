@@ -1,6 +1,7 @@
 ---
 id: F4E-021
 title: Define what full_name means and drop the unused slug column
+track: data
 areas:
   - data-quality
   - database-schema

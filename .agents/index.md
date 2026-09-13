@@ -3,22 +3,36 @@
 Map the active card's `areas` to skills and durable context. Combined areas load
 the **union** — read each file once.
 
-| Area | Skills | Durable context |
-|---|---|---|
-| `api` | `api-fastapi`, `testing` | `docs/architecture/API_ARCHITECTURE.md`, `docs/architecture/API_CONTRACT.md` |
-| `database-read` | `db-readonly`, `testing` | `src/nba_data/db/models/core.py` |
-| `database-schema` | `db-schema`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `alembic/` conventions |
-| `scraping` | `scraping-pipeline`, `data-quality`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `docs/domain/BUSINESS_RULES.md` |
-| `data-quality` | `data-quality`, `testing` | `docs/domain/BUSINESS_RULES.md` |
-| `testing` | `testing` | — |
-| `review` | `review` + the card's own domain areas | the card and the current diff |
-| `documentation` | — | only the durable docs the change actually affects |
-| `planning` | `plan-task`, `prepare-task` + the card's own domain areas | the card, plus the real code and tests for the area in question |
+| Area | Track | Skills | Durable context |
+|---|---|---|---|
+| `api` | `app` | `api-fastapi`, `testing` | `docs/architecture/API_ARCHITECTURE.md`, `docs/architecture/API_CONTRACT.md` |
+| `web` | `app` | — (a skill is pending F7-001) | `docs/decisions/0006-separate-scraper-api-web.md`, `docs/decisions/0008-use-nextjs-for-future-frontend.md` |
+| `database-read` | any | `db-readonly`, `testing` | `src/nba_data/db/models/core.py` |
+| `database-schema` | `data` | `db-schema`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `alembic/` conventions |
+| `scraping` | `data` | `scraping-pipeline`, `data-quality`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `docs/domain/BUSINESS_RULES.md` |
+| `data-quality` | `data` | `data-quality`, `testing` | `docs/domain/BUSINESS_RULES.md` |
+| `ml` | `data` | `testing` | — (a context document is pending the predictor plan) |
+| `testing` | any | `testing` | — |
+| `review` | any | `review` + the card's own domain areas | the card and the current diff |
+| `documentation` | any | — | only the durable docs the change actually affects |
+| `planning` | any | `plan-task`, `prepare-task` + the card's own domain areas | the card, plus the real code and tests for the area in question |
 
 Anything in the card's `read:` list is loaded in addition to the above.
 
+A `data` or `app` card uses only its own track's areas and the `any` ones once it
+leaves `planning/`; a `shared` card may use every area (ADR 0018,
+`scripts/validate_tasks.py`).
+
 Planning cards carry `areas: [planning, <domain areas>]`. `prepare-task` drops
 `planning` when it promotes the card to `tasks/backlog/`.
+
+## Routed by command, not by area
+
+| Command | Skill |
+|---|---|
+| `Park the current task.` · `Resume <TASK-ID>.` | `park-resume` |
+
+The other short commands and their skills are listed in `AGENTS.md`.
 
 ## On-demand only — never route by default
 

@@ -1,6 +1,7 @@
 ---
 id: F6-013
 title: Serve the regular-season aggregate and stint stat routes
+track: app
 areas:
   - planning
   - api

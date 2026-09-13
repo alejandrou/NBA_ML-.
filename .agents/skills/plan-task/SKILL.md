@@ -37,6 +37,12 @@ Create `tasks/planning/<ID>-<short-kebab-slug>.md` from `tasks/TEMPLATE.md`.
 
 Record:
 
+- **Track** — `track:` is required: `data` (scraping, schema, migrations,
+  features, ML), `app` (API and web), or `shared` (workflow, CI, dependencies,
+  `AGENTS.md`, or a change that breaks the other track). Mint the ID in the
+  track's family: F4E, F5, or F8 for `data`; F6 or F7 for `app`; WF, or any
+  family that fits, for `shared`. A planning card may still mix areas of both
+  tracks; `prepare-task` splits it.
 - **Evidence and current state** — what exists, what you observed, with file
   paths and line numbers. Not impressions.
 - **Human decisions or resources** — every question only the user can answer, as

@@ -11,7 +11,7 @@ the **union** — read each file once.
 | `database-schema` | `data` | `db-schema`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `alembic/` conventions |
 | `scraping` | `data` | `scraping-pipeline`, `data-quality`, `testing` | `docs/architecture/SYSTEM_DESIGN.md`, `docs/domain/BUSINESS_RULES.md` |
 | `data-quality` | `data` | `data-quality`, `testing` | `docs/domain/BUSINESS_RULES.md` |
-| `ml` | `data` | `testing` | — (a context document is pending the predictor plan) |
+| `ml` | `data` | `testing` | `docs/ml/PREDICTOR_PLAN.md` |
 | `testing` | any | `testing` | — |
 | `review` | any | `review` + the card's own domain areas | the card and the current diff |
 | `documentation` | any | — | only the durable docs the change actually affects |

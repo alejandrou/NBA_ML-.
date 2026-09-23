@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. The future phase is scoped by ADR 0019, which keeps this stack.
 
 ## Context
 

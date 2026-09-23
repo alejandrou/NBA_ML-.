@@ -18,6 +18,7 @@ data/cache/
 
 *.ipynb
 !tests/fixtures/**/*.html
+!docs/design/*.html
 
 .DS_Store
 .history/

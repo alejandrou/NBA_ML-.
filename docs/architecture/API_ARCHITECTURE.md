@@ -4,6 +4,8 @@
 
 Phase 5 is a read-only, GET-only FastAPI surface under `/api/v1`. It has no authentication, frontend, scraping, backfills, writes, migrations, rankings, OVR, similarity, ML, or other generated analytics.
 
+The web frontend is a separate consumer of this surface (ADR 0019, `WEB_ARCHITECTURE.md`). It calls the API from the Next.js server, never from a browser, so the API deliberately registers no `CORSMiddleware`. Adding one is an API decision with its own card, not a side effect of a page.
+
 ## Runtime model
 
 FastAPI uses synchronous SQLAlchemy. Database endpoints normally use `def`; no async DB stack, `AsyncSession`, `asyncpg`, or `create_async_engine` is introduced without a dedicated task. Each app instance owns one long-lived Engine and one sessionmaker through lifespan; each request receives one Session, which is then closed. Never create an Engine per request or retain a global Session.

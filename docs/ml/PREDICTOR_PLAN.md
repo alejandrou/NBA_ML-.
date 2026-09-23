@@ -149,6 +149,14 @@ samples and need regularization.
 plus an adapter for the NBA CDN play-by-play JSON. Stathead and Basketball
 Reference play-by-play are distinct products and access paths.
 
+**Chosen on 2026-09-23 (ADR 0019, F8-001): Basketball Reference** — league
+schedule (`/leagues/NBA_<year>_games[-<month>].html`), box score
+(`/boxscores/<game_id>.html`), and play-by-play (`/boxscores/pbp/<game_id>.html`)
+pages, through the existing client, cache, limits, and approval gate. Its player
+and team ids are the ones `core` is keyed on, so no cross-provider mapping is
+needed. NBA.com stays a candidate for Stage 4 play-by-play only, where `pbpstats`
+compatibility matters, behind its own pilot and the owner's terms decision.
+
 ## 3. Proposed database extension
 
 The layers stay: identities in `core`, sporting observations in `stats`, own
@@ -225,10 +233,11 @@ as not adjusted for confirmed absences.
 ### Stage 1 — prove acquisition is feasible (`F8-001`)
 
 A pilot of 30 games spread across seasons and edge cases: overtime, simultaneous
-substitutions, score reviews, incomplete data. NBA.com is the candidate primary
-provider; the endpoint choice (stats V3 vs CDN) follows coverage and consistency
-in the pilot. If neither satisfies the requirements, large-scale acquisition
-stops and the failure is documented.
+substitutions, score reviews, incomplete data. The provider is Basketball
+Reference (ADR 0019; the plan first proposed NBA.com). If the pilot does not
+satisfy the requirements, large-scale acquisition stops and the failure is
+documented. The procedure and results live in
+`docs/validation/PER_GAME_ACQUISITION_PILOT.md`.
 
 Measure identity coverage and resolution; final score vs box score vs events
 reconciliation; requests, bytes, and wall time per game; offline compatibility
@@ -236,8 +245,15 @@ with `pbpstats`. Acquisition keeps the cache, provenance, per-provider limits,
 and the existing explicit approval. Parsers and tests stay offline. Basketball
 Reference keeps its six-second floor and stop-on-429.
 
-Arithmetic estimate only: 1,230 requests six seconds apart take ~2.05 h; two
-resources per game, ~4.1 h, excluding errors, latency, and extra waits.
+**Result (2026-09-23): go for schedules, results, and box scores; play-by-play
+stored and reconciled, but not yet usable for lineups.** 84 requests, no
+failure and no 429, 6.1–6.3 s per page; 29 of 30 games reconcile across
+schedule, box score, and play-by-play, and the 30th exposes a source error
+(a line score with two quarters swapped). A game costs two requests (~12.6 s)
+and ~107 KiB of cache. Box score headings, not schedule pages, tell regular
+season from play-in, playoffs, and the NBA Cup final. Lineup changes between
+periods are not logged, and `pbpstats` does not read these pages. Findings and
+the Stage 2 cost (~14,440 box scores, ~25 h) are in the pilot record.
 
 ### Stage 2 — game dataset and first predictor (`F8-002` onwards)
 

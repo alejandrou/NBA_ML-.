@@ -331,3 +331,51 @@ def test_the_default_fetch_time_is_timezone_aware_utc() -> None:
     assert result.metadata is not None
     assert result.metadata.fetched_at.tzinfo is not None
     assert result.metadata.fetched_at.utcoffset() == timedelta(0)
+
+
+@pytest.mark.unit
+def test_request_count_includes_server_error_retries_and_skips_cache_hits(tmp_path) -> None:
+    clock = FakeClock()
+    responses = iter(
+        [
+            httpx.Response(503),
+            httpx.Response(200, text="<html>retried</html>"),
+        ]
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    cache = HtmlCache(tmp_path)
+    cached_url = "https://www.basketball-reference.com/teams/DEN/2023.html"
+    cache.set(cached_url, "<html>cached</html>")
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(
+        _settings(),
+        cache=cache,
+        http_client=http_client,
+        sleeper=clock.sleep,
+        clock=clock,
+    )
+
+    assert client.request_count == 0
+    assert client.get(cached_url) == "<html>cached</html>"
+    assert client.request_count == 0
+    assert client.get("https://www.basketball-reference.com/teams/BOS/2024.html") == (
+        "<html>retried</html>"
+    )
+    assert client.request_count == 2
+
+
+@pytest.mark.unit
+def test_request_count_includes_the_429_that_stops_the_client() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(_settings(), http_client=http_client, sleeper=lambda _: None)
+
+    with pytest.raises(RateLimitExceededError):
+        client.get("https://www.basketball-reference.com/teams/BOS/2024.html")
+
+    assert client.request_count == 1

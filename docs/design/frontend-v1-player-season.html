@@ -1,0 +1,309 @@
+<!doctype html>
+<!--
+  Static mockup of the v1 player season page (ADR 0019, WEB_ARCHITECTURE.md).
+  Not application code: F7-004 builds the real page in web/.
+  Every field shown is one API_CONTRACT.md publishes. Values are real rows read
+  from the local nba database on 2026-09-23 (hardeja01, 2021, regular, per_game),
+  formatted by the display rules in WEB_ARCHITECTURE.md.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>James Harden 2020-21 · Per game — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #f6f4ef;
+    --surface: #ffffff;
+    --ink: #17161a;
+    --ink-2: #57534b;
+    --rule: #e3dfd6;
+    --rule-strong: #cfc9bd;
+    --accent: #b4410f;
+    --accent-ink: #ffffff;
+    --accent-soft: #fbece2;
+    --band: #f1eee6;
+    --ok: #2f7a4a;
+    --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #121214;
+      --surface: #1a1a1d;
+      --ink: #edebe6;
+      --ink-2: #a9a59c;
+      --rule: #2c2b2f;
+      --rule-strong: #3b3a3f;
+      --accent: #f08a4b;
+      --accent-ink: #1a1208;
+      --accent-soft: #2b1d14;
+      --band: #211f23;
+      --ok: #6cc28c;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 14px/1.45 var(--font-body);
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .mono { font-family: var(--font-mono); }
+
+  /* shell */
+  .topbar {
+    display: flex; align-items: center; gap: 28px;
+    padding: 0 max(16px, 4vw); height: 56px;
+    background: var(--surface); border-bottom: 1px solid var(--rule);
+  }
+  .wordmark {
+    display: flex; align-items: center; gap: 8px;
+    font: 700 22px/1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ink);
+  }
+  .wordmark::before { content: ""; width: 12px; height: 12px; background: var(--accent); border-radius: 2px; }
+  .topbar nav { display: flex; gap: 4px; }
+  .topbar nav a {
+    padding: 8px 12px; border-radius: 6px; color: var(--ink-2); font-weight: 500;
+  }
+  .topbar nav a[aria-current="page"] { color: var(--ink); background: var(--band); }
+  .topbar nav a:hover { text-decoration: none; color: var(--ink); }
+
+  main { padding: 28px max(16px, 4vw) 48px; max-width: 1480px; margin: 0 auto; }
+  .crumbs { color: var(--ink-2); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .crumbs span[aria-hidden] { color: var(--rule-strong); }
+
+  .head {
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap;
+    margin: 10px 0 22px;
+  }
+  h1 {
+    margin: 0; font: 700 clamp(40px, 6vw, 60px)/.95 var(--font-display);
+    letter-spacing: .01em; text-transform: uppercase;
+  }
+  .ident { margin-top: 10px; display: flex; gap: 10px; align-items: center; color: var(--ink-2); font-size: 13px; }
+  .key {
+    font: 500 12px/1 var(--font-mono); padding: 5px 7px; border-radius: 4px;
+    background: var(--band); color: var(--ink-2); border: 1px solid var(--rule);
+  }
+  .stepper { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+  .stepper a, .stepper strong { display: flex; align-items: center; padding: 10px 14px; min-height: 44px; }
+  .stepper strong { font: 700 22px/1 var(--font-display); letter-spacing: .02em; border-inline: 1px solid var(--rule); }
+  .stepper a { font-size: 13px; }
+
+  /* switches */
+  .controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 8px; background: var(--band); width: fit-content; }
+  .seg a { padding: 8px 14px; border-radius: 6px; color: var(--ink-2); font-weight: 500; min-height: 36px; }
+  .seg a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+  .seg a:hover { text-decoration: none; color: var(--ink); }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: thin; }
+  .tabs a {
+    white-space: nowrap; padding: 10px 14px; color: var(--ink-2); font-weight: 500;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tabs a:hover { text-decoration: none; color: var(--ink); }
+
+  /* table */
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+  .card-head {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline;
+    padding: 14px 16px; border-bottom: 1px solid var(--rule);
+  }
+  .card-head h2 { margin: 0; font: 700 20px/1.1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+  .card-head p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+  th, td { padding: 8px 9px; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+  thead th {
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+    font-weight: 600; color: var(--ink-2); font-size: 12px; text-align: right;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  td { text-align: right; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child {
+    position: sticky; left: 0; text-align: left; background: var(--surface);
+    border-right: 1px solid var(--rule); min-width: 210px;
+  }
+  thead th:first-child { z-index: 2; }
+  .text { text-align: left; }
+  .group th {
+    text-align: left; font: 600 11px/1 var(--font-body); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-2); background: var(--band); padding: 9px 9px 8px; border-bottom: 1px solid var(--rule);
+  }
+  .group th:first-child { background: var(--band); }
+  .group th span { font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 8px; }
+  tr.agg td { font-weight: 600; background: var(--accent-soft); }
+  tr.agg td:first-child { background: var(--accent-soft); }
+  .marker {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600;
+  }
+  .marker b {
+    font: 600 12px/1 var(--font-mono); padding: 4px 6px; border-radius: 4px;
+    border: 1px dashed var(--rule-strong); color: var(--ink);
+  }
+  .marker small { font-weight: 400; color: var(--ink-2); font-size: 12px; }
+  .team { display: inline-flex; gap: 8px; align-items: baseline; }
+  .team .code { font: 500 12px/1 var(--font-mono); }
+  .team .name { color: var(--ink); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .notes {
+    display: grid; gap: 6px; padding: 12px 16px; border-top: 1px solid var(--rule);
+    color: var(--ink-2); font-size: 12.5px;
+  }
+  .notes p { margin: 0; }
+
+  footer {
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 16px max(16px, 4vw); border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 12.5px;
+  }
+  .status { display: inline-flex; align-items: center; gap: 8px; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+  @media (max-width: 640px) {
+    .topbar { gap: 16px; }
+    .stepper { width: 100%; justify-content: space-between; }
+    th:first-child, td:first-child { min-width: 150px; }
+    .team .name { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="wordmark">NBA Data</span>
+  <nav aria-label="Main">
+    <a href="#" aria-current="page">Players</a>
+    <a href="#">Teams</a>
+  </nav>
+</header>
+
+<main>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="#">Players</a><span aria-hidden="true">/</span>
+    <a href="#">James Harden</a><span aria-hidden="true">/</span>
+    <span>2020-21</span>
+  </nav>
+
+  <div class="head">
+    <div>
+      <h1>James Harden</h1>
+      <div class="ident"><span class="key">hardeja01</span> Basketball Reference player id</div>
+    </div>
+    <nav class="stepper" aria-label="Season">
+      <a href="#" rel="prev">‹ 2019-20</a>
+      <strong aria-current="page">2020-21</strong>
+      <a href="#" rel="next">2021-22 ›</a>
+    </nav>
+  </div>
+
+  <div class="controls">
+    <nav class="seg" aria-label="Season type">
+      <a href="#" aria-current="page">Regular season</a>
+      <a href="#">Postseason</a>
+    </nav>
+    <nav class="tabs" aria-label="Statistics family">
+      <a href="#">Totals</a>
+      <a href="#" aria-current="page">Per game</a>
+      <a href="#">Per 36 min</a>
+      <a href="#">Per 100 poss</a>
+      <a href="#">Advanced</a>
+      <a href="#">Shooting</a>
+      <a href="#">Adjusted shooting</a>
+      <a href="#">Play-by-play</a>
+    </nav>
+  </div>
+
+  <section class="card" aria-labelledby="t-title">
+    <div class="card-head">
+      <h2 id="t-title">Per game · Regular season 2020-21</h2>
+      <p>Official values as published. Nothing on this page is computed.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Team</th>
+            <th scope="col">Age</th><th scope="col" class="text">Pos</th>
+            <th scope="col">G</th><th scope="col">GS</th><th scope="col">MP</th>
+            <th scope="col">FG</th><th scope="col">FGA</th><th scope="col">FG%</th>
+            <th scope="col">3P</th><th scope="col">3PA</th><th scope="col">3P%</th>
+            <th scope="col">2P</th><th scope="col">2PA</th><th scope="col">2P%</th>
+            <th scope="col">eFG%</th>
+            <th scope="col">FT</th><th scope="col">FTA</th><th scope="col">FT%</th>
+            <th scope="col">ORB</th><th scope="col">DRB</th><th scope="col">TRB</th>
+            <th scope="col">AST</th><th scope="col">STL</th><th scope="col">BLK</th>
+            <th scope="col">TOV</th><th scope="col">PF</th><th scope="col">PTS</th>
+            <th scope="col" class="text">Awards</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group"><th scope="rowgroup" colspan="29">Season aggregate <span>the official season row</span></th></tr>
+          <tr class="agg">
+            <td><span class="marker"><b>2TM</b><small>two teams — not a team</small></span></td>
+            <td>31</td><td class="text">PG</td>
+            <td>44</td><td>43</td><td>36.6</td>
+            <td>7.8</td><td>16.7</td><td>.466</td>
+            <td>2.8</td><td>7.6</td><td>.362</td>
+            <td>5.0</td><td>9.1</td><td>.553</td>
+            <td>.548</td>
+            <td>6.3</td><td>7.3</td><td>.861</td>
+            <td>0.8</td><td>7.1</td><td>7.9</td>
+            <td>10.8</td><td>1.2</td><td>0.8</td>
+            <td>4.0</td><td>2.3</td><td>24.6</td>
+            <td class="text">MVP-13,AS</td>
+          </tr>
+          <tr class="group"><th scope="rowgroup" colspan="29">By team <span>one row per stint</span></th></tr>
+          <tr>
+            <td><a class="team" href="#"><span class="code">BRK</span><span class="name">Brooklyn Nets</span></a></td>
+            <td>31</td><td class="text">PG</td>
+            <td>36</td><td>35</td><td>36.6</td>
+            <td>7.8</td><td>16.6</td><td>.471</td>
+            <td>2.7</td><td>7.3</td><td>.366</td>
+            <td>5.2</td><td>9.4</td><td>.552</td>
+            <td>.551</td>
+            <td>6.3</td><td>7.3</td><td>.856</td>
+            <td>0.8</td><td>7.7</td><td>8.5</td>
+            <td>10.9</td><td>1.3</td><td>0.8</td>
+            <td>4.0</td><td>2.4</td><td>24.6</td>
+            <td class="text">MVP-13,AS</td>
+          </tr>
+          <tr>
+            <td><a class="team" href="#"><span class="code">HOU</span><span class="name">Houston Rockets</span></a></td>
+            <td>31</td><td class="text">PG</td>
+            <td>8</td><td>8</td><td>36.3</td>
+            <td>7.5</td><td>16.9</td><td>.444</td>
+            <td>3.1</td><td>9.0</td><td>.347</td>
+            <td>4.4</td><td>7.9</td><td>.556</td>
+            <td>.537</td>
+            <td>6.6</td><td>7.5</td><td>.883</td>
+            <td>0.6</td><td>4.5</td><td>5.1</td>
+            <td>10.4</td><td>0.9</td><td>0.8</td>
+            <td>4.3</td><td>1.8</td><td>24.8</td>
+            <td class="text">MVP-13,AS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="notes">
+      <p>The season row is Basketball Reference's own aggregate. It is not a sum of the team rows, and the page never adds them up.</p>
+      <p><b>2TM</b> is a marker, not a team, so it is never a link. A dash (—) marks a statistic that was not recorded; it is never shown as 0.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="status">API ready</span>
+  <span>Read-only · data from the local NBA Data API v1</span>
+</footer>
+
+</body>
+</html>

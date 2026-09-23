@@ -45,6 +45,9 @@ apps/
   web/
 ```
 
+The web frontend does not wait for this split: ADR 0019 places it in `web/` at
+the repository root.
+
 ## Responsibilities
 
 - Scraper jobs plan URLs and orchestrate work.
@@ -95,8 +98,9 @@ never matched by name — `player_name` is not a stable key.
 
 Work after the read-only API, in order:
 
-**Web frontend** — consumes the API only. It must never query the database
-directly or trigger scraping. See ADR 0008 for the stack decision.
+**Web frontend** — `web/`, consuming the API only. It must never query the
+database directly or trigger scraping. ADR 0008 chose the stack, ADR 0019 scopes
+v1, and `WEB_ARCHITECTURE.md` specifies it.
 
 **Generated metrics, rankings, and OVR** — stored in the `features` schema,
 never mixed into cached raw source material, `core`, or official `stats` tables.

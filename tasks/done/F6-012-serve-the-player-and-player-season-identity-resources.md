@@ -174,25 +174,71 @@ Filled in before the card moves to `tasks/review/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_player_api.py tests/unit/test_player_service.py tests/unit/test_player_query_repository.py tests/unit/test_api_readiness.py`
+- Result: 56 passed.
+- Command: `uv run ruff check .`
+- Result: All checks passed.
+- Command: `uv run mypy src/nba_data`
+- Result: Success: no issues found in 74 source files.
+- Command: `uv run pytest -m "not integration and not live"`
+- Result: 1038 passed, 28 deselected.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
+
+Changes beyond the four new modules: `app.py` registers the router;
+`REQUIRED_TABLES` gains the three player tables, with the readiness fake stocked
+to match, the list pinned, and one 503 test per new table;
+`tests/unit/test_api_foundation.py`'s OpenAPI path allow-list gains the four
+player paths (the test exists to fail when a route is added unapproved); and the
+contract marker and its required-table sentence are narrowed.
+
+Design choice worth checking: the service raises `PlayerNotFoundError` /
+`PlayerSeasonNotFoundError` and the router maps each to its fixed 404 string,
+rather than returning `None` as the teams service does, because
+`/seasons/{season_year}` has two distinct 404s. Season items come from a typed
+projection (`PlayerSeasonIdentity`) built with exactly two SELECTs per page — the
+page and its teams — which a test pins by counting statements.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv run nba-data serve`, against the `nba` database at the migration head.
+2. `GET http://127.0.0.1:8000/api/v1/health/ready` → 200 `{"status": "ready"}`.
+3. `GET /api/v1/players?page_size=5` → envelope ordered by `full_name`, then id;
+   `total` is the count of players with an id; each item has only
+   `basketball_reference_player_id` and `full_name`.
+4. Take a multi-team player (e.g. `jamesle01` if loaded) and
+   `GET /api/v1/players/<pid>` → that player.
+5. `GET /api/v1/players/<pid>/seasons` → NBA seasons newest first, each
+   `{"season_year", "league": "NBA", "teams": [...]}` with uppercase codes
+   sorted ascending.
+6. `GET /api/v1/players/<pid>/seasons/<a year from step 5>` → that one item.
+7. `/docs` lists the four player routes under the `players` tag.
 
-Expected result:
+Expected result: every call 200 with the bodies above; no `id`, `slug`, roster,
+or lineage key anywhere.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `GET /api/v1/players/JAMESLE01`, `/api/v1/players/1`, and
+   `/api/v1/players/nobody99/seasons` → 404 `{"detail": "Player not found"}`.
+2. `GET /api/v1/players/` → 404 `{"detail": "Player not found"}` (not the
+   collection, not a redirect).
+3. `GET /api/v1/players/<pid>/seasons/1900` → 404
+   `{"detail": "Player season not found"}`.
+4. `GET /api/v1/players/<pid>/seasons/abc`, `/api/v1/players?page=0`,
+   `/api/v1/players?page_size=101`, and a 33-character id → 422.
+5. `GET /api/v1/players?page=100000` → 200, empty `items`, unchanged `total`.
 
-Expected result:
+Expected result: exactly those statuses and fixed strings; no detail echoes the
+id or year.
 
 ## Known limitations
 
-- None.
+- Not run against PostgreSQL: the integration lane was not executed in this
+  session. The queries use only joins, `IN`, `COUNT` over a subquery, and
+  `ORDER BY`, and every new test runs them for real on SQLite.
+- A known player with seasons only in another league gets 200 with an empty
+  `items` list, per the owner decision that the list is NBA-scoped.
+- `core.players.basketball_reference_player_id` stays nullable in the schema;
+  the API filters null rows out, and making the column NOT NULL is data-track
+  work outside this card.

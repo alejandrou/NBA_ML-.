@@ -17,6 +17,7 @@ from nba_data.api.services import readiness
 from nba_data.config.settings import Settings, get_settings
 
 _QUERY_CANCELED_SQLSTATE = "57014"
+SERVED_CORE_TABLES = ("teams", "seasons", "players", "player_seasons", "player_team_seasons")
 
 
 class _ScalarResult:
@@ -34,7 +35,7 @@ class FakeSession:
         self,
         *,
         revisions: Sequence[str] | None = None,
-        core_tables: Sequence[str] = ("teams", "seasons"),
+        core_tables: Sequence[str] = SERVED_CORE_TABLES,
         dialect: str = "postgresql",
         failure: Exception | None = None,
         fail_on: str | None = None,
@@ -174,6 +175,24 @@ def test_readiness_reports_503_when_the_schema_is_behind_the_migration_head() ->
 @pytest.mark.unit
 def test_readiness_reports_503_when_a_required_table_is_missing() -> None:
     session = FakeSession(core_tables=("teams",))
+
+    with readiness_client(session) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database schema not ready"}
+
+
+@pytest.mark.unit
+def test_the_required_tables_are_the_core_tables_the_data_routes_read() -> None:
+    """Pinned as a literal: a route whose table is unchecked can 500 while ready says 200."""
+    assert readiness.REQUIRED_TABLES == SERVED_CORE_TABLES
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("missing", ["players", "player_seasons", "player_team_seasons"])
+def test_readiness_reports_503_when_a_player_table_is_missing(missing: str) -> None:
+    session = FakeSession(core_tables=[name for name in SERVED_CORE_TABLES if name != missing])
 
     with readiness_client(session) as client:
         response = client.get("/api/v1/health/ready")

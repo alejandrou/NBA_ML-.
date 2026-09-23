@@ -1,0 +1,191 @@
+{
+  "manifest_id": "F8-001-game-pilot-schedules-20260923",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-09-23T00:00:00Z",
+  "approval_basis": "The owner's instruction of 2026-09-23 to carry out F8-001 acting as owner, resolving its open decisions by best judgement without asking, which covers the card's game-selection approval. Phase 1 of 2: league schedule pages, from which the thirty pilot games are chosen.",
+  "scope": {
+    "page_types": [
+      "league_schedule"
+    ],
+    "max_urls": 24
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "stop_on_first_failure": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "entries": [
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2000_games.html",
+      "season_end_year": 2000,
+      "month": null,
+      "reason": "First archived season (1999-2000); its index page is the first month, November 1999."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2001_games.html",
+      "season_end_year": 2001,
+      "month": null,
+      "reason": "2000-01 index page (October 2000): early-era schedule markup."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2001_games-november.html",
+      "season_end_year": 2001,
+      "month": "november",
+      "reason": "2000-01 November: enough early-era games to find an overtime game."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2010_games.html",
+      "season_end_year": 2010,
+      "month": null,
+      "reason": "2009-10 index page (October 2009): mid-archive markup."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2015_games.html",
+      "season_end_year": 2015,
+      "month": null,
+      "reason": "2014-15 index page (October 2014): first season of the Stage 2 range."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2015_games-november.html",
+      "season_end_year": 2015,
+      "month": "november",
+      "reason": "2014-15 November: overtime and ordinary Stage 2 games."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games.html",
+      "season_end_year": 2020,
+      "month": null,
+      "reason": "2019-20 index page (October 2019): the season whose months straddle two Octobers."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-march.html",
+      "season_end_year": 2020,
+      "month": "march",
+      "reason": "2019-20 March: the last games before the 2020-03-11 suspension."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-july.html",
+      "season_end_year": 2020,
+      "month": "july",
+      "reason": "2019-20 July: the first bubble seeding games at a neutral site."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-august.html",
+      "season_end_year": 2020,
+      "month": "august",
+      "reason": "2019-20 August: seeding games, the play-in game, and the first playoff games on one page."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2021_games.html",
+      "season_end_year": 2021,
+      "month": null,
+      "reason": "2020-21 index page (December 2020): a December start and mostly empty arenas."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2021_games-may.html",
+      "season_end_year": 2021,
+      "month": "may",
+      "reason": "2020-21 May: regular-season end, play-in, and playoffs on one page."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2024_games.html",
+      "season_end_year": 2024,
+      "month": null,
+      "reason": "2023-24 index page (October 2023): opening night."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2024_games-november.html",
+      "season_end_year": 2024,
+      "month": "november",
+      "reason": "2023-24 November: In-Season Tournament group games and the Mexico City game."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2024_games-december.html",
+      "season_end_year": 2024,
+      "month": "december",
+      "reason": "2023-24 December: In-Season Tournament knockout games and the final that does not count."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2024_games-january.html",
+      "season_end_year": 2024,
+      "month": "january",
+      "reason": "2023-24 January: the Paris game."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2025_games.html",
+      "season_end_year": 2025,
+      "month": null,
+      "reason": "2024-25 index page (October 2024): last archived season."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2025_games-december.html",
+      "season_end_year": 2025,
+      "month": "december",
+      "reason": "2024-25 December: NBA Cup knockout games and final."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2025_games-january.html",
+      "season_end_year": 2025,
+      "month": "january",
+      "reason": "2024-25 January: the Paris games."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2025_games-april.html",
+      "season_end_year": 2025,
+      "month": "april",
+      "reason": "2024-25 April: regular-season end, play-in, and playoffs on one page."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2026_games.html",
+      "season_end_year": 2026,
+      "month": null,
+      "reason": "2025-26 index page (October 2025): the most recent completed season, not archived yet."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2026_games-december.html",
+      "season_end_year": 2026,
+      "month": "december",
+      "reason": "2025-26 December: NBA Cup knockout games and final."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2026_games-april.html",
+      "season_end_year": 2026,
+      "month": "april",
+      "reason": "2025-26 April: regular-season end, play-in, and playoffs on one page."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2027_games.html",
+      "season_end_year": 2027,
+      "month": null,
+      "reason": "2026-27 index page: upcoming games with no result yet. Last, because the page may not be published."
+    }
+  ]
+}

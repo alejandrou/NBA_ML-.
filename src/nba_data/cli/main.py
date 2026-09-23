@@ -16,6 +16,18 @@ from nba_data.scraping.backfill_manifest import (
 )
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
+from nba_data.scraping.game_pilot_acquisition import (
+    GamePilotAcquisitionConfigurationError,
+    GamePilotAcquisitionStopped,
+    acquire_game_pilot_manifest,
+    build_game_pilot_dry_run_report,
+    validate_game_pilot_acquisition_settings,
+    validate_settings_within_manifest_policy,
+)
+from nba_data.scraping.game_pilot_manifest import (
+    GamePilotManifestError,
+    load_game_pilot_manifest,
+)
 from nba_data.scraping.nba_team_season_acquisition import (
     NbaTeamSeasonAcquisitionConfigurationError,
     NbaTeamSeasonAcquisitionStopped,
@@ -23,7 +35,11 @@ from nba_data.scraping.nba_team_season_acquisition import (
     build_verified_nba_team_season_acquisition_manifest,
     validate_phase_4d_acquisition_settings,
 )
-from nba_data.scraping.nba_team_season_manifest import build_nba_team_season_dry_run_report
+from nba_data.scraping.nba_team_season_manifest import (
+    SEASON_END_YEAR,
+    build_nba_team_season_dry_run_report,
+    build_nba_team_season_manifest,
+)
 from nba_data.scraping.offline_backfill import run_full_offline_backfill
 from nba_data.scraping.offline_player_postseason_stats_backfill import (
     DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
@@ -46,6 +62,10 @@ from nba_data.scraping.player_page_acquisition import (
     validate_player_page_acquisition_settings,
 )
 from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
+from nba_data.validation.game_pilot import (
+    build_game_pilot_validation_report,
+    known_player_ids_from_cache,
+)
 from nba_data.validation.official_stats import (
     validate_official_stats as run_official_stats_validation,
 )
@@ -152,6 +172,27 @@ _STATS_COVERAGE_CACHE_ROOT_OPTION = typer.Option(
     None,
     "--cache-root",
     help="Optional cache-root override for offline fixtures. Defaults to Settings.scraper_cache_dir.",
+)
+_GAME_PILOT_MANIFEST_OPTION = typer.Option(
+    ...,
+    "--manifest",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="An approved F8-001 pilot manifest; repeat for each manifest.",
+)
+_GAME_PILOT_ACQUISITION_REPORT_OPTION = typer.Option(
+    None,
+    "--acquisition-report",
+    exists=True,
+    dir_okay=False,
+    readable=True,
+    help="Optional acquire-game-pilot JSON report whose requests and wall time to join; repeatable.",
+)
+_GAME_PILOT_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Optional path to write the full game-pilot validation JSON report.",
 )
 _SERVE_HOST_OPTION = typer.Option(
     "127.0.0.1",
@@ -658,6 +699,41 @@ def validate_build_stats_coverage(
         raise typer.Exit(code=1)
 
 
+@validation_app.command("game-pilot")
+def validate_game_pilot(
+    manifest_paths: list[Path] = _GAME_PILOT_MANIFEST_OPTION,
+    acquisition_report_paths: list[Path] | None = _GAME_PILOT_ACQUISITION_REPORT_OPTION,
+    cache_root: Path | None = _STATS_COVERAGE_CACHE_ROOT_OPTION,
+    output: Path | None = _GAME_PILOT_OUTPUT_OPTION,
+) -> None:
+    """Reconcile the F8-001 pilot games from cached pages only (no network, no database)."""
+
+    try:
+        manifests = [load_game_pilot_manifest(path) for path in manifest_paths]
+    except GamePilotManifestError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    acquisition_reports = [
+        _read_json_object(path, "acquisition report") for path in acquisition_report_paths or []
+    ]
+
+    settings = get_settings()
+    root = cache_root if cache_root is not None else settings.scraper_cache_dir
+    known_team_seasons = frozenset(
+        (entry.team, entry.season_end_year) for entry in build_nba_team_season_manifest().entries
+    )
+    report = build_game_pilot_validation_report(
+        manifests,
+        cache=HtmlCache(root),
+        known_player_ids=known_player_ids_from_cache(root),
+        known_team_seasons=known_team_seasons,
+        archive_last_season=SEASON_END_YEAR,
+        acquisition_reports=acquisition_reports,
+    )
+    _print_and_optionally_write_json(report.to_dict(), output)
+    if not report.passed:
+        raise typer.Exit(code=1)
+
+
 @acquisition_app.command("dry-run-nba-team-seasons")
 def acquisition_dry_run_nba_team_seasons() -> None:
     """Plan the Phase 4D-A NBA team-season manifest without downloading anything."""
@@ -830,6 +906,65 @@ def acquisition_acquire_player_pages(
         with BasketballReferenceClient(settings, max_429_retries=0) as client:
             report = acquire_player_page_manifest(manifest, cache=cache, client=client)
     except PlayerPageAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("dry-run-game-pilot")
+def acquisition_dry_run_game_pilot(
+    manifest_path: Path,
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Plan an approved F8-001 per-game pilot manifest without downloading anything."""
+
+    settings = get_settings()
+    try:
+        manifest = load_game_pilot_manifest(manifest_path)
+    except GamePilotManifestError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    report = build_game_pilot_dry_run_report(manifest, cache=cache, settings=settings)
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("acquire-game-pilot")
+def acquisition_acquire_game_pilot(
+    manifest_path: Path,
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for the F8-001 per-game pilot manifest.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved acquisition.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run controlled F8-001 per-game pilot cache acquisition."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    try:
+        validate_game_pilot_acquisition_settings(settings)
+        manifest = load_game_pilot_manifest(manifest_path)
+        validate_settings_within_manifest_policy(settings, manifest)
+    except (GamePilotAcquisitionConfigurationError, GamePilotManifestError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        with BasketballReferenceClient(settings, max_429_retries=0) as client:
+            report = acquire_game_pilot_manifest(manifest, cache=cache, client=client)
+    except GamePilotAcquisitionStopped as exc:
         _print_and_optionally_write_json(exc.report.to_dict(), output)
         raise typer.Exit(code=1) from exc
 

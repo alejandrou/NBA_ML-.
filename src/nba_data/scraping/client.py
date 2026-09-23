@@ -62,6 +62,7 @@ class BasketballReferenceClient:
         self._clock = clock
         self._now = now
         self._last_request_at: float | None = None
+        self._request_count = 0
         self._max_429_retries = max_429_retries
         self._max_5xx_retries = max_5xx_retries
 
@@ -72,6 +73,12 @@ class BasketballReferenceClient:
         if settings.scraper_max_requests_per_minute > 20:
             msg = "Basketball Reference requests must never exceed 20 per minute"
             raise ValueError(msg)
+
+    @property
+    def request_count(self) -> int:
+        """HTTP requests attempted so far, retries included. A cache hit sends none."""
+
+        return self._request_count
 
     def get(self, url: str, *, force_refresh: bool = False) -> str:
         return self.fetch(url, force_refresh=force_refresh).html
@@ -106,6 +113,7 @@ class BasketballReferenceClient:
         while True:
             self._wait_for_rate_limit()
             logger.info("Requesting %s", url)
+            self._request_count += 1
             response = self._client.get(url, headers={"User-Agent": self.settings.scraper_user_agent})
             self._last_request_at = self._clock()
 

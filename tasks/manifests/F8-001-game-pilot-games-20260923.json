@@ -1,0 +1,444 @@
+{
+  "manifest_id": "F8-001-game-pilot-games-20260923",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-09-23T00:00:00Z",
+  "approval_basis": "Owner's direct instruction of 2026-09-23, \"run the F8-001 live pilot\", covering both pilot manifests; the thirty games were chosen under the owner's delegation of the card's game-selection decision. Phase 2 of 2: box score pages first, then play-by-play pages, so a play-by-play page that does not exist stops the run only after every box score is cached.",
+  "scope": {
+    "page_types": [
+      "box_score",
+      "play_by_play"
+    ],
+    "max_urls": 60
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "stop_on_first_failure": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "entries": [
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/199911050SAC.html",
+      "season_end_year": 2000,
+      "game_id": "199911050SAC",
+      "reason": "1999-2000: first archived season, played at the Tokyo Dome (abroad, nominal home team)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/200010310ATL.html",
+      "season_end_year": 2001,
+      "game_id": "200010310ATL",
+      "reason": "2000-01 opening game; the defunct CHH code."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/200011010CLE.html",
+      "season_end_year": 2001,
+      "game_id": "200011010CLE",
+      "reason": "2000-01: first double-overtime game of November 2000."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/200910270CLE.html",
+      "season_end_year": 2010,
+      "game_id": "200910270CLE",
+      "reason": "2009-10 opening game."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/200910300CHA.html",
+      "season_end_year": 2010,
+      "game_id": "200910300CHA",
+      "reason": "2009-10: double overtime; the Bobcats' CHA code."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/201410280NOP.html",
+      "season_end_year": 2015,
+      "game_id": "201410280NOP",
+      "reason": "2014-15 opening game: first season of the Stage 2 range."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/201411190BRK.html",
+      "season_end_year": 2015,
+      "game_id": "201411190BRK",
+      "reason": "2014-15: triple overtime, the longest game in the fetched months."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/201411120MIN.html",
+      "season_end_year": 2015,
+      "game_id": "201411120MIN",
+      "reason": "2014-15: played in Mexico City (abroad, nominal home team)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/201910220TOR.html",
+      "season_end_year": 2020,
+      "game_id": "201910220TOR",
+      "reason": "2019-20 opening game, overtime."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202003110DAL.html",
+      "season_end_year": 2020,
+      "game_id": "202003110DAL",
+      "reason": "2019-20: played on 2020-03-11, the night the season was suspended."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202007300NOP.html",
+      "season_end_year": 2020,
+      "game_id": "202007300NOP",
+      "reason": "2019-20: first bubble seeding game (neutral site, blank attendance)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202008170DEN.html",
+      "season_end_year": 2020,
+      "game_id": "202008170DEN",
+      "reason": "2019-20: first bubble playoff game, overtime; the schedule does not mark playoffs."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202012220BRK.html",
+      "season_end_year": 2021,
+      "game_id": "202012220BRK",
+      "reason": "2020-21 opening game: December start, attendance 0."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202012260DET.html",
+      "season_end_year": 2021,
+      "game_id": "202012260DET",
+      "reason": "2020-21: double overtime with attendance 0."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202105180IND.html",
+      "season_end_year": 2021,
+      "game_id": "202105180IND",
+      "reason": "2020-21: the first play-in game."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202310240DEN.html",
+      "season_end_year": 2024,
+      "game_id": "202310240DEN",
+      "reason": "2023-24 opening game."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202311030POR.html",
+      "season_end_year": 2024,
+      "game_id": "202311030POR",
+      "reason": "2023-24: In-Season Tournament group game, overtime."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202311090ORL.html",
+      "season_end_year": 2024,
+      "game_id": "202311090ORL",
+      "reason": "2023-24: played in Mexico City (abroad, nominal home team)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202312070MIL.html",
+      "season_end_year": 2024,
+      "game_id": "202312070MIL",
+      "reason": "2023-24: In-Season Tournament semifinal in Las Vegas (neutral site, counts)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202312090LAL.html",
+      "season_end_year": 2024,
+      "game_id": "202312090LAL",
+      "reason": "2023-24: In-Season Tournament final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202410220BOS.html",
+      "season_end_year": 2025,
+      "game_id": "202410220BOS",
+      "reason": "2024-25 opening game."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202412170OKC.html",
+      "season_end_year": 2025,
+      "game_id": "202412170OKC",
+      "reason": "2024-25: NBA Cup final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202501230IND.html",
+      "season_end_year": 2025,
+      "game_id": "202501230IND",
+      "reason": "2024-25: played in Paris; the schedule carries no note for it."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202504190IND.html",
+      "season_end_year": 2025,
+      "game_id": "202504190IND",
+      "reason": "2024-25: first playoff game; the schedule does not mark playoffs."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202510210OKC.html",
+      "season_end_year": 2026,
+      "game_id": "202510210OKC",
+      "reason": "2025-26 opening game, double overtime; season not in the archive yet."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202512180DEN.html",
+      "season_end_year": 2026,
+      "game_id": "202512180DEN",
+      "reason": "2025-26: mid-December game of the fetched month (ordinary recent game)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202512160NYK.html",
+      "season_end_year": 2026,
+      "game_id": "202512160NYK",
+      "reason": "2025-26: NBA Cup final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202604120SAS.html",
+      "season_end_year": 2026,
+      "game_id": "202604120SAS",
+      "reason": "2025-26: last regular-season game before the play-in."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202604140CHO.html",
+      "season_end_year": 2026,
+      "game_id": "202604140CHO",
+      "reason": "2025-26: first play-in game, overtime."
+    },
+    {
+      "page_type": "box_score",
+      "url": "https://www.basketball-reference.com/boxscores/202604180CLE.html",
+      "season_end_year": 2026,
+      "game_id": "202604180CLE",
+      "reason": "2025-26: first playoff game; the schedule does not mark playoffs."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/199911050SAC.html",
+      "season_end_year": 2000,
+      "game_id": "199911050SAC",
+      "reason": "1999-2000: first archived season, played at the Tokyo Dome (abroad, nominal home team)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/200010310ATL.html",
+      "season_end_year": 2001,
+      "game_id": "200010310ATL",
+      "reason": "2000-01 opening game; the defunct CHH code."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/200011010CLE.html",
+      "season_end_year": 2001,
+      "game_id": "200011010CLE",
+      "reason": "2000-01: first double-overtime game of November 2000."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/200910270CLE.html",
+      "season_end_year": 2010,
+      "game_id": "200910270CLE",
+      "reason": "2009-10 opening game."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/200910300CHA.html",
+      "season_end_year": 2010,
+      "game_id": "200910300CHA",
+      "reason": "2009-10: double overtime; the Bobcats' CHA code."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/201410280NOP.html",
+      "season_end_year": 2015,
+      "game_id": "201410280NOP",
+      "reason": "2014-15 opening game: first season of the Stage 2 range."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/201411190BRK.html",
+      "season_end_year": 2015,
+      "game_id": "201411190BRK",
+      "reason": "2014-15: triple overtime, the longest game in the fetched months."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/201411120MIN.html",
+      "season_end_year": 2015,
+      "game_id": "201411120MIN",
+      "reason": "2014-15: played in Mexico City (abroad, nominal home team)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/201910220TOR.html",
+      "season_end_year": 2020,
+      "game_id": "201910220TOR",
+      "reason": "2019-20 opening game, overtime."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202003110DAL.html",
+      "season_end_year": 2020,
+      "game_id": "202003110DAL",
+      "reason": "2019-20: played on 2020-03-11, the night the season was suspended."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202007300NOP.html",
+      "season_end_year": 2020,
+      "game_id": "202007300NOP",
+      "reason": "2019-20: first bubble seeding game (neutral site, blank attendance)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202008170DEN.html",
+      "season_end_year": 2020,
+      "game_id": "202008170DEN",
+      "reason": "2019-20: first bubble playoff game, overtime; the schedule does not mark playoffs."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202012220BRK.html",
+      "season_end_year": 2021,
+      "game_id": "202012220BRK",
+      "reason": "2020-21 opening game: December start, attendance 0."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202012260DET.html",
+      "season_end_year": 2021,
+      "game_id": "202012260DET",
+      "reason": "2020-21: double overtime with attendance 0."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202105180IND.html",
+      "season_end_year": 2021,
+      "game_id": "202105180IND",
+      "reason": "2020-21: the first play-in game."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202310240DEN.html",
+      "season_end_year": 2024,
+      "game_id": "202310240DEN",
+      "reason": "2023-24 opening game."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202311030POR.html",
+      "season_end_year": 2024,
+      "game_id": "202311030POR",
+      "reason": "2023-24: In-Season Tournament group game, overtime."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202311090ORL.html",
+      "season_end_year": 2024,
+      "game_id": "202311090ORL",
+      "reason": "2023-24: played in Mexico City (abroad, nominal home team)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202312070MIL.html",
+      "season_end_year": 2024,
+      "game_id": "202312070MIL",
+      "reason": "2023-24: In-Season Tournament semifinal in Las Vegas (neutral site, counts)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202312090LAL.html",
+      "season_end_year": 2024,
+      "game_id": "202312090LAL",
+      "reason": "2023-24: In-Season Tournament final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202410220BOS.html",
+      "season_end_year": 2025,
+      "game_id": "202410220BOS",
+      "reason": "2024-25 opening game."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202412170OKC.html",
+      "season_end_year": 2025,
+      "game_id": "202412170OKC",
+      "reason": "2024-25: NBA Cup final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202501230IND.html",
+      "season_end_year": 2025,
+      "game_id": "202501230IND",
+      "reason": "2024-25: played in Paris; the schedule carries no note for it."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202504190IND.html",
+      "season_end_year": 2025,
+      "game_id": "202504190IND",
+      "reason": "2024-25: first playoff game; the schedule does not mark playoffs."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202510210OKC.html",
+      "season_end_year": 2026,
+      "game_id": "202510210OKC",
+      "reason": "2025-26 opening game, double overtime; season not in the archive yet."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202512180DEN.html",
+      "season_end_year": 2026,
+      "game_id": "202512180DEN",
+      "reason": "2025-26: mid-December game of the fetched month (ordinary recent game)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202512160NYK.html",
+      "season_end_year": 2026,
+      "game_id": "202512160NYK",
+      "reason": "2025-26: NBA Cup final in Las Vegas (does not count toward the regular season)."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202604120SAS.html",
+      "season_end_year": 2026,
+      "game_id": "202604120SAS",
+      "reason": "2025-26: last regular-season game before the play-in."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202604140CHO.html",
+      "season_end_year": 2026,
+      "game_id": "202604140CHO",
+      "reason": "2025-26: first play-in game, overtime."
+    },
+    {
+      "page_type": "play_by_play",
+      "url": "https://www.basketball-reference.com/boxscores/pbp/202604180CLE.html",
+      "season_end_year": 2026,
+      "game_id": "202604180CLE",
+      "reason": "2025-26: first playoff game; the schedule does not mark playoffs."
+    }
+  ]
+}

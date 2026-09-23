@@ -13,6 +13,8 @@ depends_on:
   - F8-001
 read:
   - docs/ml/PREDICTOR_PLAN.md
+  - docs/validation/PER_GAME_ACQUISITION_PILOT.md
+  - docs/decisions/0019-take-per-game-data-from-basketball-reference.md
   - docs/architecture/SYSTEM_DESIGN.md
   - docs/domain/BUSINESS_RULES.md
   - docs/decisions/0007-handle-tot-and-trades.md
@@ -42,11 +44,43 @@ what the `F8-001` pilot actually acquired.
   (`uq_core_team_seasons_team_season`); `TOT` is never a team (ADR 0007).
 - Player identity is `core.players.basketball_reference_player_id`; a second
   provider's ids need a mapping table, never a name match.
+- The `F8-001` pilot (`docs/validation/PER_GAME_ACQUISITION_PILOT.md`, ADR 0019)
+  settles the source and shows what the pages carry:
+  - Provider: Basketball Reference. Its game id, `<yyyymmdd>0<home code>`
+    (`202310240DEN`), is stable. Its player and team ids are `core`'s own, so
+    no source-id mapping is needed while it is the only provider.
+  - Game type is read from the box score heading: regular season, play-in,
+    playoffs, or the NBA Cup final, which does not count. Schedule pages mark
+    only play-in games.
+  - Neutral site is never flagged. The venue line ("Accor Arena, Paris,
+    France") always is.
+  - Attendance is blank when unpublished and 0 when there were no fans.
+  - Team totals include team turnovers (0–3 per game) that no player line
+    carries.
+  - Player seconds are rounded per line; a played line can have 0:00.
+  - Plus-minus may be missing or all zeros in Cup finals.
+  - Participation: played, "Did Not Play", "Did Not Dress", "Not With Team", or
+    inactive, which has no line at all.
+  - A line score can disagree with the play-by-play and the page's quarter
+    boxes (one of 30 games), so period scores need their own reconciliation.
+  - Inactive-only players can be missing from `core.players`: they appear only in
+    team salary tables, which the loader does not read.
+  - 2025–26 games name two to seven players per game that `core` does not hold.
 
 # Human decisions or resources
 
-- [ ] Resolved by `F8-001`: provider, endpoint, and which fields the documents
-      really carry.
+- [x] Resolved by `F8-001`: provider Basketball Reference; league schedule,
+      box score, and play-by-play pages; fields as listed under Evidence.
+      Recommendations from the pilot for the decisions below, for
+      `prepare-task` to confirm:
+      - first revision: `core.games`, `stats.team_game_totals`, and
+        `stats.player_game_totals`, with game type, venue, attendance,
+        participation, and nullable plus-minus. The `*_source_ids` tables wait
+        for a second provider; schedule versions wait for upcoming-game loading
+        (Stage 5); roster observations wait for Stage 4.
+      - public game id: the Basketball Reference id, as text.
+      - 2025–26 rows: the existing team-page path, extended to season 2026 (30
+        team pages); new players from box score links.
 - [ ] **First revision contents.** Plan tables for Stage 2 only (`core.games`,
       `core.game_source_ids`, `core.player_source_ids`,
       `core.team_season_source_ids`, `stats.team_game_totals`,

@@ -52,6 +52,10 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
         "/api/v1/teams/{basketball_reference_team_id}",
         "/api/v1/seasons",
         "/api/v1/seasons/{season_year}",
+        "/api/v1/players",
+        "/api/v1/players/{basketball_reference_player_id}",
+        "/api/v1/players/{basketball_reference_player_id}/seasons",
+        "/api/v1/players/{basketball_reference_player_id}/seasons/{season_year}",
     }
     health_operation = openapi["paths"]["/api/v1/health"]["get"]
     assert health_operation["tags"] == ["health"]

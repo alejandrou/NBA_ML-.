@@ -21,7 +21,13 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 REQUIRED_SCHEMA = "core"
-REQUIRED_TABLES: tuple[str, ...] = ("teams", "seasons")
+REQUIRED_TABLES: tuple[str, ...] = (
+    "teams",
+    "seasons",
+    "players",
+    "player_seasons",
+    "player_team_seasons",
+)
 
 # Resolved from this package, never from the process working directory: a
 # relative path here would silently resolve against wherever the server happens

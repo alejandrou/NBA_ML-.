@@ -69,7 +69,7 @@ Not ready returns 503 with one of exactly three `detail` strings:
 
 These strings are fixed. They never interpolate the exception, the driver message, a SQL statement, the connection string, a credential, or a filesystem path — the underlying cause is logged server-side, exactly as it is for a 500. If a fourth cause is ever needed it gets its own fixed string; the existing three are never reshaped into a template.
 
-**Required tables** are those backing the data routes currently served: `core.teams` and `core.seasons`. This list grows with each new data resource — a resource whose table is not checked can still 500 against a partially migrated database, so adding a data resource means adding its table here.
+**Required tables** are those backing the data routes currently served: `core.teams`, `core.seasons`, `core.players`, `core.player_seasons`, and `core.player_team_seasons`. This list grows with each new data resource — a resource whose table is not checked can still 500 against a partially migrated database, so adding a data resource means adding its table here.
 
 **Readiness is evaluated per request and never cached.** The check runs on every call, and the result of one call says nothing about the next. A cached verdict is deliberately rejected: a database that dies after startup would keep reporting ready, which is worse than having no readiness route at all, because it is confidently wrong. The check is time-bounded, so an unreachable or unresponsive database produces a 503 rather than a hanging request.
 
@@ -140,18 +140,21 @@ The `league` field stays in the response so the scope is explicit in every paylo
 
 ## Players and statistics
 
-**Specified, not yet served.** Nothing in this section is implemented. No player
-route, player query repository, player schema, or statistics route exists today;
-`db/repositories/queries/` holds only `teams.py` and `seasons.py`. The section
-fixes the shape before any of it is written, so a response body cannot be
-decided accidentally by copying the column list of a wide table.
+**Served:** the four identity routes — `/players`, `/players/{pid}`,
+`/players/{pid}/seasons`, and `/players/{pid}/seasons/{season_year}` — which read
+`core` only and landed with F6-012.
 
-Three successor cards implement it: **F6-012** (players and player-season
-identity), **F6-013** (regular-season statistics), and **F6-014** (postseason
-statistics). Each removes the resources it lands from this marker. Serving is
-staged by data health, not by contract — F6-013 and F6-014 additionally wait on
-the F4E-024 rebuild, because three of the four dimensions carry a stale parser
-version and the aggregate family is short of the archive.
+**Specified, not yet served:** the two statistics routes,
+`.../{season_type}/aggregate/{family}` and `.../{season_type}/stints/{family}`. No
+statistics route, statistics query repository, or statistics schema exists today.
+The section fixes their shape before any of it is written, so a response body
+cannot be decided accidentally by copying the column list of a wide table.
+
+Two successor cards implement them: **F6-013** (regular-season statistics) and
+**F6-014** (postseason statistics). Each removes the resources it lands from this
+marker. Serving is staged by data health, not by contract — F6-013 and F6-014
+additionally wait on the F4E-024 rebuild, because three of the four dimensions
+carry a stale parser version and the aggregate family is short of the archive.
 
 ### Player identity
 

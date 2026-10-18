@@ -1,4 +1,4 @@
-# ADR 0019 - Take Per-Game Data From Basketball Reference
+# ADR 0020 - Take Per-Game Data From Basketball Reference
 
 ## Status
 
@@ -53,8 +53,9 @@ decision on its terms.
 
 - Per-game rows join `core` by identifier. A player missing from `core` — a
   rookie of a season past the archive — is a new Basketball Reference id, never
-  an ambiguous mapping; F8-002 decides whether the plan's `*_source_ids`
-  tables are still needed.
+  an ambiguous mapping. The plan's `*_source_ids` tables are therefore not
+  needed until a second provider is loaded (decided in F8-002's planning,
+  2026-10-18).
 - Two requests per game at the six-second floor. The pilot measured 6.1–6.3
   seconds per page, so a 1,230-game season is about 2.1 hours of box scores and
   as much again for play-by-play.

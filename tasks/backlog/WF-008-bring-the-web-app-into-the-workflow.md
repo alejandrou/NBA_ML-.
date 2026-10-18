@@ -3,7 +3,6 @@ id: WF-008
 title: Bring the web app into the workflow
 track: shared
 areas:
-  - planning
   - web
   - documentation
 priority: 60
@@ -15,8 +14,17 @@ read:
   - docs/decisions/0019-scope-the-frontend-v1.md
   - docs/architecture/WEB_ARCHITECTURE.md
   - .github/workflows/ci.yml
-validation: []
-critical_actions: []
+validation:
+  - npm --prefix web ci
+  - npm --prefix web run lint
+  - npm --prefix web run typecheck
+  - npm --prefix web test
+  - npm --prefix web run build
+  - uv run pytest -m "not integration and not live"
+  - uv run python scripts/validate_tasks.py
+  - uv run python scripts/validate_tasks.py --all-worktrees
+critical_actions:
+  - Marking the new `web` job as a required status check on `main` is a GitHub repository setting the owner changes; this card only names the job.
 ---
 
 # Goal
@@ -38,20 +46,27 @@ context and a `web` skill, and gated in CI.
 
 # Human decisions or resources
 
-- [ ] Whether the web CI job is a required check on `main`, and whether it runs
-      on every pull request or only when `web/` changes.
-- [ ] The `web` skill's content, written from the conventions `F7-002` actually
-      established.
+- [x] **The `web` job runs on every push and pull request, with no path
+      filter, and is meant to be a required check.** A required check behind a
+      `paths` filter never reports on a PR that does not touch `web/` and blocks
+      its merge; the job costs a couple of minutes and also catches API changes
+      that break the committed OpenAPI snapshot. The owner marks it required in
+      GitHub once it has passed on `main`.
+- [x] **The `web` skill is written from `F7-002`'s merged code**, not decided
+      up front: the commands, the file layout, the API client and generated
+      types, the display rules' home, and the test conventions it actually
+      uses. Nothing in it restates `WEB_ARCHITECTURE.md`; it points there.
 
 # Acceptance criteria
-
-Draft direction:
 
 - `AGENTS.md` lists `web/` as source of truth and its generated directories as
   never-commit.
 - `.agents/index.md` routes `web` to `.agents/skills/web/` and
   `docs/architecture/WEB_ARCHITECTURE.md`, plus ADRs 0006, 0008, and 0019.
-- CI runs `npm ci`, lint, typecheck, test, and build for `web/` on Node 22.
+- CI has a `web` job on Node 22 (`actions/setup-node` with npm cache keyed on
+  `web/package-lock.json`) that runs `npm ci`, lint, typecheck, test, and build
+  in `web/`, plus `scripts/export_openapi.py --check` against the committed
+  snapshot, on every push and pull request.
 
 # Scope
 

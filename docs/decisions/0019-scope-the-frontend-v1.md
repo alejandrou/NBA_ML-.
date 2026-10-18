@@ -87,16 +87,25 @@ configuration, tests, and validation commands — are in
 ## Consequences
 
 - `F7-002` scaffolds `web/` and serves the teams pages; `F7-003` the players
-  pages after `F6-012`; `F7-004` the season statistics page after `F6-013`.
-  Postseason appears when `F6-014` lands.
+  pages after `F6-012`; `F7-004` the season statistics page, regular and
+  postseason, after `F6-013` and `F6-014`.
 - Finding a player means paging an alphabetical list until the API offers name
   search, which `API_CONTRACT.md` names as a deliberate non-promise. `F6-019`
-  designs it.
+  serves it (accent-insensitive `q` on `/players`); a search box is a later
+  page change.
 - A career table across seasons would need one statistics request per season,
   because every statistics route is scoped to one player-season. v1 shows one
   season at a time instead of issuing those requests.
 - The `web` area has durable context but no skill until `WF-008` writes one
   from the conventions `F7-002` actually establishes.
+
+### Amendment (2026-10-18): games and forecasts
+
+The predictor plan's Stage 5 ("OKC vs Chicago tonight") makes games part of v1.
+`F7-005` adds `/games?date=` and `/games/[gameId]` — scores, team totals,
+player lines, and the stored forecast — once `F6-020` (games) and `F6-021`
+(predictions) are served. The same rules hold: server-side fetching, generated
+types, and no value computed from a response.
 
 ## Alternatives Considered
 

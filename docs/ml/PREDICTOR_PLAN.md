@@ -149,7 +149,7 @@ samples and need regularization.
 plus an adapter for the NBA CDN play-by-play JSON. Stathead and Basketball
 Reference play-by-play are distinct products and access paths.
 
-**Chosen on 2026-09-23 (ADR 0019, F8-001): Basketball Reference** — league
+**Chosen on 2026-09-23 (ADR 0020, F8-001): Basketball Reference** — league
 schedule (`/leagues/NBA_<year>_games[-<month>].html`), box score
 (`/boxscores/<game_id>.html`), and play-by-play (`/boxscores/pbp/<game_id>.html`)
 pages, through the existing client, cache, limits, and approval gate. Its player
@@ -188,6 +188,26 @@ Rules:
   observations.
 - NBA/Basketball Reference integration never redefines existing public
   identities and never infers `franchise_id`.
+
+**Decided for the first revision (2026-10-18, `F8-002`):**
+
+- Only `core.games`, `stats.team_game_totals`, and `stats.player_game_totals`
+  are built. The `*_source_ids` tables wait for a second provider, because
+  Basketball Reference ids are `core`'s own (ADR 0020).
+  `core.game_schedule_versions` is not built: the in-progress season's
+  schedule history is kept as versioned page snapshots (`F8-012`, ADR 0022),
+  and `core.games` holds the current observation, with `postponed` as a third
+  status (`F8-014`). `core.roster_observations` waits for Stage 4.
+- The stable public game id is the Basketball Reference id
+  (`<yyyymmdd>0<home code>`), stored as text.
+- The final score is stored once, as `stats.team_game_totals.pts`. `core.games`
+  holds identity, schedule, venue, attendance, and status.
+- Player lines reference `core.players` and `core.team_seasons` directly.
+  Inactive players get a line with no statistics.
+- 2025–26 enters `core` through the existing team-season pages (`F8-003`), not
+  from box scores. The season in progress is refreshed by hand, on the owner's
+  instruction per run, through a gated, bounded command (`F8-013`); its team
+  pages give identity only, without rosters or season statistics (`F8-014`).
 
 ### Play-by-play events
 
@@ -234,7 +254,7 @@ as not adjusted for confirmed absences.
 
 A pilot of 30 games spread across seasons and edge cases: overtime, simultaneous
 substitutions, score reviews, incomplete data. The provider is Basketball
-Reference (ADR 0019; the plan first proposed NBA.com). If the pilot does not
+Reference (ADR 0020; the plan first proposed NBA.com). If the pilot does not
 satisfy the requirements, large-scale acquisition stops and the failure is
 documented. The procedure and results live in
 `docs/validation/PER_GAME_ACQUISITION_PILOT.md`.
@@ -255,7 +275,7 @@ season from play-in, playoffs, and the NBA Cup final. Lineup changes between
 periods are not logged, and `pbpstats` does not read these pages. Findings and
 the Stage 2 cost (~14,440 box scores, ~25 h) are in the pilot record.
 
-### Stage 2 — game dataset and first predictor (`F8-002` onwards)
+### Stage 2 — game dataset and first predictor (`F8-002` to `F8-006`, `F8-011`)
 
 Acquire schedule, results, and box scores from 2014–15 to the last complete
 season, plus the current season when relevant. Team model first; per-game
@@ -266,7 +286,7 @@ regular season are included once. Evaluation reconstructs a forecast **24 hours
 before tip-off**; interactive queries use the real query time and show their
 lead time. Horizons are never mixed when reporting.
 
-### Stage 3 — temporal evaluation and selection
+### Stage 3 — temporal evaluation and selection (`WF-009`, `F8-007`)
 
 - Last complete season: final test.
 - Second-to-last: calibration and final selection.
@@ -292,7 +312,16 @@ improves later validation
 by metric differences with temporal-block intervals; indistinguishable results
 keep the simpler model. The final test season is never used for selection.
 
-### Stage 4 — players and play-by-play
+**Protocol fixed before any result (2026-10-18, `F8-007`):** test = 2025–26,
+calibration and selection = 2024–25, rolling validation folds 2019–20 to
+2023–24; fixed hyperparameter grids and seed; a more complex model replaces a
+simpler one only when the 95 % weekly block-bootstrap interval of its log-loss
+difference lies below zero; Stage 5 goes ahead only if the selected model beats
+the home-rate baseline on the test season. The features are `team-pregame-v1`
+(`F8-011`): Elo, efficiencies, pace, margin, and four factors over 5, 10, 20
+games and season-to-date, plus rest and schedule density.
+
+### Stage 4 — players and play-by-play (`F8-009`, `F8-015`)
 
 Add pre-game rotation and individual variables first, then play-by-play:
 possessions, team profiles, regularized impact. Compare team → team + players →
@@ -301,15 +330,24 @@ the sample, also report the basic model on that sample. Millions of events do
 not change that the target has one result per game; possessions are never
 counted as independent wins.
 
-### Stage 5 — local query (`app` track)
+**Fixed 2026-10-18:** players first (`F8-009`, no new acquisition). Play-by-play
+(`F8-015`) is acquired only if the player features win by the Stage 3 rule; its
+lineups come from our own period-start inference, measured on the 30 pilot
+games, with no NBA.com pilot in Stage 4.
+
+### Stage 5 — local query (`F6-020`, `F8-010`, `F6-021`, `F7-005`; current-season data in `F8-012` to `F8-014` and `F8-008`)
 
 `GET /api/v1/games` (filter by date and teams) and
 `GET /api/v1/games/{game_id}/prediction`: teams, scheduled start, complementary
 probabilities, favorite, data date, model version, and whether player
-availability is included. The API reads prepared data and runs local inference;
-it never scrapes, trains, or writes. Missing required data yields an explicit
-"forecast unavailable" with a reason — never a 50–50 stand-in. This reaches the
-`app` track as a handoff card recorded in `tasks/CROSS_TRACK.md`.
+availability is included. The API reads prepared data; it never scrapes,
+trains, writes, or runs a model. Forecasts are computed by the `data` track
+and stored in `ml.predictions` (decided 2026-10-18, `F8-010`): the served
+forecast is exactly the logged one, its cutoff is fixed when written, and the
+API needs no ML dependency. Missing required data yields an explicit
+"forecast unavailable" with a reason — never a 50–50 stand-in. Data and model
+reach the `app` track as handoffs (`F8-002` → `F6-020`, `F8-010` → `F6-021`)
+recorded in `tasks/CROSS_TRACK.md`; `F7-005` puts both in the browser.
 
 ### Acceptance tests across stages
 
@@ -342,10 +380,13 @@ it never scrapes, trains, or writes. Missing required data yields an explicit
 
 ## 6. Workflow constraints (added in planning)
 
-- Everything up to Stage 4 is `data` track work (ADR 0018); Stage 5 is `app`.
+- Everything up to Stage 4 is `data` track work (ADR 0018); Stage 5 is `app`,
+  except storing the forecasts (`F8-010`).
 - A new runtime dependency (`nba_api`, `pbpstats`, `scikit-learn`) changes
   `pyproject.toml`/`uv.lock` and is therefore a `shared` card, which blocks both
   tracks. `httpx` is already a dependency, so a pilot can fetch without one.
+  `scikit-learn` is that card (`WF-009`); a test then keeps `nba_data.api` free
+  of any ML import.
 - The live-scraping approval gate (`--owner-approved`, approved manifests,
   acquisition guards) is a safety interlock. A second provider extends it; it
   never weakens or bypasses it. Every live run needs the owner's direct

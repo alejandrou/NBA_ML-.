@@ -3,20 +3,30 @@ id: F7-004
 title: Serve the player season statistics page
 track: app
 areas:
-  - planning
   - web
   - testing
 priority: 70
 depends_on:
   - F7-003
   - F6-013
+  - F6-014
 read:
   - docs/decisions/0019-scope-the-frontend-v1.md
   - docs/architecture/WEB_ARCHITECTURE.md
   - docs/architecture/API_CONTRACT.md
   - docs/design/frontend-v1-player-season.html
+  - docs/architecture/PLAYER_PAGE_STATS_MAPPING.md
   - src/nba_data/db/models/stats.py
-validation: []
+validation:
+  - npm --prefix web ci
+  - npm --prefix web run lint
+  - npm --prefix web run typecheck
+  - npm --prefix web test
+  - npm --prefix web run build
+  - uv run python scripts/export_openapi.py --check web/src/lib/api/openapi.json
+  - uv run pytest tests/unit/test_web_openapi_snapshot.py
+  - uv run pytest -m "not integration and not live"
+  - uv run python scripts/validate_tasks.py
 critical_actions: []
 ---
 
@@ -31,25 +41,33 @@ drawn in `docs/design/frontend-v1-player-season.html`.
 
 - `API_CONTRACT.md` fixes the routes, the eight families, the aggregate and stint
   identity fields, `null` for a missing stat, rates as JSON numbers, and the
-  `is_multi_team` rule. `F6-013` serves the regular-season routes and is still in
-  `tasks/planning/`; `F6-014` serves postseason.
-- The stat families also store `rk`, `age`, `position`, `awards`, and
-  `player_name_display` (`src/nba_data/db/models/stats.py`). The contract
-  excludes `player_name_display`; whether `F6-013` publishes the others is not
-  settled until its bodies are.
+  `is_multi_team` rule. `F6-013` (regular) and `F6-014` (postseason) are in the
+  backlog with their bodies settled: every stored family column except
+  `player_name_display`, so `rk`, `age`, `position`, and `awards` are published.
+- `F6-014` has the higher priority in the `app` track (85 vs 70), so both season
+  types are served before this page starts.
+- `scripts/export_openapi.py` and `tests/unit/test_web_openapi_snapshot.py` are
+  created by `F7-002`; the validation list assumes it has landed.
 
 # Human decisions or resources
 
-- [ ] Which non-statistical columns (`rk`, `age`, `position`, `awards`) the page
-      shows — bounded by what `F6-013`'s response bodies actually publish.
-- [ ] Whether the season-type switch ships here with postseason enabled (only if
-      `F6-014` is done by then) or regular-only with postseason as a follow-up.
-- [ ] The display labels in `stat-columns.ts` for all eight families, and the
-      family switch's labels and order.
+- [x] **Non-statistical columns**: show `age`, `position` (where the family has
+      it), and `awards` (as received, plain text). Hide `rk`: it is the row's
+      rank in a Basketball Reference listing and means nothing on one player's
+      page.
+- [x] **Season-type switch ships with postseason enabled**; the card depends on
+      `F6-014`. A postseason aggregate 404 renders the existing empty state.
+- [x] **Labels are Basketball Reference's own column headers** (`fg3_pct` →
+      `3P%`, `mp_per_game` → `MP`, `ws_per_48` → `WS/48`), one entry per stored
+      column in `stat-columns.ts`, with the stored name as the cell's `title`.
+      A component test fails when a family's API body has a field with no
+      label, so a new column cannot render unlabeled.
+- [x] **Family switch**, in Basketball Reference's player-page order: Per Game
+      (`per_game`, the default), Totals, Per 36 Min (`per_minute`), Per 100 Poss
+      (`per_poss`), Advanced, Adjusted Shooting (`adj_shooting`), Shooting,
+      Play-by-Play (`pbp`).
 
 # Acceptance criteria
-
-Draft direction, settled once `F6-013` is:
 
 - The page makes exactly the four API calls `WEB_ARCHITECTURE.md` lists, and
   renders the web 404 for an unknown player, an unknown player season, or a `T`
@@ -60,7 +78,8 @@ Draft direction, settled once `F6-013` is:
 - An aggregate 404 and an empty stint collection render their empty states; no
   `detail` string is compared.
 - Component tests cover every family's fixture, a multi-team season, a `null`
-  column, and both empty states.
+  column, both empty states, the postseason switch, `rk` absent, and the
+  label-coverage check.
 
 # Scope
 

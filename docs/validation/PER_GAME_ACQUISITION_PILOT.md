@@ -2,7 +2,7 @@
 
 Stage 1 of `docs/ml/PREDICTOR_PLAN.md` (card F8-001): prove on thirty games that
 schedule, results, box scores, and play-by-play from Basketball Reference
-(ADR 0019) can be acquired, cached, parsed offline, and reconciled, and measure
+(ADR 0020) can be acquired, cached, parsed offline, and reconciled, and measure
 what that costs. The live runs were made on 2026-09-23 on the owner's direct
 instruction. This record cannot be reproduced without contacting Basketball
 Reference again; the reconciliation can, from the cache.
@@ -208,11 +208,14 @@ page), which the product needs for its forecasts.
 
 ## Running it again
 
-From the repository root, with a real contact in the user agent for the process
-(`.env` still holds the `.env.example` placeholder):
+From the repository root, with a real contact in the user agent. Since
+2026-10-18 the worktree's `.env` carries
+`SCRAPER_USER_AGENT=nba-data-project/0.1 (+https://github.com/alejandrou/NBA_ML-.)`;
+without that `.env`, set it for the process first (an environment variable
+overrides `.env`):
 
 ```powershell
-$env:SCRAPER_USER_AGENT = "nba-data-project/0.1 (+https://github.com/alejandrou/NBA_ML-.)"
+$env:SCRAPER_USER_AGENT = "nba-data-project/0.1 (+https://github.com/alejandrou/NBA_ML-.)"  # only without .env
 uv run nba-data acquisition dry-run-game-pilot tasks/manifests/F8-001-game-pilot-games-20260923.json
 uv run nba-data acquisition acquire-game-pilot tasks/manifests/F8-001-game-pilot-games-20260923.json --owner-approved --execute-approved-manifest --output reports/f8-001/acquisition-games.json
 uv run nba-data validate game-pilot --manifest tasks/manifests/F8-001-game-pilot-schedules-20260923.json --manifest tasks/manifests/F8-001-game-pilot-games-20260923.json --acquisition-report reports/f8-001/acquisition-schedules.json --acquisition-report reports/f8-001/acquisition-games.json --output reports/f8-001/validation.json

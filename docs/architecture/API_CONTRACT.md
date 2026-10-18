@@ -152,9 +152,8 @@ cannot be decided accidentally by copying the column list of a wide table.
 
 Two successor cards implement them: **F6-013** (regular-season statistics) and
 **F6-014** (postseason statistics). Each removes the resources it lands from this
-marker. Serving is staged by data health, not by contract — F6-013 and F6-014
-additionally wait on the F4E-024 rebuild, because three of the four dimensions
-carry a stale parser version and the aggregate family is short of the archive.
+marker. The data they serve is ready: the persistent `nba` database carries the
+`-v4` rebuild since 2026-09-05 (F4E-031).
 
 ### Player identity
 

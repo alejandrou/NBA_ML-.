@@ -94,7 +94,7 @@ report, not a dataset.
       NBA.com would need the owner to accept its terms personally. With the same
       6-second floor NBA.com offers no per-game speed advantage. NBA.com stays a
       candidate only for Stage 4 play-by-play (`pbpstats`), behind its own
-      pilot and the owner's terms decision. Recorded in ADR 0019.
+      pilot and the owner's terms decision. Recorded in ADR 0020.
 - [x] **Client:** the existing `BasketballReferenceClient` over `httpx`. No
       dependency change, so no `shared` card.
 - [x] **Limits:** no second provider, so the Basketball Reference limits apply
@@ -166,7 +166,7 @@ report, not a dataset.
    results, measured requests, bytes, and wall time, the `pbpstats`
    compatibility verdict, every gap found, a go/no-go per data type, and the
    recommended pages and cost for Stage 2.
-7. **Decision record:** ADR 0019 records the provider decision;
+7. **Decision record:** ADR 0020 records the provider decision;
    `docs/ml/PREDICTOR_PLAN.md` names the chosen provider and pages; F8-002's
    first open decision is resolved from the pilot's findings.
 8. No database writes, no schema change, no migration.
@@ -247,7 +247,7 @@ existing acquire commands, or their guards.
 
 # Durable knowledge updates
 
-- `docs/decisions/0019-*` — per-game data comes from Basketball Reference.
+- `docs/decisions/0020-*` — per-game data comes from Basketball Reference.
 - `docs/ml/PREDICTOR_PLAN.md` — the chosen provider, pages, and measured cost.
 - `docs/validation/PER_GAME_ACQUISITION_PILOT.md` — the pilot record.
 

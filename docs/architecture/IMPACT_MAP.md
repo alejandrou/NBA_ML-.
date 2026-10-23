@@ -179,13 +179,18 @@ schema.
 ### Database
 
 - **Implementation:** `db/base.py`, `db/session.py`, `db/models/{core,stats}.py`, `db/repositories/{core,stats}.py`, `alembic/env.py`
-- **Schemas:** `core` (7), `stats` (33 wide tables in 4
-  families — `player_season_*` 8, `player_team_season_*` 9,
-  `player_postseason_*` 8, `player_team_postseason_*` 8; 16 of the 33 are
-  postseason). There is **no `features` schema yet.**
-- **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables` → `0006_synthetic_team_codes` → `0007_team_bref_id_not_null` → `0008_drop_raw_schema`
-- **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only preflight, one verdict per pending revision)
-- **Tests:** `test_core_models.py`, `test_stats_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`
+- **Schemas:** `core` (8 tables, `core.games` among them), `stats` (35 wide tables:
+  33 season-grain tables in 4 families — `player_season_*` 8,
+  `player_team_season_*` 9, `player_postseason_*` 8, `player_team_postseason_*`
+  8; 16 of the 33 are postseason — plus the per-game `team_game_totals` and
+  `player_game_totals`). There is **no `features` schema yet.**
+- **Game grain:** `core.games` (identity, schedule, status — no score),
+  `stats.team_game_totals` (the result is its `pts`), `stats.player_game_totals`
+  (every line, absences included), added by `0009_games_and_box_scores`. No
+  loader writes them yet.
+- **Migrations:** `0001_initial_raw_core` → `0002_core_team_player_season` → `0003_stats_wide_tables` → `0004_player_season_source_team_code` → `0005_postseason_stats_tables` → `0006_synthetic_team_codes` → `0007_team_bref_id_not_null` → `0008_drop_raw_schema` → `0009_games_and_box_scores`
+- **Commands:** `bash scripts/validate_database.sh` (disposable PostgreSQL validation); `uv run python scripts/preflight_migration_data.py --database-url <target>` (read-only preflight, one verdict per pending revision; `0009` is additive and has no data precondition)
+- **Tests:** `test_core_models.py`, `test_stats_models.py`, `test_game_models.py`, `test_stats_repositories.py`, `tests/integration/test_team_season_loader_postgres.py`, `tests/integration/test_game_schema_postgres.py`
 - **Docs:** `docs/architecture/SYSTEM_DESIGN.md` (loader invariants and natural keys), `docs/architecture/OFFICIAL_STATS_SCHEMA.md`
 - **Critical actions:** applying a migration to a shared, persistent, or production-like database
 - **Invariants:** cached raw source material, `core`, official `stats`, and future

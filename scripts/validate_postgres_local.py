@@ -20,8 +20,11 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 from uuid import uuid4
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import URL, make_url
 
@@ -41,6 +44,8 @@ _REQUIRE_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
 # it is only safe here because the database it will name is one this script
 # generated moments ago and drops before it returns.
 _TEST_DATABASE_ENV = "NBA_DATA_TEST_DATABASE"
+_ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
+_ROUND_TRIP_SCHEMAS = ("core", "stats")
 
 
 def main() -> int:
@@ -109,6 +114,9 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     print("Revision 0008 rejected an unrecognized raw object without deleting it.")
     _drop_unexpected_raw_table(temp_url)
 
+    if result := _check_newest_revision_round_trip(child_env, temp_url):
+        return result
+
     for command in (
         ["uv", "run", "alembic", "upgrade", "head"],
         ["uv", "run", "alembic", "check"],
@@ -125,6 +133,56 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     return 0
 
 
+def _check_newest_revision_round_trip(child_env: dict[str, str], temp_url: URL) -> int:
+    """Prove the head revision's downgrade restores the previous head exactly.
+
+    CI round-trips the head too, but only asserts that the commands succeed and
+    `alembic check` is clean afterwards. This compares the `core` and `stats`
+    catalogs themselves, so a downgrade that leaves an index, a constraint, or
+    a sequence behind fails here.
+    """
+
+    previous = _previous_head()
+    if previous is None:
+        return 0
+
+    if result := _run(child_env, ["uv", "run", "alembic", "upgrade", previous]):
+        return result
+    before = _schema_snapshot(temp_url, _ROUND_TRIP_SCHEMAS)
+
+    for command in (
+        ["uv", "run", "alembic", "upgrade", "head"],
+        ["uv", "run", "alembic", "downgrade", "-1"],
+    ):
+        if result := _run(child_env, command):
+            return result
+
+    if _schema_snapshot(temp_url, _ROUND_TRIP_SCHEMAS) != before:
+        raise RuntimeError(
+            f"Downgrading the head revision did not restore {previous} exactly"
+        )
+    print(f"The head revision's downgrade exactly restored {previous}.")
+    return 0
+
+
+def _previous_head() -> str | None:
+    """The single head's parent, or None when there is nothing to round-trip."""
+
+    config = AlembicConfig(str(_ALEMBIC_INI))
+    script_location = config.get_main_option("script_location") or "alembic"
+    config.set_main_option(
+        "script_location", str((_ALEMBIC_INI.parent / script_location).resolve())
+    )
+    script = ScriptDirectory.from_config(config)
+    heads = script.get_heads()
+    if len(heads) != 1:
+        raise RuntimeError(f"Expected one Alembic head, found {sorted(heads)}")
+    down_revision = script.get_revision(heads[0]).down_revision
+    if isinstance(down_revision, tuple):
+        raise RuntimeError(f"Head {heads[0]} is a merge revision; round-trip it by hand")
+    return down_revision
+
+
 def _run(child_env: dict[str, str], command: list[str]) -> int:
     print(f"$ {' '.join(command)}")
     return subprocess.run(command, env=child_env, check=False).returncode
@@ -133,29 +191,44 @@ def _run(child_env: dict[str, str], command: list[str]) -> int:
 def _raw_schema_snapshot(database_url: URL) -> tuple[tuple[object, ...], ...]:
     """Return the catalog details needed to prove an exact 0008 downgrade."""
 
+    return _schema_snapshot(database_url, ("raw",))
+
+
+def _schema_snapshot(
+    database_url: URL, schemas: tuple[str, ...]
+) -> tuple[tuple[object, ...], ...]:
+    """Columns, constraints, indexes, and relations of the named schemas."""
+
     statements = (
         """
-        SELECT table_name, column_name, ordinal_position, data_type, udt_name,
-               is_nullable, column_default, character_maximum_length,
+        SELECT table_schema, table_name, column_name, ordinal_position, data_type,
+               udt_name, is_nullable, column_default, character_maximum_length,
                datetime_precision
         FROM information_schema.columns
-        WHERE table_schema = 'raw'
-        ORDER BY table_name, ordinal_position
+        WHERE table_schema = ANY(:schemas)
+        ORDER BY table_schema, table_name, ordinal_position
         """,
         """
-        SELECT c.relname, con.conname, con.contype,
+        SELECT n.nspname, c.relname, con.conname, con.contype,
                pg_get_constraintdef(con.oid, true)
         FROM pg_constraint AS con
         JOIN pg_class AS c ON c.oid = con.conrelid
         JOIN pg_namespace AS n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'raw'
-        ORDER BY c.relname, con.conname
+        WHERE n.nspname = ANY(:schemas)
+        ORDER BY n.nspname, c.relname, con.conname
         """,
         """
-        SELECT tablename, indexname, indexdef
+        SELECT schemaname, tablename, indexname, indexdef
         FROM pg_indexes
-        WHERE schemaname = 'raw'
-        ORDER BY tablename, indexname
+        WHERE schemaname = ANY(:schemas)
+        ORDER BY schemaname, tablename, indexname
+        """,
+        """
+        SELECT n.nspname, c.relname, c.relkind
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = ANY(:schemas)
+        ORDER BY n.nspname, c.relname
         """,
     )
     engine = create_engine(database_url)
@@ -164,7 +237,9 @@ def _raw_schema_snapshot(database_url: URL) -> tuple[tuple[object, ...], ...]:
             return tuple(
                 (statement_index, *row)
                 for statement_index, statement in enumerate(statements)
-                for row in connection.execute(text(statement)).tuples()
+                for row in connection.execute(
+                    text(statement), {"schemas": list(schemas)}
+                ).tuples()
             )
     finally:
         engine.dispose()

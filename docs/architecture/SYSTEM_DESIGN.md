@@ -90,9 +90,34 @@ The keys loaders match on before writing. Changing one changes idempotency:
 | `core.seasons` | `(league, season_year)` |
 | `core.team_aliases` | `(team_id, abbreviation, from_season_year, to_season_year)` |
 | `core.players` | `basketball_reference_player_id` |
+| `core.games` | `basketball_reference_game_id` (`<yyyymmdd>0<home code>`, e.g. `202310240DEN`) |
+| `stats.team_game_totals` | `(game_id, team_season_id)`; also unique `(game_id, is_home)` |
+| `stats.player_game_totals` | `(game_id, player_id)` |
 
 A row whose stable player identifier is unavailable is rejected or quarantined,
 never matched by name — `player_name` is not a stable key.
+
+### Game Grain
+
+Revision `0009_games_and_box_scores` adds the per-game grain the team predictor
+reads. Nothing writes it yet; the loader is its own card.
+
+- `core.games` holds a game's identity, schedule, and status (`scheduled`,
+  `final`, `postponed`) — never its result. Both teams reference
+  `core.team_seasons` through composite keys on `(id, season_id)`, so they
+  always belong to the game's own season.
+- `stats.team_game_totals` holds one row per side. The final score is its `pts`,
+  stored only there.
+- `stats.player_game_totals` holds one row per player per game, absences
+  included. It references `core.players` directly and the team-season through
+  the team total, avoiding `core.player_team_seasons` because inactive-only
+  and current-season players have no player-season row. Its composite foreign
+  key means a player line exists only for a team whose total for that game is
+  loaded.
+- The check conditions are frozen in the revision and pinned to the models and
+  the box score parser's constants by `tests/unit/test_game_models.py`.
+  `docs/domain/BUSINESS_RULES.md` lists the invariants, including the
+  cross-table ones the loader must enforce itself.
 
 ## Planned Direction
 

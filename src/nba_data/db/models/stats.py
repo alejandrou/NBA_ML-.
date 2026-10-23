@@ -4,9 +4,13 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
     Date,
     DateTime,
+    ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     String,
@@ -678,7 +682,131 @@ class PlayerTeamPostseasonPbp(
     __table_args__ = _team_stint_table_args("player_team_postseason_pbp")
 
 
+# The check conditions below are frozen as the same literal text in revision
+# `0009_games_and_box_scores`; `tests/unit/test_game_models.py` pins the two
+# together and the participation values to the box score parser's constants.
+# A NULL counter satisfies `>= 0`: a blank is unknown, not negative.
+_GAME_COUNTERS_NON_NEGATIVE = (
+    "seconds_played >= 0 AND pts >= 0 AND fg >= 0 AND fga >= 0 AND fg3 >= 0 "
+    "AND fg3a >= 0 AND ft >= 0 AND fta >= 0 AND orb >= 0 AND drb >= 0 "
+    "AND trb >= 0 AND ast >= 0 AND stl >= 0 AND blk >= 0 AND tov >= 0 AND pf >= 0"
+)
+
+
+class _GameCountersMixin:
+    """Fourteen of a box score's 15 counting stats; `pts` is declared per table.
+
+    A blank cell is NULL, never zero.
+    """
+
+    fg: Mapped[int | None] = mapped_column(Integer)
+    fga: Mapped[int | None] = mapped_column(Integer)
+    fg3: Mapped[int | None] = mapped_column(Integer)
+    fg3a: Mapped[int | None] = mapped_column(Integer)
+    ft: Mapped[int | None] = mapped_column(Integer)
+    fta: Mapped[int | None] = mapped_column(Integer)
+    orb: Mapped[int | None] = mapped_column(Integer)
+    drb: Mapped[int | None] = mapped_column(Integer)
+    trb: Mapped[int | None] = mapped_column(Integer)
+    ast: Mapped[int | None] = mapped_column(Integer)
+    stl: Mapped[int | None] = mapped_column(Integer)
+    blk: Mapped[int | None] = mapped_column(Integer)
+    tov: Mapped[int | None] = mapped_column(Integer)
+    pf: Mapped[int | None] = mapped_column(Integer)
+
+
+class TeamGameTotals(_PrimaryKeyMixin, _GameCountersMixin, _LineageMixin, Base):
+    """One team's box score total for one game.
+
+    `pts` is the game's result for this side. `tov` is the team's own total,
+    team turnovers included, so it is not the sum of its player rows.
+    """
+
+    __tablename__ = "team_game_totals"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["game_id"], ["core.games.id"], name="fk_stats_team_game_totals_game_id"
+        ),
+        ForeignKeyConstraint(
+            ["team_season_id"],
+            ["core.team_seasons.id"],
+            name="fk_stats_team_game_totals_team_season_id",
+        ),
+        UniqueConstraint("game_id", "team_season_id", name="uq_stats_team_game_totals_game_team"),
+        UniqueConstraint("game_id", "is_home", name="uq_stats_team_game_totals_game_side"),
+        CheckConstraint(
+            _GAME_COUNTERS_NON_NEGATIVE, name="ck_stats_team_game_totals_non_negative"
+        ),
+        Index("ix_stats_team_game_totals_team_season_id", "team_season_id"),
+        {"schema": "stats"},
+    )
+
+    game_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_home: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    seconds_played: Mapped[int] = mapped_column(Integer, nullable=False)
+    pts: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PlayerGameTotals(_PrimaryKeyMixin, _GameCountersMixin, _LineageMixin, Base):
+    """One player's line in one game, including the lines of players who sat.
+
+    A line that is not `played` carries no stats at all, so a played line of
+    zeros and a "Did Not Play" line are always distinguishable. The player is
+    referenced directly, not through `core.player_team_seasons`, because
+    inactive-only and current-season players may have no player-season row.
+    """
+
+    __tablename__ = "player_game_totals"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["game_id", "team_season_id"],
+            ["stats.team_game_totals.game_id", "stats.team_game_totals.team_season_id"],
+            name="fk_stats_player_game_totals_team_game",
+        ),
+        UniqueConstraint("game_id", "player_id", name="uq_stats_player_game_totals_game_player"),
+        CheckConstraint(
+            "participation IN ('played', 'did_not_play', 'did_not_dress', 'not_with_team', "
+            "'suspended', 'other_absence', 'inactive')",
+            name="ck_stats_player_game_totals_participation",
+        ),
+        CheckConstraint(
+            "participation <> 'played' OR seconds_played IS NOT NULL",
+            name="ck_stats_player_game_totals_played_has_seconds",
+        ),
+        CheckConstraint(
+            "participation = 'played' OR (NOT starter AND seconds_played IS NULL "
+            "AND fg IS NULL AND fga IS NULL AND fg3 IS NULL AND fg3a IS NULL "
+            "AND ft IS NULL AND fta IS NULL AND orb IS NULL AND drb IS NULL "
+            "AND trb IS NULL AND ast IS NULL AND stl IS NULL AND blk IS NULL "
+            "AND tov IS NULL AND pf IS NULL AND pts IS NULL AND plus_minus IS NULL)",
+            name="ck_stats_player_game_totals_absent_line_empty",
+        ),
+        CheckConstraint(
+            _GAME_COUNTERS_NON_NEGATIVE, name="ck_stats_player_game_totals_non_negative"
+        ),
+        Index("ix_stats_player_game_totals_player_id", "player_id"),
+        {"schema": "stats"},
+    )
+
+    game_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("core.players.id", name="fk_stats_player_game_totals_player_id"),
+        nullable=False,
+    )
+    team_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    starter: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    participation: Mapped[str] = mapped_column(Text, nullable=False)
+    # The reason exactly as published ("Did Not Dress", "Inactive", ...).
+    participation_reason: Mapped[str | None] = mapped_column(Text)
+    seconds_played: Mapped[int | None] = mapped_column(Integer)
+    pts: Mapped[int | None] = mapped_column(Integer)
+    # NULL when blank, as on a 0:00 line or some Cup finals; may be negative.
+    plus_minus: Mapped[int | None] = mapped_column(Integer)
+
+
 __all__ = [
+    "PlayerGameTotals",
     "PlayerSeasonAdjShooting",
     "PlayerSeasonAdvanced",
     "PlayerSeasonPbp",
@@ -712,4 +840,5 @@ __all__ = [
     "PlayerTeamSeasonRoster",
     "PlayerTeamSeasonShooting",
     "PlayerTeamSeasonTotals",
+    "TeamGameTotals",
 ]

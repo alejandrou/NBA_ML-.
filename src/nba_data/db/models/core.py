@@ -1,6 +1,20 @@
 from __future__ import annotations
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, UniqueConstraint
+from datetime import date, time
+
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Text,
+    Time,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nba_data.db.base import Base
@@ -100,6 +114,9 @@ class TeamSeason(Base):
             "team_abbreviation",
             name="uq_core_team_seasons_season_abbrev",
         ),
+        # The target of `core.games`' composite keys, which hold both of a
+        # game's teams to the game's own season. `id` alone is already unique.
+        UniqueConstraint("id", "season_id", name="uq_core_team_seasons_id_season"),
         CheckConstraint(
             reject_synthetic_team_code_sql("team_abbreviation", nullable=False),
             name="ck_core_team_seasons_abbrev_not_synthetic",
@@ -160,3 +177,71 @@ class PlayerTeamSeason(Base):
 
     player_season: Mapped[PlayerSeason] = relationship(back_populates="player_team_seasons")
     team_season: Mapped[TeamSeason] = relationship(back_populates="player_team_seasons")
+
+
+class Game(Base):
+    """One game's identity, schedule, and status — never its result.
+
+    The final score is `stats.team_game_totals.pts`, stored once. The check
+    conditions are frozen as the same literal text in revision
+    `0009_games_and_box_scores`; `tests/unit/test_game_models.py` pins the two
+    together and the allowed values to the box score parser's constants.
+    """
+
+    __tablename__ = "games"
+    __table_args__ = (
+        UniqueConstraint("basketball_reference_game_id", name="uq_core_games_bref_id"),
+        CheckConstraint(
+            "basketball_reference_game_id ~ '^[0-9]{8}0[A-Z]{3}$'",
+            name="ck_core_games_bref_id_format",
+        ),
+        CheckConstraint(
+            "home_team_season_id <> away_team_season_id",
+            name="ck_core_games_distinct_teams",
+        ),
+        CheckConstraint(
+            "game_type IN ('regular_season', 'play_in', 'playoffs', 'cup_final')",
+            name="ck_core_games_game_type",
+        ),
+        CheckConstraint(
+            "status IN ('scheduled', 'final', 'postponed')",
+            name="ck_core_games_status",
+        ),
+        CheckConstraint(
+            "status <> 'final' OR game_type IS NOT NULL",
+            name="ck_core_games_final_has_game_type",
+        ),
+        CheckConstraint("attendance >= 0", name="ck_core_games_attendance_non_negative"),
+        ForeignKeyConstraint(
+            ["home_team_season_id", "season_id"],
+            ["core.team_seasons.id", "core.team_seasons.season_id"],
+            name="fk_core_games_home_team_season",
+        ),
+        ForeignKeyConstraint(
+            ["away_team_season_id", "season_id"],
+            ["core.team_seasons.id", "core.team_seasons.season_id"],
+            name="fk_core_games_away_team_season",
+        ),
+        Index("ix_core_games_home_team_season_date", "home_team_season_id", "game_date"),
+        Index("ix_core_games_away_team_season_date", "away_team_season_id", "game_date"),
+        Index("ix_core_games_game_date", "game_date"),
+        {"schema": "core"},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    basketball_reference_game_id: Mapped[str] = mapped_column(Text, nullable=False)
+    season_id: Mapped[int] = mapped_column(
+        ForeignKey("core.seasons.id", name="fk_core_games_season_id"), nullable=False
+    )
+    home_team_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    away_team_season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    game_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # As published, US Eastern; never converted to a timestamp here.
+    start_time_et: Mapped[time | None] = mapped_column(Time)
+    game_type: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    venue: Mapped[str | None] = mapped_column(Text)
+    # NULL means not determined; it never defaults to false.
+    neutral_site: Mapped[bool | None] = mapped_column(Boolean)
+    # NULL is a blank on the page; 0 is a published zero.
+    attendance: Mapped[int | None] = mapped_column(Integer)

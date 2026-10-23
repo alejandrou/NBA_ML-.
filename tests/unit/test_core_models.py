@@ -3,6 +3,7 @@ from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index, UniqueConst
 import nba_data.db.models as models
 from nba_data.db.base import Base
 from nba_data.db.models import (
+    Game,
     Player,
     PlayerSeason,
     PlayerTeamSeason,
@@ -47,6 +48,7 @@ def test_team_season_constraints_reject_tot_as_real_team() -> None:
     assert "ck_core_team_seasons_abbrev_not_synthetic" in _constraint_names(
         TeamSeason, CheckConstraint
     )
+    assert "uq_core_team_seasons_id_season" in _constraint_names(TeamSeason, UniqueConstraint)
 
     assert TeamSeason.__table__.c.team_abbreviation.nullable is False
 
@@ -79,6 +81,24 @@ def test_core_relationship_foreign_keys_target_core_tables() -> None:
         "core.player_seasons.id",
         "core.team_seasons.id",
     }
+    assert _foreign_key_targets(Game) == {
+        "core.seasons.id",
+        "core.team_seasons.id",
+        "core.team_seasons.season_id",
+    }
+
+
+def test_core_holds_the_game_identity_table() -> None:
+    assert Base.metadata.tables["core.games"] is Game.__table__
+    assert Game.__table__.schema == "core"
+    assert "uq_core_games_bref_id" in _constraint_names(Game, UniqueConstraint)
+    assert {
+        "ck_core_games_bref_id_format",
+        "ck_core_games_distinct_teams",
+        "ck_core_games_final_has_game_type",
+    } <= _constraint_names(Game, CheckConstraint)
+    assert models.Game is Game
+    assert "Game" in models.__all__
 
 
 def test_core_relationships_are_bidirectional() -> None:

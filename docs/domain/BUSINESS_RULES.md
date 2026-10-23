@@ -137,6 +137,64 @@ approval.
 - Do not mix postseason stats into regular-season `player_season_*` or
   `player_team_season_*` tables.
 
+## Games and Box Scores
+
+Stored in `core.games`, `stats.team_game_totals`, and `stats.player_game_totals`
+(revision `0009_games_and_box_scores`). Sourced from Basketball Reference
+schedule and box score pages (ADR 0020); evidence in
+`docs/validation/PER_GAME_ACQUISITION_PILOT.md`.
+
+Storage and database constraints:
+
+- The game id is the Basketball Reference id, `<yyyymmdd>0<home code>`, stored
+  as text with a unique constraint and a format check. The check validates
+  the shape only; it does not compare the embedded date or code to other fields.
+- A game's two teams differ and both belong to the game's season.
+- `game_type` is one of `regular_season`, `play_in`, `playoffs`, `cup_final`, or
+  NULL. The parser's `unknown` is never stored; a `final` game must have a type.
+- Status is one of `scheduled`, `final`, or `postponed`.
+- Attendance NULL means the page left it blank; 0 is a published zero. The two
+  have distinct stored values; negative attendance is rejected.
+- `neutral_site` NULL means not determined. It never defaults to false.
+- The tip-off time is stored as published, US Eastern, beside the date; it is
+  not converted to a timestamp.
+- Each side and team has **at most** one team total per game, and each player
+  at most one line. Uniqueness does not require either side's total to exist.
+- Participation is one of `played`, `did_not_play`, `did_not_dress`,
+  `not_with_team`, `suspended`, `other_absence`, `inactive`, with the published
+  reason text stored separately when present.
+- A `played` line has seconds, which may be 0. Any other line is not a starter
+  and carries no seconds, no counting stat, and no plus-minus. A played line of
+  zeros and a "Did Not Play" line are therefore always distinguishable.
+- A played line's plus-minus may be NULL (a 0:00 line) or negative. Counters and
+  seconds are never negative; a blank counter is NULL, not zero.
+- A player line exists only for a team whose total for that game is loaded.
+
+Loader responsibilities (F8-005 for completed games, F8-014 for the current
+schedule), including cross-table checks and source handling:
+
+- A `final` game has exactly two team totals, which are the game's own home and
+  away teams with matching `is_home` flags and different points. The schema
+  does not tie a team total's side or season to the game.
+- Keep the published game id and confirm its date and home code agree with the
+  schedule. Build a scheduled game's id by the same rule.
+- A game that leaves its date is marked `postponed`, not deleted: Basketball
+  Reference gives the rescheduled game a new id, and a stored forecast keeps its
+  game. The status check alone does not enforce this transition policy.
+- Keep each published participation reason and create lines for inactive
+  players, so availability is retained.
+- The schedule's score equals the box score's team points.
+- The result comes from `stats.team_game_totals.pts`, the one place it is
+  stored; never from a sum of player rows.
+- A team's `tov` is its own total, team turnovers included (0–3 a game that no
+  player carries), so it is not the sum of its player rows.
+- Line scores are not stored yet; one game in 30 in the pilot had a wrong line
+  score at the source, so reconciling them needs its own rule.
+- Cup-final plus-minus that is all zeros is source noise and is stored as NULL.
+- Neutral site is derived, not assumed.
+- Players missing from `core.players` are created from box score links, by
+  stable id and never by name. No team-season is invented from a box score.
+
 ## Official Stats and Generated Metrics
 
 - Official scraped data remains separate from project-generated metrics.

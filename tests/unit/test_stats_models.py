@@ -58,7 +58,15 @@ PLAYER_TEAM_POSTSEASON_TABLES = (
     "player_team_postseason_pbp",
 )
 
+# The per-game grain (revision 0009). Their key and grain columns are NOT NULL;
+# `tests/unit/test_game_models.py` covers the rest of their contract.
+GAME_GRAIN_COLUMNS = {
+    "team_game_totals": {"game_id", "team_season_id", "is_home", "seconds_played", "pts"},
+    "player_game_totals": {"game_id", "player_id", "team_season_id", "starter", "participation"},
+}
+
 EXPECTED_STATS_TABLE_KEYS = {
+    *(f"stats.{table_name}" for table_name in GAME_GRAIN_COLUMNS),
     *(f"stats.{table_name}" for table_name in TEAM_STINT_TABLES),
     *(f"stats.{table_name}" for table_name in PLAYER_SEASON_TABLES),
     *(f"stats.{table_name}" for table_name in PLAYER_POSTSEASON_TABLES),
@@ -66,6 +74,8 @@ EXPECTED_STATS_TABLE_KEYS = {
 }
 
 EXPECTED_MODEL_NAMES = (
+    "TeamGameTotals",
+    "PlayerGameTotals",
     "PlayerTeamSeasonRoster",
     "PlayerTeamSeasonTotals",
     "PlayerTeamSeasonPerGame",
@@ -164,9 +174,12 @@ def test_official_stat_columns_are_nullable_by_default() -> None:
     non_nullable_columns = {"id", "player_team_season_id", "player_season_id", *LINEAGE_COLUMNS}
 
     for table in _stats_tables():
+        grain_columns = GAME_GRAIN_COLUMNS.get(table.name, set())
         for column in table.c:
-            if column.name not in non_nullable_columns:
-                assert column.nullable is True
+            if column.name in grain_columns:
+                assert column.nullable is False, f"{table.fullname}.{column.name}"
+            elif column.name not in non_nullable_columns:
+                assert column.nullable is True, f"{table.fullname}.{column.name}"
 
 
 def test_key_column_types_match_stats_contract() -> None:

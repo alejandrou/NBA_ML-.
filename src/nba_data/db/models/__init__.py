@@ -1,4 +1,5 @@
 from nba_data.db.models.core import (
+    Game,
     Player,
     PlayerSeason,
     PlayerTeamSeason,
@@ -8,6 +9,7 @@ from nba_data.db.models.core import (
     TeamSeason,
 )
 from nba_data.db.models.stats import (
+    PlayerGameTotals,
     PlayerPostseasonAdjShooting,
     PlayerPostseasonAdvanced,
     PlayerPostseasonPbp,
@@ -41,10 +43,13 @@ from nba_data.db.models.stats import (
     PlayerTeamSeasonRoster,
     PlayerTeamSeasonShooting,
     PlayerTeamSeasonTotals,
+    TeamGameTotals,
 )
 
 __all__ = [
+    "Game",
     "Player",
+    "PlayerGameTotals",
     "PlayerPostseasonAdjShooting",
     "PlayerPostseasonAdvanced",
     "PlayerPostseasonPbp",
@@ -83,5 +88,6 @@ __all__ = [
     "Season",
     "Team",
     "TeamAlias",
+    "TeamGameTotals",
     "TeamSeason",
 ]

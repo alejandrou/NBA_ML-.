@@ -29,4 +29,6 @@ that card's own track.
 
 ## Open
 
+- 2026-10-23 | F8-002 (data) -> F6-020 (app) | additive | New core.games, stats.team_game_totals, stats.player_game_totals (revision 0009) for the games and box-score routes
+
 ## Log

@@ -25,7 +25,7 @@ Read-only inspection of the local `nba_postgres` container, database `nba`, on
 
 | Item | Result |
 |---|---:|
-| Applied migration | `0008_drop_raw_schema` (still the head in `alembic/versions/`) |
+| Applied migration | `0008_drop_raw_schema` (then the head in `alembic/versions/`) |
 | Seasons | 26: 1999–2000 to 2024–25 |
 | Players | 2,551 |
 | Team identities by code/era | 37 |
@@ -42,7 +42,11 @@ turnovers, plus-minus), not the sequence of plays in each game.
 
 These counts describe the inspected local target on that date. They do not
 certify every stored statistic, and the F4E-031 rebuild (applied 2026-09-05) is
-already reflected in them.
+already reflected in them. Since 2026-10-24 `nba` also holds season 2025-26
+(F8-003): 27 seasons, 2,654 players, 805 team-seasons, 13,258 player-seasons,
+15,005 player-team-season links, and 13,249 regular-season player totals rows.
+The repository head is now `0009_games_and_box_scores`; `nba` is still at
+`0008` until the owner applies it.
 
 ### What ML is missing
 

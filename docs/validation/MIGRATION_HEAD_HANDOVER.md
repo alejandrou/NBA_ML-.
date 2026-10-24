@@ -10,6 +10,32 @@ revision. The worked example is `0008_drop_raw_schema`, the gap
 [the 2026-09-08 audit](PROJECT_DATABASE_AUDIT_2026-09-08.md) recorded as its
 first finding.
 
+## Open gap: `0009_games_and_box_scores`
+
+| | |
+|---|---|
+| `nba` at | `0008_drop_raw_schema` |
+| Repository head | `0009_games_and_box_scores`, since F8-002 merged (#56) |
+| Consequence | `GET /api/v1/health/ready` answers `503 {"detail":"Database schema not ready"}` against `nba`, logged as `Database is at Alembic revision(s) ['0008_drop_raw_schema'], not the migration head(s) ['0009_games_and_box_scores']` (observed 2026-10-24) |
+
+`0009` is additive: it creates `core.games`, `stats.team_game_totals`, and
+`stats.player_game_totals` with their indexes, and adds the unique constraint
+`uq_core_team_seasons_id_season` on `core.team_seasons (id, season_id)`, which
+`id` being the primary key guarantees. Its downgrade drops those objects.
+
+Steps 1 and 2 were run on 2026-10-24, after F8-003 loaded season 2026:
+
+| Step | Observed |
+|---|---|
+| Target | `0008_drop_raw_schema`; 321 MB; `core` 7 tables, `stats` 33 |
+| Backup | `Projects/nba-backups/nba-before-0009.dump`, 22,114,760 bytes, md5 `6e65164833b0bd7d53a762fdccee937a` on both sides; `pg_restore -l` lists 384 entries |
+| Preflight | Exit 0; both verdicts pass, `schema raw is absent` |
+
+Step 3 was not run: the agent's permission check refused to apply a revision
+to the persistent database. The owner runs `uv run alembic upgrade head` from
+merged `origin/main`, then step 4. Expect `0009_games_and_box_scores (head)`,
+`core` 8 tables, `stats` 35, and readiness `200`.
+
 ## The gap, closed on 2026-09-12
 
 | | |

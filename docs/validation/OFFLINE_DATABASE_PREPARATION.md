@@ -492,19 +492,18 @@ operation and its scope. No card authorizes it.**
 2026-09-05 by F4E-031 (2000-2025), and on 2026-10-24 by F8-003, which loaded
 season 2026. `nba` carries the 2000-2026 `-v4` archive. It was at revision
 `0007_team_bref_id_not_null` from 2026-09-05 until 2026-09-12, when a
-separately authorized upgrade brought it to `0008_drop_raw_schema`. It is still
-at `0008`; the head is now `0009_games_and_box_scores` — see
+separately authorized upgrade brought it to `0008_drop_raw_schema`. On
+2026-10-24, after the season-2026 load, the owner applied
+`0009_games_and_box_scores`, the head — see
 [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md). The records of both
 runs are below; the procedure is kept because it is the one to follow if the
 archive is ever rebuilt again.
 
 Preflight, in order:
 
-1. **Close the migration gap.** `nba` is at `0008_drop_raw_schema` since the
-   2026-09-12 upgrade; the F4E-031 run had left it at
-   `0007_team_bref_id_not_null`. The head has since moved to `0009`, which only
-   adds tables and one unique constraint, so the loaders run at `0008`.
-   Applying a new revision to `nba` is itself a critical action needing its own approval.
+1. **Close the migration gap.** `nba` is at `0009_games_and_box_scores`, the
+   head, since 2026-10-24. If the head has moved since, applying the new
+   revisions to `nba` is itself a critical action needing its own approval.
    Check where the target actually stands, read-only, before asking for that
    approval:
 

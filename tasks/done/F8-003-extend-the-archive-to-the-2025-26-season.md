@@ -275,11 +275,10 @@ unexpected in all four coverage dimensions, 0 lineage violations. Record in
 
 ## Known limitations
 
-- `nba` is at `0008_drop_raw_schema`; the head is F8-002's `0009`, so
-  readiness answers 503 against `nba` until it is applied. The backup and
-  preflight are done (`MIGRATION_HEAD_HANDOVER.md`, "Open gap"); the agent's
-  permission check refused the `alembic upgrade head` itself, so the owner runs
-  it.
+- F8-002's `0009` was applied to `nba` the same day, after this load: the
+  agent took the backup and ran the preflight, and the owner ran the upgrade
+  because the agent's permission check refused it (`MIGRATION_HEAD_HANDOVER.md`).
+  `nba` is at the head and readiness answers 200.
 - The 103 newcomers' pages were fetched on 2026-10-24, after 2026-27 started.
   They hold 336 partial-season 2027 regular-season rows, which are out of scope
   and not loaded. Their 2025-26 rows are final. Refreshing them is F8-008's

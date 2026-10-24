@@ -45,8 +45,9 @@ certify every stored statistic, and the F4E-031 rebuild (applied 2026-09-05) is
 already reflected in them. Since 2026-10-24 `nba` also holds season 2025-26
 (F8-003): 27 seasons, 2,654 players, 805 team-seasons, 13,258 player-seasons,
 15,005 player-team-season links, and 13,249 regular-season player totals rows.
-The repository head is now `0009_games_and_box_scores`; `nba` is still at
-`0008` until the owner applies it.
+The same day the owner applied `0009_games_and_box_scores`, the head: `nba`
+now has the empty `core.games`, `stats.team_game_totals`, and
+`stats.player_game_totals` tables.
 
 ### What ML is missing
 

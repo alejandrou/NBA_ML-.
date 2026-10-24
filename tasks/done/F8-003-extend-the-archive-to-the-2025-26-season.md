@@ -251,7 +251,8 @@ Expected result:
 1. `uv run nba-data acquisition acquire-nba-team-seasons 2000 2027 --owner-approved --execute-approved-manifest`
 2. `uv run nba-data acquisition acquire-nba-team-seasons 2026 2026` (no flags)
 3. `uv run nba-data validate offline-database --backfill-report <any 2000-2025 report>`
-   against a database still at 2000-2025, such as `nba` today.
+   against a database still at 2000-2025, such as the backup
+   `nba-before-f8003-2026.dump` restored into a disposable database.
 
 Expected result:
 
@@ -261,14 +262,23 @@ Expected result:
 3. It exits 1 with count mismatches (26 vs 27 seasons, 775 vs 805
    team-seasons). The new baseline is not met until season 2026 is loaded.
 
+## Persistent load (2026-10-24)
+
+Merged as #57 (`a49fee1`). On the owner's instruction ("do load 2026 into the
+db"), season 2026 was loaded into `nba` from that commit, after a verified
+`pg_dump` restore point (`Projects/nba-backups/nba-before-f8003-2026.dump`).
+All six steps exited 0 and every figure matched the disposable rebuild: 27
+seasons, 805 team-seasons, 2,654 players, 329,437 `stats` rows, 0 missing and 0
+unexpected in all four coverage dimensions, 0 lineage violations. Record in
+`OFFLINE_DATABASE_PREPARATION.md`, "The applied 2026 load"; reports in
+`reports/f8-003/nba-load/`. The disposable `nba_f8003_tmp_rebuild` was dropped.
+
 ## Known limitations
 
-- The persistent `nba` database is still 2000-2025. Loading season 2026 into it
-  needs merged `origin/main` and the owner's approval, and F8-006 may combine
-  it with the Stage 2 load. Until then, `validate offline-database` against
-  `nba` fails on the new counts, which is the expected sad path above.
-  *Owner, 2026-10-24:* loading season 2026 into `nba` is approved. It still
-  runs only after this branch is merged to `origin/main`.
+- F8-002's `0009` was applied to `nba` the same day, after this load: the
+  agent took the backup and ran the preflight, and the owner ran the upgrade
+  because the agent's permission check refused it (`MIGRATION_HEAD_HANDOVER.md`).
+  `nba` is at the head and readiness answers 200.
 - The 103 newcomers' pages were fetched on 2026-10-24, after 2026-27 started.
   They hold 336 partial-season 2027 regular-season rows, which are out of scope
   and not loaded. Their 2025-26 rows are final. Refreshing them is F8-008's

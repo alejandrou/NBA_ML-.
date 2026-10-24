@@ -213,10 +213,11 @@ Three measured baselines exist, and they are not interchangeable:
 | `-v4` rebuild, measured 2026-08-28 | 129,000 | **101,336** | **42,408** | **42,408** | **315,152** |
 | `-v4`, 2000-2026, measured 2026-10-24 (F8-003) | **134,949** | **105,992** | **44,248** | **44,248** | **329,437** |
 
-**The persistent `nba` database is at the `-v4` 2000-2025 baseline as of
-2026-09-05**, when F4E-031 applied the rebuild. The 2000-2026 row was measured
-on a disposable database; `nba` reaches it only when season 2026 is loaded from
-merged `origin/main` with the owner's approval (F8-003, F8-006). The `-v1` row is retained only as the historical
+**The persistent `nba` database is at the `-v4` 2000-2026 baseline as of
+2026-10-24**, when F8-003 loaded season 2026 from merged `origin/main` with the
+owner's approval; it matched the disposable measurement exactly (see "The
+applied 2026 load" below). F4E-031 had applied the 2000-2025 rebuild on
+2026-09-05. The `-v1` row is retained only as the historical
 before-state; a database still reporting it has not had the rebuild applied. Use
 the row that matches the `parser_version` the database actually carries; a
 database at `-v1` fails `validate official-stats` on lineage regardless of its
@@ -487,19 +488,21 @@ three values — `team-season-parser-v1`, `player-page-parser-v4`, and
 **This procedure requires the owner's direct, current instruction naming the
 operation and its scope. No card authorizes it.**
 
-**It was performed once, on 2026-09-05, by F4E-031 under the owner's direct
-instruction.** `nba` carries the `-v4` archive that run produced. It was at
-revision `0007_team_bref_id_not_null` from then until 2026-09-12, when a
-separately authorized upgrade brought it to `0008_drop_raw_schema`, the head —
-see [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md). The record of the
-F4E-031 run is below; the procedure is kept because it is the one to follow if
-the archive is ever rebuilt again.
+**It was performed twice, each under the owner's direct instruction:** on
+2026-09-05 by F4E-031 (2000-2025), and on 2026-10-24 by F8-003, which loaded
+season 2026. `nba` carries the 2000-2026 `-v4` archive. It was at revision
+`0007_team_bref_id_not_null` from 2026-09-05 until 2026-09-12, when a
+separately authorized upgrade brought it to `0008_drop_raw_schema`. On
+2026-10-24, after the season-2026 load, the owner applied
+`0009_games_and_box_scores`, the head — see
+[`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md). The records of both
+runs are below; the procedure is kept because it is the one to follow if the
+archive is ever rebuilt again.
 
 Preflight, in order:
 
-1. **Close the migration gap.** `nba` is at `0008_drop_raw_schema` since the
-   2026-09-12 upgrade; the F4E-031 run had left it at
-   `0007_team_bref_id_not_null`. If the head has moved since, applying the new
+1. **Close the migration gap.** `nba` is at `0009_games_and_box_scores`, the
+   head, since 2026-10-24. If the head has moved since, applying the new
    revisions to `nba` is itself a critical action needing its own approval.
    Check where the target actually stands, read-only, before asking for that
    approval:
@@ -601,6 +604,37 @@ that correction.
 The `stats` schema holds 329,437 rows across 33 tables. There are 13,249
 distinct regular-season player-seasons (12,667 + 582: every player on a
 2025-26 roster) and 5,531 postseason player-seasons.
+
+### The applied 2026 load — `nba`, 2026-10-24
+
+F8-003 ran the same order against `nba`, from merged `origin/main` (`a49fee1`),
+under the owner's direct instruction. `nba` was at `0008_drop_raw_schema`; the
+loaders write no table that `0009` adds. A `pg_dump -Fc` restore point was
+taken first, outside the repository
+(`Projects/nba-backups/nba-before-f8003-2026.dump`, 21,119,639 bytes, md5
+`e88e50aed649c8d4c942f56d26446fa4` on both sides). No delete or truncate was
+run. Reports are in `reports/f8-003/nba-load/`.
+
+| Step | Exit | Wall clock | Result |
+|---|---:|---:|---|
+| `backfill offline --max-workers 4` | 0 | 18 min | 805 entries, 134,949 rows, 0 failed or quarantined |
+| `validate offline-database` | 0 | <1 min | no issues against the pinned 2000-2026 counts |
+| `backfill stats --max-workers 4` | 0 | 33 min | 805 sources, 134,949 rows, 0 failed |
+| `backfill player-stats` | 0 | 33 min | 105,992 rows; 0 failed, 0 in-scope unresolved, 16,196 out of scope |
+| `backfill player-postseason-stats` | 0 | 24 min | 44,248 + 44,248 rows; 0 failed, 0 in-scope unresolved, 16,936 out of scope |
+| `validate official-stats` with the F8-003 coverage artifact, `--coverage-cache-root` | 0 | 1 min | 0 missing and 0 unexpected in all four dimensions; `verified`; `parser_lineage_violations` 0 |
+
+| | Before | After |
+|---|---:|---:|
+| `core.seasons` | 26 | 27 |
+| `core.team_seasons` | 775 | 805 |
+| `core.players` | 2,551 | 2,654 |
+| `core.player_seasons` | 12,676 | 13,258 |
+| `core.player_team_seasons` | 14,344 | 15,005 |
+| `stats` rows, 33 tables | 315,152 | 329,437 |
+| Distinct regular-season player-seasons | 12,667 | 13,249 |
+
+Every figure equals the disposable rebuild above.
 
 ## Useful SQL Checks
 

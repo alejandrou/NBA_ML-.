@@ -25,7 +25,7 @@ validation:
 critical_actions:
   - Live acquisition of the 12 season schedule pages and their ~96 month pages (two runs, ~11 minutes) — the owner's direct instruction for each run.
   - Live acquisition of ~14,442 box scores, one approved season manifest at a time, in batches of `--max-fetches` (~25 hours in all) — the owner's direct instruction for each batch.
-  - Applying F8-002's revision to the persistent nba database, loading season 2026 there (F8-003), and running `backfill games` against it — from merged origin/main only, each with the owner's approval.
+  - Applying F8-002's revision to the persistent nba database and running `backfill games` against it — from merged origin/main only, each with the owner's approval. Season 2026 is already loaded there (F8-003, 2026-10-24).
 ---
 
 # Goal
@@ -80,8 +80,9 @@ on a disposable database and then, with approval, in `nba`.
   the cache.
 - The persistent-database steps are recorded in the order they ran, each with
   the owner's instruction: revision applied (`MIGRATION_HEAD_HANDOVER.md`),
-  season 2026 loaded, `backfill games` run, and `validate offline-database`
-  passing afterwards.
+  `backfill games` run, and `validate offline-database` passing afterwards.
+  Season 2026 was loaded into `nba` by F8-003 on 2026-10-24
+  (`OFFLINE_DATABASE_PREPARATION.md`).
 
 # Scope
 

@@ -214,7 +214,9 @@ Revision and tests:
 `test_core_models.py`, `test_stats_models.py`;
 `tests/integration/test_game_schema_postgres.py` (new);
 `docs/architecture/SYSTEM_DESIGN.md`, `docs/domain/BUSINESS_RULES.md`,
-`docs/architecture/IMPACT_MAP.md`.
+`docs/architecture/IMPACT_MAP.md`, its existing unit test,
+`scripts/validate_postgres_local.py` (catalog comparison for the required
+head-revision rollback proof), and `tasks/CROSS_TRACK.md` (handoff).
 
 # Out of scope
 
@@ -241,8 +243,9 @@ Revision and tests:
 
 - Additive: new `core.games`, `stats.team_game_totals`, `stats.player_game_totals`
   the `app` track can serve when it chooses (plan Stage 5). The handoff card is
-  `F6-020` (already in `tasks/planning/`); before review, add its line under
-  `## Open` in `tasks/CROSS_TRACK.md`.
+  `F6-020`, which already exists — in `tasks/backlog/`, not `tasks/planning/` as
+  this card said — so no new card was created. Its entry is under `## Open` in
+  `tasks/CROSS_TRACK.md`.
 
 # Implementation notes
 
@@ -270,29 +273,114 @@ Revision and tests:
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## What changed
+
+- `alembic/versions/0009_games_and_box_scores.py` (new; chained on
+  `0008_drop_raw_schema`, the head when written — F4E-021/F4E-033 had not
+  landed). Check conditions are literal text.
+- `db/models/core.py`: `Game`; `uq_core_team_seasons_id_season` on `TeamSeason`.
+  `db/models/stats.py`: `TeamGameTotals`, `PlayerGameTotals`. Both exported.
+- Tests: `tests/unit/test_game_models.py` (new — keys, FKs, indexes, check names,
+  mapped check text == frozen revision text, allowed values == parser constants,
+  the revision imports nothing from `nba_data`);
+  `tests/integration/test_game_schema_postgres.py` (new, 223 parametrized cases, each
+  rejection asserts the named constraint); `test_core_models.py`,
+  `test_stats_models.py`, `test_impact_map_documentation.py` (now also pins the
+  `core` count).
+- Docs: `SYSTEM_DESIGN.md` (natural keys, Game Grain), `BUSINESS_RULES.md`
+  (Games and Box Scores, incl. the loader-enforced cross-table rules),
+  `IMPACT_MAP.md` (`core` 8, `stats` 35, migration chain).
+- `scripts/validate_postgres_local.py` gains a
+  generic check — upgrade to the head's parent, snapshot the `core`/`stats`
+  catalog (columns, constraints, indexes, relations incl. sequences), upgrade
+  head, `downgrade -1`, compare. This is what proves "the downgrade leaves the
+  schema exactly as the previous head"; CI's round trip only checks the
+  commands succeed. It works for any future single-head revision.
+
+## Review findings and fixes (2026-10-23)
+
+- Corrected `BUSINESS_RULES.md`: uniqueness guarantees at most one total per
+  side, not the existence of both totals. Postponement transitions, game-id
+  date/home-code consistency, inactive-line creation, and team/side matching
+  are loader responsibilities. Clarified the player's composite foreign-key
+  path through the team total in `SYSTEM_DESIGN.md`.
+- Fixed a blind spot in the parser/schema drift tests: discover all parser
+  `GAME_TYPE_*` and `PARTICIPATION_*` constants rather than enumerating only
+  today's values, so adding a parser constant cannot silently bypass the guard.
+- Expanded PostgreSQL coverage for all four accepted final-game types, all six
+  absence values (valid lines and forbidden stats), negative counters with
+  other nullable counters blank, NULL read-back on played and team lines,
+  duplicate players across both sides, and a team total belonging to another
+  game being unable to satisfy the player's composite foreign key.
+- Included the disposable catalog comparison and impact-map test in the scope
+  record: both support this card's explicit acceptance criteria. No unresolved
+  implementation findings remain; the loader work stays in its existing cards.
 
 ## Automated validation
 
-- Command:
-- Result:
+- `uv run pytest tests/unit/test_game_models.py tests/unit/test_core_models.py tests/unit/test_stats_models.py tests/unit/test_impact_map_documentation.py tests/unit/test_migration_snapshots.py` — 52 passed.
+- `uv run ruff check .` — All checks passed.
+- `uv run mypy src/nba_data` — no issues in 81 source files.
+- `uv run pytest` — 1221 passed, 250 skipped (the integration lane, no opt-in),
+  7 dependency deprecation warnings.
+- `bash scripts/validate_database.sh` (run with
+  `DATABASE_URL=postgresql+psycopg://nba:nba@127.0.0.1:5432/nba`, see
+  limitations) — exit 0: 0008 downgrade/guard checks as before; "The head
+  revision's downgrade exactly restored 0008_drop_raw_schema."; `alembic check`
+  clean; `pytest tests/integration` 251 passed (223 game-schema cases),
+  1 dependency deprecation warning; temporary database dropped. The expected
+  0008 guard rejection is exercised intentionally and the script exits 0.
+- `uv run python scripts/validate_tasks.py` — passed.
+- `uv run python scripts/validate_tasks.py --all-worktrees` — passed.
+- `uv run alembic heads` — `0009_games_and_box_scores (head)`.
+- `git diff --check` — passed.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `bash scripts/validate_database.sh` and read the log.
+2. Expect `$ uv run alembic upgrade 0008_drop_raw_schema`, `upgrade head`,
+   `downgrade -1`, then `The head revision's downgrade exactly restored
+   0008_drop_raw_schema.`, `alembic check` with no diff, and
+   `tests/integration` all passing, ending `PostgreSQL validation passed`.
+3. `uv run alembic heads` → `0009_games_and_box_scores (head)`.
 
-Expected result:
+Expected result: the three tables exist only in the disposable database; `nba`
+is untouched and stays at `0008_drop_raw_schema`.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. In `src/nba_data/db/models/core.py`, change `'cup_final'` in
+   `ck_core_games_game_type` to `'cup'`, run `uv run pytest tests/unit/test_game_models.py`.
+2. Expect failures in `test_allowed_game_types_equal_the_parser_types_without_unknown`
+   and `test_the_mapped_check_matches_the_frozen_revision_text[...game_type...]`.
+3. Revert. Then in `alembic/versions/0009_games_and_box_scores.py` remove the
+   `op.drop_constraint("uq_core_team_seasons_id_season", ...)` line from
+   `downgrade()` and run `bash scripts/validate_database.sh`: expect
+   `RuntimeError: Downgrading the head revision did not restore
+   0008_drop_raw_schema exactly`. Revert.
 
-Expected result:
+Expected result: model/revision/parser drift and an incomplete downgrade each
+fail loudly before merge.
 
 ## Known limitations
 
-- None.
+- Not applied to the persistent `nba` database. That is the owner's step, from
+  merged `origin/main` only (`MIGRATION_HEAD_HANDOVER.md`); 0009 is additive and
+  has no data precondition, so `preflight_migration_data.py` needs no new
+  check. Once applied, the `app` worktree answers 503 until its next task
+  starts from the new `origin/main` (readiness contract, not a break).
+- Environment, not code: on this machine `localhost` resolves to `::1` first
+  while Docker binds only `127.0.0.1`, so each psycopg connect stalls before
+  falling back. The `localhost` run took ~45 minutes; with `127.0.0.1` in
+  `DATABASE_URL` it took about a minute. Worth a separate card if it bothers you
+  (e.g. default the URL to `127.0.0.1`).
+- No loader writes these tables yet (F8-005); the cross-table rules in
+  `BUSINESS_RULES.md` are documented, not enforced, until then.
+
+## Closure
+
+The owner explicitly requested review, fixes, closure, push, and a pull request
+on 2026-10-23. All acceptance criteria passed review and the validation above.
+Moved to `tasks/done/` under that instruction. The additive handoff to F6-020
+remains Open until that consumer card is completed; this review applied no
+migration to the persistent database.

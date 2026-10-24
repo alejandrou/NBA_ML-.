@@ -174,6 +174,11 @@ hand.
   instead of writing a second copy; keep its report and tests unchanged.
 - Created players have no `player_seasons`: the API's player list shows them
   with no seasons, which is true. Record it in `BUSINESS_RULES.md`.
+- Known inactive-only players this must create (owner, 2026-10-24): `youngpa01`
+  (2014-15), and from 2025-26 `sorbeth01` (`202510210OKC`), `batesta01`
+  (`202512180DEN`), and `mangaky01` (`202512160NYK`), found by the F8-003 pilot
+  rerun. They get inactive game rows with no counters, never zero-filled stats.
+  After loading, `validate game-pilot` should resolve every player.
 - The neutral rule needs the whole season loaded; run it as a second pass inside
   the same command and update `neutral_site` only.
 

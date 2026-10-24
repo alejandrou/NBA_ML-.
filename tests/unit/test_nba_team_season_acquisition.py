@@ -96,10 +96,10 @@ def _allow_small_manifest(monkeypatch: pytest.MonkeyPatch, manifest: NbaTeamSeas
 
 
 @pytest.mark.unit
-def test_verified_manifest_uses_expected_id_and_775_entries() -> None:
+def test_verified_manifest_uses_expected_id_and_805_entries() -> None:
     manifest = build_verified_nba_team_season_acquisition_manifest()
 
-    assert manifest.manifest_id == "nba-team-season-2000-2025"
+    assert manifest.manifest_id == "nba-team-season-2000-2026"
     assert len(manifest.entries) == EXPECTED_MANIFEST_URLS
     assert manifest.total_urls == EXPECTED_MANIFEST_URLS
     assert manifest.unique_urls == EXPECTED_MANIFEST_URLS
@@ -112,7 +112,7 @@ def test_filtered_manifest_uses_requested_year_range() -> None:
         end_year=2025,
     )
 
-    assert manifest.manifest_id == "nba-team-season-2000-2025"
+    assert manifest.manifest_id == "nba-team-season-2000-2026"
     assert manifest.season_start_year == 2020
     assert manifest.season_end_year == 2025
     assert manifest.total_urls == 180
@@ -142,12 +142,26 @@ def test_filtered_manifest_uses_requested_year_range() -> None:
 
 
 @pytest.mark.unit
+def test_filtered_manifest_for_2025_26_plans_exactly_its_30_urls() -> None:
+    manifest = build_verified_nba_team_season_acquisition_manifest(
+        start_year=2026,
+        end_year=2026,
+    )
+
+    assert manifest.manifest_id == "nba-team-season-2000-2026"
+    assert manifest.total_urls == 30
+    assert manifest.unique_urls == 30
+    assert {entry.season_end_year for entry in manifest.entries} == {2026}
+    assert all(entry.url.endswith("/2026.html") for entry in manifest.entries)
+
+
+@pytest.mark.unit
 def test_filtered_manifest_rejects_ranges_outside_reviewed_catalog() -> None:
-    with pytest.raises(NbaTeamSeasonAcquisitionConfigurationError, match="2000-2025"):
+    with pytest.raises(NbaTeamSeasonAcquisitionConfigurationError, match="2000-2026"):
         build_verified_nba_team_season_acquisition_manifest(start_year=1990, end_year=2025)
 
-    with pytest.raises(NbaTeamSeasonAcquisitionConfigurationError, match="2000-2025"):
-        build_verified_nba_team_season_acquisition_manifest(start_year=2000, end_year=2026)
+    with pytest.raises(NbaTeamSeasonAcquisitionConfigurationError, match="2000-2026"):
+        build_verified_nba_team_season_acquisition_manifest(start_year=2000, end_year=2027)
 
     with pytest.raises(NbaTeamSeasonAcquisitionConfigurationError, match="less than or equal"):
         build_verified_nba_team_season_acquisition_manifest(start_year=2025, end_year=2020)
@@ -439,8 +453,8 @@ def test_cli_missing_years_fails_before_client_creation(monkeypatch: pytest.Monk
 @pytest.mark.parametrize(
     ("start_year", "end_year", "expected_message"),
     [
-        ("1990", "2025", "2000-2025"),
-        ("2000", "2026", "2000-2025"),
+        ("1990", "2025", "2000-2026"),
+        ("2000", "2027", "2000-2026"),
         ("2025", "2020", "less than or equal"),
     ],
 )

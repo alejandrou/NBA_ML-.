@@ -81,7 +81,7 @@ def test_inventory_marks_unsupported_hosts_pages_catalog_entries_and_tot(tmp_pat
         / "players-t-tatumja01.html-2222222222222222.html.gz",
         cache.root_dir
         / "basketball-reference"
-        / "teams-bos-2026.html-3333333333333333.html.gz",
+        / "teams-bos-2027.html-3333333333333333.html.gz",
         cache.root_dir
         / "basketball-reference"
         / "teams-tot-2024.html-4444444444444444.html.gz",
@@ -100,7 +100,7 @@ def test_inventory_marks_unsupported_hosts_pages_catalog_entries_and_tot(tmp_pat
     assert player_entry.page_type is None
 
     out_of_catalog_entry = next(
-        entry for entry in inventory.entries if entry.season_end_year == 2026
+        entry for entry in inventory.entries if entry.season_end_year == 2027
     )
     assert out_of_catalog_entry.team_abbreviation == "BOS"
     assert "outside the approved" in str(out_of_catalog_entry.error_message)

@@ -3,8 +3,8 @@
 ## Purpose
 
 This document records the outcome of the controlled 2000-2025 NBA team-season
-acquisition and confirms cache coverage before offline inventory, processing,
-loading, and validation. It is the operational record of that acquisition, kept
+acquisition, and of the 2026 extension that followed it, and confirms cache
+coverage before offline inventory, processing, loading, and validation. It is the operational record of that acquisition, kept
 because the run is not reproducible without contacting Basketball Reference
 again.
 
@@ -76,9 +76,41 @@ The next phase step may proceed to `F4D-001 - Cached HTML inventory`.
 `F4D-001` must remain offline, must not fetch HTML, and must not write database
 rows.
 
+## Season 2025-26 extension (F8-003, 2026-10-24)
+
+F8-003 extended the manifest to 2000-2026 (`nba-team-season-2000-2026`,
+805 URLs) and acquired the 30 season-2026 pages on the owner's direct
+instruction. 2025-26 was complete when its pages were fetched, so the
+never-overwrite cache holds final pages. 2026-27 is not in the manifest:
+an in-progress season's pages change daily (F8-008).
+
+The franchise codes for 2026 are the 2025 ones; the manifest plans the same 30
+teams.
+
+Dry run before the run: 805 planned, 775 cache hits, 30 missing (all 2026).
+
+```bash
+uv run nba-data acquisition acquire-nba-team-seasons 2026 2026 \
+  --owner-approved --execute-approved-manifest \
+  --output reports/f8-003/acquisition-team-seasons-2026.json
+```
+
+- `manifest_id`: `nba-team-season-2000-2026`
+- `season_start_year` / `season_end_year`: `2026` / `2026`
+- `total_urls`: `30`
+- `processed_entries`: `30`
+- `cache_hits`: `0`
+- `fetched`: `30`
+- `failed`: `0`
+- `rate_limited`: `0`
+- `live_request_count`: `30`
+- `completed`: `true`
+
+Dry run after the run: 805 cache hits, 0 missing, 0 estimated fetches.
+
 ## Work Not Performed
 
-During this task, none of the following occurred:
+During the 2000-2025 review task, none of the following occurred:
 
 - live scraping;
 - contacting Basketball Reference;

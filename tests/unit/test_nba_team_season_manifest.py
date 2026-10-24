@@ -39,12 +39,12 @@ def _teams_by_year() -> dict[int, set[str]]:
 
 
 @pytest.mark.unit
-def test_manifest_contains_exactly_775_unique_team_season_urls() -> None:
+def test_manifest_contains_exactly_805_unique_team_season_urls() -> None:
     manifest = build_nba_team_season_manifest()
     urls = [entry.url for entry in manifest.entries]
 
     assert manifest.season_start_year == 2000
-    assert manifest.season_end_year == 2025
+    assert manifest.season_end_year == 2026
     assert manifest.total_urls == EXPECTED_MANIFEST_URLS
     assert manifest.unique_urls == EXPECTED_MANIFEST_URLS
     assert len(manifest.entries) == EXPECTED_MANIFEST_URLS
@@ -96,6 +96,14 @@ def test_manifest_uses_phase_4d_franchise_lineage_boundaries() -> None:
 
     assert "SEA" in teams[2008]
     assert "OKC" in teams[2009]
+
+
+@pytest.mark.unit
+def test_manifest_plans_the_2024_25_franchises_for_2025_26() -> None:
+    teams = _teams_by_year()
+
+    assert len(teams[2026]) == 30
+    assert teams[2026] == teams[2025]
 
 
 @pytest.mark.unit
@@ -157,7 +165,7 @@ def test_cli_acquisition_dry_run_nba_team_seasons_prints_json_report(
 
     assert result.exit_code == 0, result.output
     report = json.loads(result.output)
-    assert report["manifest_id"] == "nba-team-season-2000-2025"
+    assert report["manifest_id"] == "nba-team-season-2000-2026"
     assert report["total_urls"] == EXPECTED_MANIFEST_URLS
     assert report["unique_urls"] == EXPECTED_MANIFEST_URLS
     assert report["cache_hits"] == 1

@@ -109,6 +109,23 @@ raise `PlayerCacheRootNotFoundError` naming the resolved absolute path. An
 existing root with no matching page still returns zero entries but reports
 `discovery_status: "no_matching_pages"`.
 
+## Runs on record
+
+This file is a procedure, so it does not keep every run. One scoped run is
+recorded because another card depends on its result:
+
+- **2025-26 newcomers (F8-003, 2026-10-24).** Before the run, the 2026 rosters
+  were loaded into a disposable database (`backfill offline` over the 805
+  team-season pages), with `DATABASE_URL` pointed at it. The dry run
+  `--start-year 2026 --end-year 2026` planned 582 players: 479 cache hits
+  (fetched 2026-07-05, after the 2025-26 Finals) and 103 missing. Then
+  `acquire-player-pages --start-year 2026 --end-year 2026` fetched 103 pages,
+  with 0 failures, 0 rate-limited requests, and `live_request_count` 103. The
+  unfiltered dry run that followed showed 2,654 players and 2,654 cache hits.
+  The 2026-27 season had already started, so those 103 pages also carry 336
+  regular-season rows for 2027. That season is out of scope and not loaded;
+  the never-overwrite cache froze those rows partway through the season (F8-008).
+
 ## Related
 
 - `docs/architecture/IMPACT_MAP.md` — the player-page acquisition flow and its

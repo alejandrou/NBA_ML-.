@@ -69,7 +69,7 @@ Not ready returns 503 with one of exactly three `detail` strings:
 
 These strings are fixed. They never interpolate the exception, the driver message, a SQL statement, the connection string, a credential, or a filesystem path — the underlying cause is logged server-side, exactly as it is for a 500. If a fourth cause is ever needed it gets its own fixed string; the existing three are never reshaped into a template.
 
-**Required tables** are those backing the data routes currently served: `core.teams`, `core.seasons`, `core.players`, `core.player_seasons`, and `core.player_team_seasons`. This list grows with each new data resource — a resource whose table is not checked can still 500 against a partially migrated database, so adding a data resource means adding its table here.
+**Required tables** are those backing the data routes currently served, by schema-qualified name: `core.teams`, `core.seasons`, `core.team_seasons`, `core.players`, `core.player_seasons`, `core.player_team_seasons`, and the sixteen regular-season stat tables `stats.player_season_{family}` and `stats.player_team_season_{family}`. This list grows with each new data resource — a resource whose table is not checked can still 500 against a partially migrated database, so adding a data resource means adding its table here.
 
 **Readiness is evaluated per request and never cached.** The check runs on every call, and the result of one call says nothing about the next. A cached verdict is deliberately rejected: a database that dies after startup would keep reporting ready, which is worse than having no readiness route at all, because it is confidently wrong. The check is time-bounded, so an unreachable or unresponsive database produces a 503 rather than a hanging request.
 
@@ -142,18 +142,19 @@ The `league` field stays in the response so the scope is explicit in every paylo
 
 **Served:** the four identity routes — `/players`, `/players/{pid}`,
 `/players/{pid}/seasons`, and `/players/{pid}/seasons/{season_year}` — which read
-`core` only and landed with F6-012.
+`core` only and landed with F6-012; and the sixteen regular-season statistics
+routes, `.../regular/aggregate/{family}` and `.../regular/stints/{family}` for all
+eight families, which landed with F6-013.
 
-**Specified, not yet served:** the two statistics routes,
-`.../{season_type}/aggregate/{family}` and `.../{season_type}/stints/{family}`. No
-statistics route, statistics query repository, or statistics schema exists today.
-The section fixes their shape before any of it is written, so a response body
-cannot be decided accidentally by copying the column list of a wide table.
+**Specified, not yet served:** the postseason statistics routes,
+`.../postseason/aggregate/{family}` and `.../postseason/stints/{family}`, which
+**F6-014** implements. Until then a postseason path answers 404 with the
+framework's own `{"detail": "Not Found"}`, exactly as an unrouted path does; an
+unrecognized `{season_type}` or `{family}` is still a 422.
 
-Two successor cards implement them: **F6-013** (regular-season statistics) and
-**F6-014** (postseason statistics). Each removes the resources it lands from this
-marker. The data they serve is ready: the persistent `nba` database carries the
-`-v4` rebuild since 2026-09-05 (F4E-031).
+Each statistics route is registered literally, with its own family's body as
+the response model, so OpenAPI publishes one typed body per family and grain
+rather than a union a client cannot narrow.
 
 ### Player identity
 
@@ -269,15 +270,30 @@ Basketball Reference mapping, and renaming them at the boundary would create a
 second vocabulary to keep in step. `src/nba_data/db/models/stats.py` is the
 authority for what a family contains.
 
+**Every stored column of the family is published**, except the primary key, the
+grain FK (`player_season_id` / `player_team_season_id`), the lineage columns
+below, and `player_name_display` (a named non-promise). That includes the
+per-row source fields `rk`, `age`, `position`, and `awards`, published verbatim
+and `null` when absent. `tests/unit/test_player_stats_api.py` derives each body's
+fields from the mapped table under that rule, so a newly stored column fails it
+until it is either published or added to the exclusions here.
+
+**A stint without a stat row is omitted.** A stint collection lists the rows the
+family's stint table stores and nothing else. Stint membership is served by the
+season index's `teams`; inventing a row of `null`s for a member stint the table
+lacks would assert a stint row that was never stored.
+
 **A missing stat is `null`** — never `0`, and never an omitted key. Older seasons
 lack statistics that did not exist yet, and a zero would assert a measurement
 that was never taken.
 
-**Rates are JSON numbers.** `Numeric(10, 4)` columns publish as JSON numbers at
-their stored scale (`0.4661`), not as strings. This is stated explicitly because
-Pydantic serializes `Decimal` to a string in JSON mode by default: a schema that
-types these columns as `Decimal` and is left unconfigured breaks this rule
-silently.
+**Rates are JSON numbers.** `Numeric(10, 4)` columns publish as JSON numbers
+carrying the stored value, not as strings, and OpenAPI types them `number`. JSON
+numbers carry no scale, so a stored `0.4660` is published as `0.466`; clients
+must not read trailing zeros as precision. This is stated explicitly because
+Pydantic serializes `Decimal` to a string in JSON mode by default: every such
+column is typed `ApiDecimal` (`src/nba_data/api/schemas/common.py`), and a
+schema that types one as a bare `Decimal` breaks this rule silently.
 
 **Lineage columns are private.** `source_url`, `cache_path`, `parser_version`,
 `created_at`, and `updated_at` are never published on any route.

@@ -6,6 +6,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from nba_data.api.routers.health import router as health_router
+from nba_data.api.routers.player_stats import router as player_stats_router
 from nba_data.api.routers.players import router as players_router
 from nba_data.api.routers.seasons import router as seasons_router
 from nba_data.api.routers.teams import router as teams_router
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
     api_router.include_router(teams_router)
     api_router.include_router(seasons_router)
     api_router.include_router(players_router)
+    api_router.include_router(player_stats_router)
     app.include_router(api_router, prefix=API_V1_PREFIX)
 
     return app

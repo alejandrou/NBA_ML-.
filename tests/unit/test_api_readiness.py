@@ -17,7 +17,30 @@ from nba_data.api.services import readiness
 from nba_data.config.settings import Settings, get_settings
 
 _QUERY_CANCELED_SQLSTATE = "57014"
-SERVED_CORE_TABLES = ("teams", "seasons", "players", "player_seasons", "player_team_seasons")
+SERVED_CORE_TABLES = (
+    "core.teams",
+    "core.seasons",
+    "core.team_seasons",
+    "core.players",
+    "core.player_seasons",
+    "core.player_team_seasons",
+)
+SERVED_STAT_FAMILIES = (
+    "totals",
+    "per_game",
+    "per_minute",
+    "per_poss",
+    "advanced",
+    "shooting",
+    "adj_shooting",
+    "pbp",
+)
+SERVED_STAT_TABLES = tuple(
+    f"stats.{grain}_{family}"
+    for grain in ("player_season", "player_team_season")
+    for family in SERVED_STAT_FAMILIES
+)
+SERVED_TABLES = SERVED_CORE_TABLES + SERVED_STAT_TABLES
 
 
 class _ScalarResult:
@@ -35,13 +58,13 @@ class FakeSession:
         self,
         *,
         revisions: Sequence[str] | None = None,
-        core_tables: Sequence[str] = SERVED_CORE_TABLES,
+        tables: Sequence[str] = SERVED_TABLES,
         dialect: str = "postgresql",
         failure: Exception | None = None,
         fail_on: str | None = None,
     ) -> None:
         self.revisions = tuple(readiness.migration_heads() if revisions is None else revisions)
-        self.core_tables = tuple(core_tables)
+        self.tables = tuple(tables)
         self.dialect = dialect
         self.failure = failure
         self.fail_on = fail_on
@@ -58,7 +81,7 @@ class FakeSession:
         sql = self._record(statement)
         if "alembic_version" in sql:
             return _ScalarResult(self.revisions)
-        return _ScalarResult(self.core_tables)
+        return _ScalarResult(self.tables)
 
     def _record(self, statement: Any) -> str:
         sql = str(statement)
@@ -174,7 +197,7 @@ def test_readiness_reports_503_when_the_schema_is_behind_the_migration_head() ->
 
 @pytest.mark.unit
 def test_readiness_reports_503_when_a_required_table_is_missing() -> None:
-    session = FakeSession(core_tables=("teams",))
+    session = FakeSession(tables=("core.teams",))
 
     with readiness_client(session) as client:
         response = client.get("/api/v1/health/ready")
@@ -184,15 +207,48 @@ def test_readiness_reports_503_when_a_required_table_is_missing() -> None:
 
 
 @pytest.mark.unit
-def test_the_required_tables_are_the_core_tables_the_data_routes_read() -> None:
+def test_the_required_tables_are_the_tables_the_data_routes_read() -> None:
     """Pinned as a literal: a route whose table is unchecked can 500 while ready says 200."""
-    assert readiness.REQUIRED_TABLES == SERVED_CORE_TABLES
+    assert readiness.REQUIRED_TABLES == SERVED_TABLES
+    assert readiness.REQUIRED_SCHEMAS == ("core", "stats")
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("missing", ["players", "player_seasons", "player_team_seasons"])
+@pytest.mark.parametrize(
+    "missing",
+    ["core.players", "core.player_seasons", "core.player_team_seasons", "core.team_seasons"],
+)
 def test_readiness_reports_503_when_a_player_table_is_missing(missing: str) -> None:
-    session = FakeSession(core_tables=[name for name in SERVED_CORE_TABLES if name != missing])
+    session = FakeSession(tables=[name for name in SERVED_TABLES if name != missing])
+
+    with readiness_client(session) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database schema not ready"}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("missing", ["stats.player_season_totals", "stats.player_team_season_pbp"])
+def test_readiness_reports_503_when_a_stats_table_is_missing(missing: str) -> None:
+    session = FakeSession(tables=[name for name in SERVED_TABLES if name != missing])
+
+    with readiness_client(session) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database schema not ready"}
+
+
+@pytest.mark.unit
+def test_readiness_matches_tables_by_schema_as_well_as_name() -> None:
+    """A `core.player_season_totals` must not stand in for the `stats` table of that name."""
+    session = FakeSession(
+        tables=[
+            "core.player_season_totals" if name == "stats.player_season_totals" else name
+            for name in SERVED_TABLES
+        ]
+    )
 
     with readiness_client(session) as client:
         response = client.get("/api/v1/health/ready")

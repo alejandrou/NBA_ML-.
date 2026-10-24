@@ -14,19 +14,25 @@ from pathlib import Path
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from nba_data.api.services.player_stats import served_stat_tables
+
 logger = logging.getLogger(__name__)
 
-REQUIRED_SCHEMA = "core"
 REQUIRED_TABLES: tuple[str, ...] = (
-    "teams",
-    "seasons",
-    "players",
-    "player_seasons",
-    "player_team_seasons",
+    "core.teams",
+    "core.seasons",
+    "core.team_seasons",
+    "core.players",
+    "core.player_seasons",
+    "core.player_team_seasons",
+    *served_stat_tables(),
+)
+REQUIRED_SCHEMAS: tuple[str, ...] = tuple(
+    sorted({name.split(".", 1)[0] for name in REQUIRED_TABLES})
 )
 
 # Resolved from this package, never from the process working directory: a
@@ -102,13 +108,12 @@ def _bound_probe(session: Session, *, timeout_seconds: float) -> None:
 
 
 def _missing_required_tables(session: Session) -> list[str]:
-    present = set(
-        session.scalars(
-            text("SELECT table_name FROM information_schema.tables WHERE table_schema = :schema"),
-            {"schema": REQUIRED_SCHEMA},
-        ).all()
-    )
-    return [f"{REQUIRED_SCHEMA}.{name}" for name in REQUIRED_TABLES if name not in present]
+    statement = text(
+        "SELECT table_schema || '.' || table_name FROM information_schema.tables "
+        "WHERE table_schema IN :schemas"
+    ).bindparams(bindparam("schemas", expanding=True))
+    present = set(session.scalars(statement, {"schemas": list(REQUIRED_SCHEMAS)}).all())
+    return [name for name in REQUIRED_TABLES if name not in present]
 
 
 def _is_query_canceled(exc: DBAPIError) -> bool:

@@ -7,6 +7,23 @@ from typer.testing import CliRunner
 from nba_data.api import create_app
 from nba_data.cli.main import app as cli_app
 
+PLAYER_SEASON_PATH = "/api/v1/players/{basketball_reference_player_id}/seasons/{season_year}"
+STAT_FAMILIES = (
+    "totals",
+    "per_game",
+    "per_minute",
+    "per_poss",
+    "advanced",
+    "shooting",
+    "adj_shooting",
+    "pbp",
+)
+SERVED_STAT_PATHS = {
+    f"{PLAYER_SEASON_PATH}/regular/{grain}/{family}"
+    for grain in ("aggregate", "stints")
+    for family in STAT_FAMILIES
+}
+
 
 @pytest.mark.unit
 def test_create_app_returns_fastapi_instance() -> None:
@@ -55,7 +72,8 @@ def test_health_is_registered_in_openapi_without_unapproved_routes() -> None:
         "/api/v1/players",
         "/api/v1/players/{basketball_reference_player_id}",
         "/api/v1/players/{basketball_reference_player_id}/seasons",
-        "/api/v1/players/{basketball_reference_player_id}/seasons/{season_year}",
+        PLAYER_SEASON_PATH,
+        *SERVED_STAT_PATHS,
     }
     health_operation = openapi["paths"]["/api/v1/health"]["get"]
     assert health_operation["tags"] == ["health"]

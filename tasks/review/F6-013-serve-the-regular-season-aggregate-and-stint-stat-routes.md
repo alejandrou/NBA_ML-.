@@ -164,29 +164,91 @@ only registers the postseason entries.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## Branch review — 2026-10-25
+
+- Reviewed the full working-tree change, including untracked statistics modules
+  and tests; the branch has no committed diff against `origin/main`.
+- Finding (P2, fixed): readiness omitted `core.team_seasons`, although every
+  stint query joins it. A missing table could leave readiness at 200 while
+  stint requests fail. Added the dependency to readiness and the contract.
+  The new missing-table test failed with 200 before the fix and passes with
+  503 `Database schema not ready` afterward.
+- Re-ran the six-file focused validation command listed above: 105 passed.
+- `uv run pytest -m "not integration and not live"`: 1279 passed,
+  251 deselected; dependency deprecation warnings only.
+- `uv run ruff check .`: all checks passed.
+- `uv run mypy src/nba_data`: no issues in 87 source files.
+- `uv run python scripts/validate_tasks.py` and the same command with
+  `--all-worktrees`: both passed.
+- Additional offline Python probe populated all 450 published column values
+  across the 16 family/grain response bodies, checking stored-value mapping
+  and JSON numeric serialization/OpenAPI types: passed.
+- No further implementation defects found. This review did not repeat the
+  earlier PostgreSQL integration or persistent-database smoke runs; their
+  historical evidence below is unchanged. The card remains in review for the
+  owner's manual testing.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_player_stats_api.py tests/unit/test_player_stats_service.py tests/unit/test_player_stats_query_repository.py tests/unit/test_api_readiness.py tests/unit/test_api_foundation.py tests/unit/test_player_api.py`
+- Result: 104 passed.
+- Command: `uv run ruff check .` — Result: All checks passed.
+- Command: `uv run mypy src/nba_data` — Result: no issues found in 87 source files.
+- Command: `uv run pytest -m "not integration and not live"` — Result: 1278 passed, 251 deselected.
+- Command: `uv run python scripts/validate_tasks.py` — Result: Task validation passed.
+- Command (beyond the card's list, because readiness SQL changed):
+  `uv run python scripts/validate_postgres_local.py` with `DATABASE_URL` pointed at
+  `127.0.0.1` for that process only. Result: migrations, the 0008 round trip,
+  `alembic check`, and 251 integration tests passed on a temporary database,
+  including `GET /health/ready` = 200 against the real `core` + `stats` catalog.
+  `bash scripts/validate_database.sh` itself could not run from this worktree:
+  its `docker compose up` collides with the `nba_postgres` container owned by
+  the other worktree's compose project. Through `localhost` every connection on
+  this machine stalls ~60 s on IPv6 before succeeding, so the lane looks hung.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv run nba-data serve` against the `nba` database (at `0009`, seasons
+   2000-2026 since F8-003's load on 2026-10-24).
+2. `GET /api/v1/players/jamesle01/seasons/2008/regular/aggregate/totals`.
+3. `GET /api/v1/players/jamesle01/seasons/2008/regular/stints/advanced`, then a
+   traded player's season (any season whose index shows two `teams`) on both grains.
+4. Open `/docs`: sixteen statistics operations under "player statistics", each
+   with its own family body.
 
-Expected result:
+Expected result: 200 bodies with identity fields first, stored column names,
+rates as JSON numbers (`0.466`, not `"0.4660"`), `null` for missing stats, no
+lineage, ids, or `player_name_display`. A traded season's aggregate shows
+`source_team_code` like `2TM` with `is_multi_team: true`, and its stints list
+the real team codes in code order. `GET /api/v1/health/ready` stays 200.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `GET /api/v1/players/unknown01/seasons/2008/regular/aggregate/totals` and
+   `GET /api/v1/players/jamesle01/seasons/1990/regular/aggregate/totals`.
+2. `GET .../2008/playoffs/aggregate/totals`, `.../2008/regular/aggregate/roster`,
+   `.../twenty/regular/stints/totals`, and `.../2008/regular/stints/totals?page_size=101`.
+3. `GET .../2008/postseason/aggregate/totals`.
 
-Expected result:
+Expected result: 404 `Player not found`, then 404 `Player season not found`;
+422 for every step-2 request; 404 `{"detail": "Not Found"}` for postseason
+until F6-014. A season with membership but no stint stat row returns 200 with
+`items: []`; a missing aggregate row returns 404 `Statistics not found`.
 
 ## Known limitations
 
-- None.
+- All automated evidence uses SQLite fixtures and a disposable PostgreSQL
+  database. On 2026-10-25, after `nba` reached `0009` with season 2026, a
+  read-only `TestClient` smoke run against `nba` (host `127.0.0.1`) returned:
+  readiness 200; all 16 routes 200 for `jamesle01` 2008 (`fg_pct` `0.484` as a
+  number, no `player_name_display` or lineage); `jamesle01` 2026 per-game 200
+  (`LAL`, 60 games); `bradlto01` 2026 aggregate `2TM` with `is_multi_team: true`
+  and stints `ATL`, `IND`; the sad-path statuses exactly as listed above. The
+  manual steps remain the owner's.
+- Postseason paths answer the framework's `Not Found` until F6-014 registers them.
+- The card's "stale F4E-024 sentence" was already gone from `API_CONTRACT.md`;
+  the marker paragraph that replaced it is rewritten instead.
+- Outside the stated scope: `src/nba_data/domain/stat_dimensions.py` (new leaf
+  module for `SeasonType` / `StatFamily`, because schemas may not import
+  repositories), `src/nba_data/api/app.py` (router registration), and
+  `tests/unit/test_api_foundation.py` (the approved-path set).

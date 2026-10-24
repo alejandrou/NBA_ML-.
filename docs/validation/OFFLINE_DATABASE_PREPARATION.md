@@ -40,8 +40,9 @@ The expected Phase 4D core database revision is:
 
 ## Confirm Cached HTML Coverage
 
-The Phase 4D acquisition handoff expects 775 cached NBA team-season pages for
-Basketball Reference season end years 2000 through 2025.
+The archive expects 805 cached NBA team-season pages for Basketball Reference
+season end years 2000 through 2026: the 775 pages of the Phase 4D acquisition
+(2000-2025) plus the 30 season-2026 pages F8-003 added on 2026-10-24.
 
 Run the manifest cache coverage check:
 
@@ -52,7 +53,7 @@ uv run nba-data acquisition dry-run-nba-team-seasons
 Expected result after the approved acquisition:
 
 ```text
-775 cache hits
+805 cache hits
 0 missing cache entries
 0 estimated fetches
 ```
@@ -73,16 +74,20 @@ print(json.dumps(report.to_dict(), indent=2))
 PY
 ```
 
-Expected inventory counts:
+Expected inventory counts, measured 2026-10-24:
 
 ```text
-total_discovered_files      775
-valid_candidates            775
+total_discovered_files      3543
+valid_candidates            805
 invalid_or_unreadable_files 0
 duplicate_candidates        0
 missing_metadata            0
-unsupported_paths           0
+unsupported_paths           2738
 ```
+
+The inventory selects only team-season pages. The 2,738 unsupported paths are
+the other pages in the same cache, all expected: 2,654 player pages and the 84
+F8-001 pilot schedule, box-score, and play-by-play pages.
 
 ## Run Full Offline Backfill
 
@@ -92,7 +97,7 @@ database loading:
 ```bash
 uv run nba-data backfill offline ^
   --execute-approved-backfill ^
-  --output reports/offline-backfill-2000-2025.json
+  --output reports/offline-backfill-2000-2026.json
 ```
 
 On Git Bash, use backslashes instead of PowerShell carets:
@@ -100,7 +105,7 @@ On Git Bash, use backslashes instead of PowerShell carets:
 ```bash
 uv run nba-data backfill offline \
   --execute-approved-backfill \
-  --output reports/offline-backfill-2000-2025.json
+  --output reports/offline-backfill-2000-2026.json
 ```
 
 The command reads existing `.html.gz` files from `HtmlCache`, processes them
@@ -111,12 +116,12 @@ cache, delete data, or run migrations.
 Expected backfill report summary:
 
 ```text
-selected_inventory_entries 775
-skipped_inventory_entries  0
-validated_entries          775
+selected_inventory_entries 805
+skipped_inventory_entries  2738
+validated_entries          805
 failed_entries             0
-loaded_entries             775
-loaded_rows                129000
+loaded_entries             805
+loaded_rows                134949
 quarantined_entries        0
 quarantined_rows           0
 ```
@@ -130,23 +135,30 @@ Run the Phase 4D read-only database validation:
 
 ```bash
 uv run nba-data validate offline-database \
-  --backfill-report reports/offline-backfill-2000-2025.json
+  --backfill-report reports/offline-backfill-2000-2026.json
 ```
 
 The command exits with code `0` only when the local PostgreSQL core database and
-the offline backfill report match the approved Phase 4D readiness baseline.
+the offline backfill report match the 2000-2026 baseline pinned in
+`OfflineDatabaseValidationExpectations` (measured by F8-003 on a disposable
+database, 2026-10-24).
 
 Expected database counts:
 
 ```text
-core.seasons                26
+core.seasons                27
 core.teams                  37
-core.team_aliases           775
-core.team_seasons           775
-core.players                2551
-core.player_seasons         12676
-core.player_team_seasons    14344
+core.team_aliases           805
+core.team_seasons           805
+core.players                2654
+core.player_seasons         13258
+core.player_team_seasons    15005
 ```
+
+The 2000-2025 baseline before F8-003 was 26 seasons, 775 team-seasons and
+aliases, 2,551 players, 12,676 player-seasons, 14,344 player-team-seasons, and
+129,000 loaded backfill rows. Season 2026 alone adds 30 team-seasons, 582
+player-seasons, and 661 player-team-seasons.
 
 The validation also checks duplicate logical rows, orphan relationships,
 team-seasons with no players, suspiciously low per-season counts, `TOT` misuse,
@@ -161,15 +173,15 @@ the local cache when rebuilding the official stats tables:
 ```bash
 uv run nba-data backfill stats \
   --execute-approved-stats-backfill \
-  --output reports/stats-backfill-2000-2025.json
+  --output reports/stats-backfill-2000-2026.json
 
 uv run nba-data backfill player-stats \
   --execute-approved-player-stats-backfill \
-  --output reports/player-stats-backfill-2000-2025.json
+  --output reports/player-stats-backfill-2000-2026.json
 
 uv run nba-data backfill player-postseason-stats \
   --execute-approved-player-postseason-stats-backfill \
-  --output reports/player-postseason-stats-backfill-2000-2025.json
+  --output reports/player-postseason-stats-backfill-2000-2026.json
 ```
 
 Each command writes its full JSON report to `--output` and prints a compact
@@ -184,24 +196,27 @@ validator in one invocation:
 
 ```bash
 uv run nba-data validate official-stats \
-  --team-stats-report reports/stats-backfill-2000-2025.json \
-  --player-stats-report reports/player-stats-backfill-2000-2025.json \
-  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2025.json
+  --team-stats-report reports/stats-backfill-2000-2026.json \
+  --player-stats-report reports/player-stats-backfill-2000-2026.json \
+  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2026.json
 ```
 
 When all three reports are supplied, the validator uses each producer's own
 row-count vocabulary and requires their combined total to match `count(*)`
 across every `stats.*` table.
 
-Two Phase 4E baselines exist, and they are not interchangeable:
+Three measured baselines exist, and they are not interchangeable:
 
 | Baseline | Team-season | Regular player | Postseason aggregate | Postseason stint | Total |
 |---|---|---|---|---|---|
 | `-v1` archive, as loaded in 2026-08 | 129,000 | 96,336 | 40,528 | 40,528 | 306,392 |
 | `-v4` rebuild, measured 2026-08-28 | 129,000 | **101,336** | **42,408** | **42,408** | **315,152** |
+| `-v4`, 2000-2026, measured 2026-10-24 (F8-003) | **134,949** | **105,992** | **44,248** | **44,248** | **329,437** |
 
-**The persistent `nba` database is at the `-v4` baseline as of 2026-09-05**, when
-F4E-031 applied the rebuild. The `-v1` row is retained only as the historical
+**The persistent `nba` database is at the `-v4` 2000-2025 baseline as of
+2026-09-05**, when F4E-031 applied the rebuild. The 2000-2026 row was measured
+on a disposable database; `nba` reaches it only when season 2026 is loaded from
+merged `origin/main` with the owner's approval (F8-003, F8-006). The `-v1` row is retained only as the historical
 before-state; a database still reporting it has not had the rebuild applied. Use
 the row that matches the `parser_version` the database actually carries; a
 database at `-v1` fails `validate official-stats` on lineage regardless of its
@@ -220,18 +235,32 @@ seasons the archive does not load:
 | Producer | `entries_failed` | `rows_failed` | In-scope unresolved counter | Out-of-scope counter | Exit |
 |---|---|---|---|---|---|
 | `backfill stats` | 0 | 0 | — | — | 0 |
-| `backfill player-stats` | 0 | 0 | `unresolved_players_or_seasons` = 0 | `out_of_scope_players_or_seasons` = 19,692 | 0 |
-| `backfill player-postseason-stats` | 0 | 0 | `unresolved_players_or_seasons_or_team_stints` = 0 | `out_of_scope_players_or_seasons_or_team_stints` = 20,280 | 0 |
+| `backfill player-stats` | 0 | 0 | `unresolved_players_or_seasons` = 0 | `out_of_scope_players_or_seasons` = 16,196 | 0 |
+| `backfill player-postseason-stats` | 0 | 0 | `unresolved_players_or_seasons_or_team_stints` = 0 | `out_of_scope_players_or_seasons_or_team_stints` = 16,936 | 0 |
 
 A cached player page carries a player's whole career, so the cache spans season
-end years **1983–2026**, while `core.seasons` holds only **2000–2025**. The
+end years **1983–2027**, while the rebuilt `core.seasons` holds only **2000–2026**. The
 producers compare each unresolved loader entry's season year with the NBA years
 present in `core.seasons` before interpreting its loader reason. Rows outside
 that database scope are counted in `out_of_scope_players_or_seasons` or
 `out_of_scope_players_or_seasons_or_team_stints`; rows inside the scope remain
 in the corresponding `unresolved_*` counter. The measured out-of-scope counts
-are exactly the coverage artifact's expectations — 19,692 regular aggregate
-rows, and 10,140 postseason aggregate plus 10,140 postseason stint rows.
+are exactly the coverage artifact's expectations — 16,196 regular aggregate
+rows, and 8,468 postseason aggregate plus 8,468 postseason stint rows, all with
+loader reason `missing_season` (measured by F8-003, 2026-10-24, from 2,654
+cached player pages).
+
+Before F8-003 loaded season 2026, those counts were 19,692 and 10,140 +
+10,140 = 20,280. Season 2026 now contributes 4,656 regular and 1,840 + 1,840
+postseason rows to the loaded side, from the pages cached on 2026-07-05 (after
+the 2025-26 Finals) and the 103 newcomers' pages fetched on 2026-10-24.
+
+The newcomers' pages were fetched after the 2026-27 season had started, so they
+also carry **336 regular aggregate rows for season 2027**. Those rows are part
+of the 16,196 above, and they stay out of scope until a current-season card
+loads 2027. Their 2025-26 rows are final. Their 2026-27 rows are a partial
+season frozen in the never-overwrite cache, and they need the refresh that
+F8-008 and F8-012 plan for every page.
 
 Read `entries_failed`, `rows_failed`, and the in-scope unresolved counter before
 reacting to the exit code. The out-of-scope counter is diagnostic and does not
@@ -264,9 +293,9 @@ unexpected key. Build the independent, cache-derived coverage artifact
 uv run nba-data validate build-stats-coverage --output reports/stats-coverage.json
 
 uv run nba-data validate official-stats \
-  --team-stats-report reports/stats-backfill-2000-2025.json \
-  --player-stats-report reports/player-stats-backfill-2000-2025.json \
-  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2025.json \
+  --team-stats-report reports/stats-backfill-2000-2026.json \
+  --player-stats-report reports/player-stats-backfill-2000-2026.json \
+  --player-postseason-stats-report reports/player-postseason-stats-backfill-2000-2026.json \
   --coverage-artifact reports/stats-coverage.json
 ```
 
@@ -370,8 +399,8 @@ anything less than the full offline backfill can leave in-scope rows in the
 `unresolved_*` counters instead of recovering them. Rows outside the database
 season scope are reported separately, and a completely unseeded `core.seasons`
 aborts the producer rather than reporting every row as out of scope. The expected core counts are
-`core.players` 2,551, `core.player_seasons` 12,676, `core.player_team_seasons`
-14,344.
+`core.players` 2,654, `core.player_seasons` 13,258, `core.player_team_seasons`
+15,005 (2000-2026; 2,551, 12,676 and 14,344 before F8-003).
 
 ### Upsert-only leaves no residue — F4E-024 observed measurements
 
@@ -492,26 +521,28 @@ Preflight, in order:
    across the player-page stats tables before starting. It is the only evidence
    that will later show what changed.
 4. **Back up.** The write path is upsert-only and the rehearsal found no residue,
-   but a rebuild that touches 177,392 rows deserves a restore point.
-5. **Confirm the cache is unchanged** — 2,551 player pages, 775 team-season
+   but the 2000-2026 rebuild produces 329,437 stats rows and needs a restore point.
+5. **Confirm the cache is unchanged** — 2,654 player pages, 805 team-season
    pages — and rebuild the coverage artifact if it is not.
 
 Then run, against `nba`, the same commands the rehearsal ran, in this order:
 
 ```bash
 uv run nba-data backfill offline  --execute-approved-backfill              --output reports/offline-backfill.json
-uv run nba-data backfill stats    --execute-approved-stats-backfill        --output reports/stats-backfill-2000-2025.json
-uv run nba-data backfill player-stats --execute-approved-player-stats-backfill --output reports/player-stats-backfill-2000-2025.json
+uv run nba-data backfill stats    --execute-approved-stats-backfill        --output reports/stats-backfill-2000-2026.json
+uv run nba-data backfill player-stats --execute-approved-player-stats-backfill --output reports/player-stats-backfill-2000-2026.json
 uv run nba-data backfill player-postseason-stats \
   --execute-approved-player-postseason-stats-backfill \
-  --output reports/player-postseason-stats-backfill-2000-2025.json
+  --output reports/player-postseason-stats-backfill-2000-2026.json
 ```
 
 Accept the run only if it reproduces the measured producer/grain shape and the
 scoped validator result: `entries_failed` 0 and `rows_failed` 0 from every
-producer, 101,336 regular and 42,408 + 42,408 postseason rows loaded, 12,667
+producer, 105,992 regular and 44,248 + 44,248 postseason rows loaded, 13,249
 distinct regular-season player-seasons, all four `missing` and `unexpected`
 counts 0, `parser_lineage_violations` 0, and an actual validator exit code of 0.
+These are the F8-003 disposable rebuild's 2000-2026 acceptance figures; the
+F4E-031 historical run below used the 2000-2025 figures.
 Stop and investigate on any other shape — in particular, a nonzero `unexpected`
 count would mean the rebuild needs a delete step, which is a different change
 with a different blast radius.
@@ -541,6 +572,35 @@ from 306,392 to **315,152** rows across the 33 `stats` tables, and from 12,042
 to **12,667** distinct regular-season player-seasons — **625 recovered, 0
 lost**. A `pg_dump -Fc` restore point was taken immediately before the first
 write. No delete or truncate was run.
+
+### The 2000-2026 rebuild — disposable database, 2026-10-24
+
+F8-003 ran the documented order on a fresh disposable database
+(`nba_f8003_tmp_rebuild`, migrated to `0009_games_and_box_scores`), after the
+30 season-2026 team pages and the 103 newcomers' player pages were cached.
+`nba` was not touched.
+
+| Step | Exit | Wall clock | Result |
+|---|---:|---:|---|
+| `backfill offline --max-workers 4` | 0 | 10 min | 805 entries, 134,949 rows, 0 failed or quarantined |
+| `validate offline-database` | 0 | <1 min | no issues against the pinned 2000-2026 counts |
+| `backfill stats --max-workers 4` | 0 | 20 min | 805 sources, 134,949 rows, 0 failed |
+| `backfill player-stats` | 0 | 25 min | 105,992 rows; 0 failed, 0 in-scope unresolved, 16,196 out of scope |
+| `backfill player-postseason-stats` | 0 | 32 min | 44,248 + 44,248 rows; 0 failed, 0 in-scope unresolved, 16,936 out of scope |
+| `validate build-stats-coverage` (concurrent) | 0 | 17 min | 16,986 entries, 0 unexplained, 0 disagreements, 0 source issues |
+| `validate official-stats` with all three reports and the coverage artifact, `--coverage-cache-root` | 0 | 2 min | 0 missing and 0 unexpected in all four dimensions; `verified`; `parser_lineage_violations` 0 |
+
+The table records the final validation results. The first
+`validate offline-database` invocation exited 1 against the old 2000-2025
+expectations (`reports/f8-003/rebuild/steps.log` and
+`validate-offline-database.stdout`). After pinning the measured 2000-2026
+counts, its rerun passed with no issues
+(`validate-offline-database-pinned.stdout`). No data rebuild was needed for
+that correction.
+
+The `stats` schema holds 329,437 rows across 33 tables. There are 13,249
+distinct regular-season player-seasons (12,667 + 582: every player on a
+2025-26 roster) and 5,531 postseason player-seasons.
 
 ## Useful SQL Checks
 

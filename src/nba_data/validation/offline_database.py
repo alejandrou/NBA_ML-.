@@ -20,13 +20,13 @@ from nba_data.db.models import (
 from nba_data.domain.team_codes import is_synthetic_team_code
 
 DEFAULT_PHASE_4D_TABLE_COUNTS = {
-    "core.seasons": 26,
+    "core.seasons": 27,
     "core.teams": 37,
-    "core.team_aliases": 775,
-    "core.team_seasons": 775,
-    "core.players": 2551,
-    "core.player_seasons": 12676,
-    "core.player_team_seasons": 14344,
+    "core.team_aliases": 805,
+    "core.team_seasons": 805,
+    "core.players": 2654,
+    "core.player_seasons": 13258,
+    "core.player_team_seasons": 15005,
 }
 
 
@@ -37,14 +37,14 @@ class OfflineDatabaseValidationExpectations:
     )
     league: str = "NBA"
     expected_start_year: int = 2000
-    expected_end_year: int = 2025
+    expected_end_year: int = 2026
     min_team_seasons_per_season: int = 29
     min_player_seasons_per_season: int = 400
     min_player_team_seasons_per_season: int = 400
     max_team_seasons_without_players: int = 0
-    expected_backfill_selected_inventory_entries: int = 775
-    expected_backfill_loaded_entries: int = 775
-    expected_backfill_loaded_rows: int = 129000
+    expected_backfill_selected_inventory_entries: int = 805
+    expected_backfill_loaded_entries: int = 805
+    expected_backfill_loaded_rows: int = 134949
     expected_backfill_failed_entries: int = 0
     expected_backfill_quarantined_entries: int = 0
     expected_backfill_quarantined_rows: int = 0

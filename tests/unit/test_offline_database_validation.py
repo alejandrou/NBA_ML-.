@@ -10,6 +10,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
 
 from nba_data.cli.main import app
+from nba_data.scraping.nba_team_season_manifest import (
+    EXPECTED_MANIFEST_URLS,
+    SEASON_END_YEAR,
+    SEASON_START_YEAR,
+)
 from nba_data.validation.offline_database import (
     OfflineDatabaseValidationExpectations,
     validate_offline_database,
@@ -29,6 +34,20 @@ def session() -> Iterator[Session]:
 
     connection.close()
     engine.dispose()
+
+
+@pytest.mark.unit
+def test_default_expectations_match_the_team_season_manifest() -> None:
+    expectations = OfflineDatabaseValidationExpectations()
+
+    assert expectations.expected_season_years == tuple(
+        range(SEASON_START_YEAR, SEASON_END_YEAR + 1)
+    )
+    assert expectations.table_counts["core.seasons"] == len(expectations.expected_season_years)
+    assert expectations.table_counts["core.team_seasons"] == EXPECTED_MANIFEST_URLS
+    assert expectations.table_counts["core.team_aliases"] == EXPECTED_MANIFEST_URLS
+    assert expectations.expected_backfill_selected_inventory_entries == EXPECTED_MANIFEST_URLS
+    assert expectations.expected_backfill_loaded_entries == EXPECTED_MANIFEST_URLS
 
 
 @pytest.mark.unit

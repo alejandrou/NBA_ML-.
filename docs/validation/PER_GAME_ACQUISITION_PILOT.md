@@ -78,6 +78,25 @@ loader gate needs.
 | Team codes resolve to `core.team_seasons` | 24 | 6 expected gaps: 2025–26 is not archived |
 | Player ids resolve to `core.players` | 22 | 8 expected gaps: 2025–26 players, and two inactive-only players |
 
+### Rerun after F8-003 (2026-10-24)
+
+F8-003 extended the archive to 2025–26 (`SEASON_END_YEAR = 2026`), so
+`validate game-pilot` now runs with `archive_last_season = 2026`. Rerun over
+the same pilot cache, nothing about the source error moved: **29 of 30 pass** and
+`200010310ATL` is still the only failure. The resolution rows changed as
+expected:
+
+| Check | Before | After |
+|---|---|---|
+| Team codes resolve to `core.team_seasons` | 24 passed, 6 expected gaps | **30 passed** |
+| Player ids resolve to `core.players` | 22 passed, 8 expected gaps | **26 passed**, 4 expected gaps |
+
+Every player with a box-score line now resolves. The four gaps left are all
+inactive-only players (finding 9): `youngpa01` (2014–15), and `sorbeth01`
+(`202510210OKC`), `batesta01` (`202512180DEN`), and `mangaky01`
+(`202512160NYK`) from 2025–26. `topicni01`, an inactive-only gap in 2024–25,
+now resolves because he played in 2025–26.
+
 ### Per game
 
 | Game | Season | Type | Result | Periods | Venue | PBP events | Subs | Same-clock sub groups | Replay reviews | Carry-over conflicts | Outcome |
@@ -169,7 +188,8 @@ Each of these changes how the Stage 2 loader or schema must behave.
    inactive entries reference unresolved ids.
 10. **2025–26 is not in `core`.** It has no `core.seasons` or
     `core.team_seasons` rows, and each 2025–26 game names two to seven players
-    `core` does not hold.
+    `core` does not hold. *Resolved by F8-003:* 2025–26 is archived, and only
+    inactive-only players remain unresolved (see the rerun above).
 11. **Play-by-play shape.**
     - 387–583 events per game.
     - Simultaneous substitutions in every game: 2–20 same-clock groups, kept in

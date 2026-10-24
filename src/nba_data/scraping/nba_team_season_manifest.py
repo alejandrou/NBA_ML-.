@@ -7,10 +7,10 @@ from nba_data.scraping.cache import HtmlCache
 
 BASE_URL = "https://www.basketball-reference.com"
 PAGE_TYPE = "team_season"
-MANIFEST_ID = "nba-team-season-2000-2025"
+MANIFEST_ID = "nba-team-season-2000-2026"
 SEASON_START_YEAR = 2000
-SEASON_END_YEAR = 2025
-EXPECTED_MANIFEST_URLS = 775
+SEASON_END_YEAR = 2026
+EXPECTED_MANIFEST_URLS = 805
 
 STABLE_TEAMS = (
     "ATL",

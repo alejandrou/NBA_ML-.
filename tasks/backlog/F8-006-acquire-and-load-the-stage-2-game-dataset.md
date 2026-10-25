@@ -19,7 +19,7 @@ read:
   - docs/domain/BUSINESS_RULES.md
 validation:
   - for f in tasks/manifests/F8-006-*.json; do uv run nba-data acquisition dry-run-game-season "$f"; done
-  - uv run nba-data backfill games --season 2015 --season 2016 --season 2017 --season 2018 --season 2019 --season 2020 --season 2021 --season 2022 --season 2023 --season 2024 --season 2025 --season 2026 --require-complete --output reports/f8-006/games.json
+  - uv run nba-data backfill games --execute-approved-games-backfill --season 2015 --season 2016 --season 2017 --season 2018 --season 2019 --season 2020 --season 2021 --season 2022 --season 2023 --season 2024 --season 2025 --season 2026 --require-complete --output reports/f8-006/games
   - uv run pytest
   - uv run python scripts/validate_tasks.py
 critical_actions:

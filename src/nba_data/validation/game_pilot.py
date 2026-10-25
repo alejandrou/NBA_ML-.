@@ -641,12 +641,12 @@ def _box_score_checks(
         checks.append(GamePilotCheck("line_score_periods", CHECK_PASSED))
 
     overtime_periods = max(periods - REGULATION_PERIODS, 0)
-    checks.append(_per_team("player_sums_match_totals", (visitor, home), _totals_problem))
+    checks.append(_per_team("player_sums_match_totals", (visitor, home), player_totals_problem))
     checks.append(
         _per_team(
             "minutes_match_game_length",
             (visitor, home),
-            lambda team: _minutes_problem(team, overtime_periods),
+            lambda team: minutes_problem(team, overtime_periods),
         )
     )
     checks.append(
@@ -684,7 +684,13 @@ def _per_team(
     )
 
 
-def _totals_problem(team: BoxScoreTeam) -> str | None:
+def player_totals_problem(team: BoxScoreTeam) -> str | None:
+    """Why the played lines do not add up to the team totals, or None when they do.
+
+    Shared with the game loader (`scraping/loaders/games.py`), whose
+    `player_sum_mismatch` gate is this check.
+    """
+
     mismatches = []
     for stat in COUNTING_STATS:
         total = team.totals.get(stat)
@@ -723,7 +729,8 @@ def _team_only_amount(team: BoxScoreTeam, stat: str) -> int | None:
     return total - summed
 
 
-def _minutes_problem(team: BoxScoreTeam, overtime_periods: int) -> str | None:
+def minutes_problem(team: BoxScoreTeam, overtime_periods: int) -> str | None:
+    """Check team and summed player minutes, allowing published second rounding."""
     expected = (REGULATION_TEAM_MINUTES + OVERTIME_TEAM_MINUTES * overtime_periods) * 60
     missing = [line.player_id for line in team.played_lines if line.seconds_played is None]
     if missing:
@@ -978,4 +985,6 @@ __all__ = [
     "PlayByPlayProfile",
     "build_game_pilot_validation_report",
     "known_player_ids_from_cache",
+    "minutes_problem",
+    "player_totals_problem",
 ]

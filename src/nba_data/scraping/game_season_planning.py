@@ -160,14 +160,32 @@ def plan_game_schedules(
     )
 
 
-def plan_game_box_scores(
+@dataclass(frozen=True)
+class SeasonGameSelection:
+    """A season's games chosen by the Stage 2 rule from its cached month pages."""
+
+    season_end_year: int
+    season_page_url: str
+    months: tuple[str, ...]
+    listed_rows: int
+    played_rows: int
+    rule: str
+    first_play_in: date | None
+    games: tuple[ScheduleGame, ...]
+    months_by_game_id: Mapping[str, str]
+
+
+def select_season_games(
     season_end_year: int,
     *,
     cache: HtmlCache,
-    planned_at: datetime,
     expected_counts: Mapping[int, int] = EXPECTED_SELECTED_GAMES,
-) -> GameSeasonPlan:
-    """Select the season's games from its cached month pages and plan their box scores."""
+) -> SeasonGameSelection:
+    """Select the season's regular-season games plus the Cup final, from the cache only.
+
+    Fails closed: an unplanned season, an uncached or unclean page, or a count
+    that differs from the reviewed table raises `GameSeasonPlanningError`.
+    """
 
     _require_stage_2_season(season_end_year)
     expected = expected_counts.get(season_end_year)
@@ -209,20 +227,50 @@ def plan_game_box_scores(
         )
         raise GameSeasonPlanningError(msg)
 
-    entries = [_box_score_entry(season_end_year, listed_game) for listed_game in selected]
-    played = sum(listed_game.game.played for listed_game in listed)
+    return SeasonGameSelection(
+        season_end_year=season_end_year,
+        season_page_url=season_url,
+        months=months,
+        listed_rows=len(listed),
+        played_rows=sum(listed_game.game.played for listed_game in listed),
+        rule=rule,
+        first_play_in=first_play_in,
+        games=tuple(listed_game.game for listed_game in selected),
+        months_by_game_id={
+            listed_game.game.game_id: listed_game.month
+            for listed_game in selected
+            if listed_game.game.game_id is not None
+        },
+    )
+
+
+def plan_game_box_scores(
+    season_end_year: int,
+    *,
+    cache: HtmlCache,
+    planned_at: datetime,
+    expected_counts: Mapping[int, int] = EXPECTED_SELECTED_GAMES,
+) -> GameSeasonPlan:
+    """Select the season's games from its cached month pages and plan their box scores."""
+
+    selection = select_season_games(
+        season_end_year, cache=cache, expected_counts=expected_counts
+    )
+    entries = [_box_score_entry(season_end_year, game, selection) for game in selection.games]
     summary: dict[str, object] = {
         "season_end_year": season_end_year,
-        "season_page_url": season_url,
-        "months": list(months),
-        "listed_rows": len(listed),
-        "played_rows": played,
-        "unplayed_rows": len(listed) - played,
-        "selection_rule": rule,
-        "first_play_in_date": first_play_in.isoformat() if first_play_in else None,
-        "selected_games": len(selected),
-        "expected_games": expected,
-        "excluded_played_rows": played - len(selected),
+        "season_page_url": selection.season_page_url,
+        "months": list(selection.months),
+        "listed_rows": selection.listed_rows,
+        "played_rows": selection.played_rows,
+        "unplayed_rows": selection.listed_rows - selection.played_rows,
+        "selection_rule": selection.rule,
+        "first_play_in_date": (
+            selection.first_play_in.isoformat() if selection.first_play_in else None
+        ),
+        "selected_games": len(selection.games),
+        "expected_games": len(selection.games),
+        "excluded_played_rows": selection.played_rows - len(selection.games),
         "cached_pages": sum(cache.exists(str(entry["url"])) for entry in entries),
     }
     return _plan(
@@ -364,20 +412,24 @@ def _schedule_entry(season_end_year: int, month: str | None, reason: str) -> dic
     }
 
 
-def _box_score_entry(season_end_year: int, listed_game: _ListedGame) -> dict[str, object]:
-    game = listed_game.game
+def _box_score_entry(
+    season_end_year: int,
+    game: ScheduleGame,
+    selection: SeasonGameSelection,
+) -> dict[str, object]:
     if game.game_id is None:  # `played` guarantees an id; this keeps mypy honest
         msg = "A selected game has no box score id"
         raise GameSeasonPlanningError(msg)
     reason = f"{game.game_date.isoformat()} {game.visitor_code} at {game.home_code}"
     if game.notes:
         reason = f"{reason}; {game.notes}"
+    month = selection.months_by_game_id[game.game_id]
     return {
         "page_type": PAGE_TYPE_BOX_SCORE,
         "url": box_score_url(game.game_id),
         "season_end_year": season_end_year,
         "game_id": game.game_id,
-        "reason": f"{reason} (listed on the {listed_game.month} page)",
+        "reason": f"{reason} (listed on the {month} page)",
     }
 
 
@@ -423,8 +475,10 @@ __all__ = [
     "EXPECTED_SELECTED_GAMES",
     "GameSeasonPlan",
     "GameSeasonPlanningError",
+    "SeasonGameSelection",
     "default_draft_path",
     "plan_game_box_scores",
     "plan_game_schedules",
+    "select_season_games",
     "write_draft_manifest",
 ]

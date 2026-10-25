@@ -15,7 +15,9 @@ What the pilot needs from it:
 * each team's full-game basic box, `#box-<CODE>-game-basic` — one line per
   listed player, starters before the "Reserves" separator, and the team totals
   row in the footer;
-* the inactive list, which names players who have no line at all.
+* the inactive list, which names players who have no line at all — each by
+  id and link text, since an inactive-only player may have no other page in
+  `core` to be named from (F8-005).
 
 A listed player without a stat line carries a reason ("Did Not Play", "Did Not
 Dress", ...). Participation keeps that apart from a player who played and
@@ -106,6 +108,12 @@ class BoxScorePlayerLine:
 
 
 @dataclass(frozen=True)
+class InactivePlayer:
+    player_id: str
+    name: str
+
+
+@dataclass(frozen=True)
 class BoxScoreTeam:
     code: str
     name: str
@@ -115,7 +123,13 @@ class BoxScoreTeam:
     totals_seconds: int | None = None
     totals: Mapping[str, int | None] = field(default_factory=dict)
     players: tuple[BoxScorePlayerLine, ...] = ()
-    inactive_player_ids: tuple[str, ...] = ()
+    inactive_players: tuple[InactivePlayer, ...] = ()
+    # Optional quarter/overtime boxes are independent evidence for line scores.
+    period_points: Mapping[int, int | None] = field(default_factory=dict)
+
+    @property
+    def inactive_player_ids(self) -> tuple[str, ...]:
+        return tuple(player.player_id for player in self.inactive_players)
 
     @property
     def played_lines(self) -> tuple[BoxScorePlayerLine, ...]:
@@ -188,7 +202,8 @@ def parse_box_score_page(html: str) -> ParsedBoxScore:
                 totals_seconds=totals_seconds,
                 totals=totals,
                 players=players,
-                inactive_player_ids=inactive.get(code, ()),
+                inactive_players=inactive.get(code, ()),
+                period_points=_period_points(soup, code),
             )
         )
 
@@ -205,6 +220,19 @@ def parse_box_score_page(html: str) -> ParsedBoxScore:
         game_type=game_type,
         venue=venue,
     )
+
+
+def _period_points(soup: BeautifulSoup, code: str) -> dict[int, int | None]:
+    pattern = re.compile(rf"^box-{re.escape(code)}-(?:q([1-4])|o([1-9][0-9]*))-basic$")
+    points: dict[int, int | None] = {}
+    for table in soup.find_all("table", id=pattern):
+        match = pattern.fullmatch(str(table.get("id", "")))
+        assert match is not None
+        period = int(match[1]) if match[1] else 4 + int(match[2])
+        footer = table.find("tfoot")
+        cell = footer.find(attrs={"data-stat": "pts"}) if isinstance(footer, Tag) else None
+        points[period] = _to_int(cell.get_text(strip=True)) if isinstance(cell, Tag) else None
+    return points
 
 
 def _venue(scorebox_meta: tuple[str, ...]) -> str | None:
@@ -442,8 +470,8 @@ def _player_id(cell: Tag) -> str | None:
     return match.group("player_id") if match is not None else None
 
 
-def _inactive_players(soup: BeautifulSoup) -> dict[str, tuple[str, ...]]:
-    """Map team code to the player ids listed after "Inactive:"."""
+def _inactive_players(soup: BeautifulSoup) -> dict[str, tuple[InactivePlayer, ...]]:
+    """Map team code to the players listed after "Inactive:", by id and link text."""
 
     label = soup.find(
         lambda tag: tag.name == "strong" and tag.get_text(strip=True).startswith("Inactive")
@@ -451,7 +479,7 @@ def _inactive_players(soup: BeautifulSoup) -> dict[str, tuple[str, ...]]:
     if not isinstance(label, Tag) or not isinstance(label.parent, Tag):
         return {}
 
-    inactive: dict[str, list[str]] = {}
+    inactive: dict[str, list[InactivePlayer]] = {}
     current: str | None = None
     for node in label.parent.descendants:
         if not isinstance(node, Tag):
@@ -463,7 +491,10 @@ def _inactive_players(soup: BeautifulSoup) -> dict[str, tuple[str, ...]]:
         elif node.name == "a" and current is not None:
             match = _PLAYER_HREF_RE.fullmatch(str(node.get("href", "")))
             if match is not None:
-                inactive.setdefault(current, []).append(match.group("player_id"))
+                player = InactivePlayer(
+                    player_id=match.group("player_id"), name=node.get_text(" ", strip=True)
+                )
+                inactive.setdefault(current, []).append(player)
     return {code: tuple(ids) for code, ids in inactive.items()}
 
 
@@ -528,6 +559,7 @@ __all__ = [
     "PARTICIPATION_SUSPENDED",
     "BoxScorePlayerLine",
     "BoxScoreTeam",
+    "InactivePlayer",
     "ParsedBoxScore",
     "parse_box_score_page",
 ]

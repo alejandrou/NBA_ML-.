@@ -112,3 +112,23 @@ def test_expected_parser_producer_matches_table_season_type_and_family() -> None
 def test_every_table_expected_producer_is_a_real_producer() -> None:
     for spec in STATS_TABLE_SPECS:
         assert spec.expected_parser_producer in PARSER_PRODUCERS
+
+
+@pytest.mark.unit
+def test_box_score_contract_was_bumped_for_inactive_names() -> None:
+    assert PARSER_CONTRACTS_BY_IDENTIFIER["box-score-parser-v1"].is_current is False
+    current = CURRENT_PARSER_CONTRACTS["box_score"]
+    assert current.identifier == "box-score-parser-v2"
+    assert current.introduced_by == "F8-005"
+
+
+@pytest.mark.unit
+def test_games_backfill_stamps_the_current_box_score_contract() -> None:
+    from nba_data.scraping.offline_games_backfill import (
+        DEFAULT_GAMES_PARSER_VERSION,
+        SCHEDULE_PARSER_VERSION,
+    )
+
+    assert current_parser_version("box_score") == DEFAULT_GAMES_PARSER_VERSION
+    assert current_parser_version("league_schedule") == SCHEDULE_PARSER_VERSION
+    assert classify_parser_version("league-schedule-parser-v1") == "current"

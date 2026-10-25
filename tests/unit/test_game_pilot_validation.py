@@ -3,13 +3,16 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from typer.testing import CliRunner
 
+import nba_data.cli.main as cli_main
 from nba_data.cli.main import app
 from nba_data.config.settings import get_settings
 from nba_data.scraping.cache import HtmlCache
@@ -901,3 +904,28 @@ def test_cli_exits_non_zero_when_only_the_schedule_manifest_is_given(tmp_path: P
     written = json.loads(output.read_text(encoding="utf-8"))
     assert (written["passed"], written["games"]) == (False, 0)
     assert written["coverage_problems"] == ["the manifests name no game"]
+
+
+@pytest.mark.unit
+def test_cli_database_identities_resolve_players_without_cached_player_pages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = _game()
+    _cache(tmp_path, game)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(_raw_manifest(_manifest_entries(game))), encoding="utf-8")
+    engine = Mock()
+    monkeypatch.setattr(cli_main, "create_db_engine", lambda settings: engine)
+    monkeypatch.setattr(cli_main, "create_session_factory", lambda engine: lambda: nullcontext(None))
+    monkeypatch.setattr(
+        cli_main, "load_game_identity_keys",
+        lambda session: (_known_players(game), frozenset({("BOS", game.season), ("CHI", game.season)})),
+    )
+    result = CliRunner().invoke(app, [
+        "validate", "game-pilot", "--manifest", str(manifest_path),
+        "--cache-root", str(tmp_path / "cache"), "--database-identities",
+    ])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["game_results"][0]["unresolved_player_ids"] == []
+    engine.dispose.assert_called_once()

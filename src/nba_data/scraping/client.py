@@ -19,6 +19,10 @@ class RateLimitExceededError(Exception):
     """Raised when the remote site keeps responding with rate-limit errors."""
 
 
+class RequestBudgetExhaustedError(Exception):
+    """Raised before an HTTP attempt that would exceed the client's `max_requests`."""
+
+
 @dataclass(frozen=True)
 class FetchResult:
     """One page plus the provenance of the fetch that produced it.
@@ -49,6 +53,8 @@ class BasketballReferenceClient:
         now: Callable[[], datetime] = _utc_now,
         max_429_retries: int = 0,
         max_5xx_retries: int = 2,
+        max_requests: int | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         self.settings = settings
         self.cache = cache
@@ -65,6 +71,15 @@ class BasketballReferenceClient:
         self._request_count = 0
         self._max_429_retries = max_429_retries
         self._max_5xx_retries = max_5xx_retries
+        self._max_requests = max_requests
+        # None preserves the supplied HTTP client's redirect policy.
+        self._follow_redirects = (
+            httpx.USE_CLIENT_DEFAULT if follow_redirects is None else follow_redirects
+        )
+
+        if max_requests is not None and max_requests < 1:
+            msg = "max_requests must be at least 1"
+            raise ValueError(msg)
 
         if not settings.scraper_user_agent.strip():
             msg = "A non-empty scraper user agent is required"
@@ -111,10 +126,18 @@ class BasketballReferenceClient:
         server_errors = 0
 
         while True:
+            # Checked before every attempt, retries included, so a budget is never exceeded.
+            if self._max_requests is not None and self._request_count >= self._max_requests:
+                msg = f"Request budget of {self._max_requests} spent before requesting {url}"
+                raise RequestBudgetExhaustedError(msg)
             self._wait_for_rate_limit()
             logger.info("Requesting %s", url)
             self._request_count += 1
-            response = self._client.get(url, headers={"User-Agent": self.settings.scraper_user_agent})
+            response = self._client.get(
+                url,
+                headers={"User-Agent": self.settings.scraper_user_agent},
+                follow_redirects=self._follow_redirects,
+            )
             self._last_request_at = self._clock()
 
             if response.status_code == 429:

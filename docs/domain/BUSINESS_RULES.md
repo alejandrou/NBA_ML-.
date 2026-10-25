@@ -195,6 +195,87 @@ schedule), including cross-table checks and source handling:
 - Players missing from `core.players` are created from box score links, by
   stable id and never by name. No team-season is invented from a box score.
 
+### Loading finished games (F8-005)
+
+`nba-data backfill games` (`scraping/offline_games_backfill.py`, loader
+`scraping/loaders/games.py`) loads only finished games: a game the F8-004
+selection keeps (regular season plus the NBA Cup final) whose box score is
+cached, with `status = 'final'`. A selected game without a cached box score is
+reported as missing coverage, never written. A game's season is the season of
+the schedule page that lists it.
+
+**Gates.** Every gate runs before any write; a game that fails one writes
+nothing and is reported under every reason it fails. Each game is its own
+transaction, so the other games still load.
+
+| Reason | The game is quarantined when |
+|---|---|
+| `unknown_game_type` | the heading names no known type (regular season, play-in, playoffs, Cup final) |
+| `missing_team_season` | either team has no `core.team_seasons` row in the game's season |
+| `team_mismatch` | the box score's teams differ from the schedule's, or from the home code in the game id, or the scorebox names no two teams |
+| `score_mismatch` | the schedule, the scorebox, and the team totals' `pts` do not all agree, or the schedule or scorebox score is blank |
+| `tied_score` | the final score is tied |
+| `missing_team_totals` | a team total has no `pts` or no minutes |
+| `player_sum_mismatch` | a counter on the played lines does not sum to the team total, or is blank on a line or the total; `tov` may exceed the lines by the team's own turnovers, never fall short |
+| `unknown_participation` | a line's participation is not one of the seven stored values, or an absence carries no reason text |
+| `played_without_seconds` | a played line has no minutes |
+| `duplicate_player` | a player is listed twice in one game (two lines, or a line and an inactive entry) |
+| `unnamed_player` | a player missing from `core` has no link text to be created with |
+| `unreadable_start_time` | the schedule's start time is neither blank nor `h:mm` + `a`/`p` |
+| `box_score_unreadable` | the box score parser reported an issue no other gate judges, such as a player row without a player link |
+| `game_id_mismatch` | the game id's date differs from the schedule date |
+| `minutes_mismatch` | team minutes differ from the schedule's game length, or player seconds differ beyond half a second per played line |
+| `invalid_box_score_values` | attendance, seconds, or a counting stat is negative |
+
+These are the pilot's reconciliation rules (`validation/game_pilot.py`): the
+`player_sum_mismatch` gate is the same function as the pilot's
+`player_sums_match_totals` check.
+
+**Warnings, not quarantines.** Line scores are not stored, so a line score that
+is unreadable, whose total differs from the final score, whose periods do not
+sum to its total, whose period count differs from 4 plus the schedule's
+overtimes, or whose period points differ from published quarter/overtime box
+totals is reported as a warning and the game loads. Those optional boxes are
+checked when present; missing quarter boxes do not require acquisition. A final-score
+disagreement is a quarantine. A play-in or playoff heading on a selected game is
+loaded with that `game_type` and listed in the report for review.
+
+**Stored values.** `start_time_et` is the schedule's time read as US Eastern
+("7:30p" → 19:30); blank is NULL. Attendance and venue come from the box score
+as published: blank attendance is NULL and 0 is 0. `participation_reason` is the
+published reason; inactive entries store `inactive` with reason `Inactive` and,
+like every absence, no starter flag, seconds, counters, or plus-minus. A rerun
+over the same pages assigns no column and reports the game `unchanged`; a line
+the page no longer lists is deleted.
+
+**Cup-final plus-minus.** When every played line of a `cup_final` game carries
+plus-minus 0, every line stores NULL (the 2023 final). A Cup final with real
+values keeps them; a regular-season line of 0 keeps its 0.
+
+**Neutral site.** A second pass over the whole loaded season sets only
+`neutral_site`. The venue city is the text after the venue's first comma
+("Accor Arena, Paris, France" → "Paris, France"). A game is neutral when its
+city differs from the most common city of its home team's home games that
+season. This marks the London, Paris, Mexico City, and Tokyo games, the Las
+Vegas Cup games, and the 2020 bubble, while an arena rename in the same city
+(Staples Center → Crypto.com Arena) and two teams sharing a city stay at home.
+No venue, or no single most common home city, leaves `neutral_site` NULL
+(undetermined). It is a rule over the published venues, not a curated list:
+each season's neutral games are listed in the report for review.
+The backfill defers this pass until all selected games are present in the
+database. An incomplete season reports `neutral_site_deferred` and changes no
+flags, so an isolated cached game abroad cannot establish a team's home city.
+
+**Created players.** A player with a box score line or inactive entry who is
+missing from `core.players` is created with the id and link text of the box
+score link and no `core.player_seasons` row. The API's player list therefore
+shows such a player with no seasons, which is accurate: the archive holds no
+season page for them. An existing player is never renamed from a box score.
+
+**Lineage.** `stats.team_game_totals` and `stats.player_game_totals` carry the
+box score URL, its cache path, and the `box_score` parser contract
+(`validation/parser_contracts.py`); `core.games` has no lineage columns.
+
 ## Official Stats and Generated Metrics
 
 - Official scraped data remains separate from project-generated metrics.

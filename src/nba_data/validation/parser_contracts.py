@@ -1,7 +1,8 @@
 """Registry of `stats.*.parser_version` identifiers.
 
-Every one of the 33 `stats` tables carries a required `parser_version` lineage
-column. This module is the single source of truth for which identifiers are
+Every one of the 33 season-grain `stats` tables, and the two game-grain tables
+`stats.team_game_totals` and `stats.player_game_totals`, carries a required
+`parser_version` lineage column. This module is the single source of truth for which identifiers are
 known, which producer wrote them, and which is current for each producer. It
 must stay declarative and import-safe: no database access, no cache access, and
 no import of any backfill module. Backfill modules import this registry, never
@@ -25,11 +26,15 @@ ParserProducer = Literal[
     "team_season",
     "player_page_regular",
     "player_page_postseason",
+    "box_score",
+    "league_schedule",
 ]
 PARSER_PRODUCERS: tuple[ParserProducer, ...] = (
     "team_season",
     "player_page_regular",
     "player_page_postseason",
+    "box_score",
+    "league_schedule",
 )
 
 ParserVersionStatus = Literal["current", "stale", "unknown"]
@@ -142,6 +147,42 @@ PARSER_CONTRACTS: tuple[ParserContract, ...] = (
         description=(
             "Keeps `Did not play - ...` placeholder rows out of full-season "
             "selection, matching the regular-season parser lineage."
+        ),
+    ),
+    ParserContract(
+        identifier="box-score-parser-v1",
+        producer="box_score",
+        generation=1,
+        is_current=False,
+        introduced_by="F8-001",
+        description=(
+            "Initial box score parser: heading game type, scorebox, venue, "
+            "attendance, line score, basic boxes, and inactive player ids. "
+            "No row was ever written under it."
+        ),
+    ),
+    ParserContract(
+        identifier="box-score-parser-v2",
+        producer="box_score",
+        generation=2,
+        is_current=True,
+        introduced_by="F8-005",
+        description=(
+            "Keeps each inactive player's link text, so a player who appears "
+            "only in an inactive list can be created with a name. Also reads "
+            "optional quarter/overtime box points to check line-score warnings. Stamped on "
+            "`stats.team_game_totals` and `stats.player_game_totals`."
+        ),
+    ),
+    ParserContract(
+        identifier="league-schedule-parser-v1",
+        producer="league_schedule",
+        generation=1,
+        is_current=True,
+        introduced_by="F8-001",
+        description=(
+            "League schedule month pages: date, teams, points, overtime, "
+            "start time, attendance, arena, notes, and the box score game id."
         ),
     ),
 )

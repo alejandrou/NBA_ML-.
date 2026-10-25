@@ -13,6 +13,7 @@ from nba_data.scraping.parsers.box_score import (
     GAME_TYPE_UNKNOWN,
     PARTICIPATION_DID_NOT_PLAY,
     PARTICIPATION_PLAYED,
+    InactivePlayer,
     parse_box_score_page,
 )
 
@@ -25,6 +26,18 @@ def _page(name: str) -> str:
 
 def _bubble_playoff() -> str:
     return _page("box_score_202008170DEN_trimmed.html")
+
+
+@pytest.mark.unit
+def test_optional_quarter_and_overtime_boxes_supply_independent_period_points() -> None:
+    tables = "".join(
+        f'<table id="box-DEN-{period}-basic"><tfoot><tr><td data-stat="pts">{points}</td>'
+        '</tr></tfoot></table>'
+        for period, points in (("q1", "25"), ("o1", "20"), ("o2", ""), ("h1", "50"))
+    )
+    parsed = parse_box_score_page(_bubble_playoff() + f"<!--{tables}-->")
+    assert parsed.home is not None
+    assert parsed.home.period_points == {1: 25, 5: 20, 6: None}
 
 
 @pytest.mark.unit
@@ -205,6 +218,20 @@ def test_inactive_players_are_read_per_team() -> None:
 
     assert parsed.visitor.inactive_player_ids == ("conlemi01", "davised01")
     assert parsed.home.inactive_player_ids == ("bartowi01", "cancavl01", "cookty01", "harriga01")
+
+
+@pytest.mark.unit
+def test_inactive_players_keep_their_link_text() -> None:
+    """An inactive-only player may have no other source for a name (F8-005)."""
+
+    parsed = parse_box_score_page(_bubble_playoff())
+    assert parsed.visitor is not None and parsed.home is not None
+
+    assert parsed.visitor.inactive_players == (
+        InactivePlayer("conlemi01", "Mike Conley"),
+        InactivePlayer("davised01", "Ed Davis"),
+    )
+    assert parsed.home.inactive_players[1] == InactivePlayer("cancavl01", "Vlatko Čančar")
 
 
 @pytest.mark.unit

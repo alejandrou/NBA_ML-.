@@ -8,6 +8,7 @@ from rich.console import Console
 from nba_data import __version__
 from nba_data.config.logging_config import configure_logging
 from nba_data.config.settings import get_settings
+from nba_data.db.repositories.queries.game_identities import load_game_identity_keys
 from nba_data.db.session import create_db_engine, create_session_factory
 from nba_data.scraping.backfill_manifest import (
     BackfillAcquisitionError,
@@ -64,6 +65,7 @@ from nba_data.scraping.nba_team_season_manifest import (
     build_nba_team_season_manifest,
 )
 from nba_data.scraping.offline_backfill import run_full_offline_backfill
+from nba_data.scraping.offline_games_backfill import run_offline_games_backfill
 from nba_data.scraping.offline_player_postseason_stats_backfill import (
     DEFAULT_PLAYER_POSTSEASON_STATS_PARSER_VERSION,
     run_offline_player_postseason_stats_backfill,
@@ -136,6 +138,16 @@ _OFFLINE_BACKFILL_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
     help="Optional path to write the offline backfill JSON report.",
+)
+_GAMES_BACKFILL_SEASON_OPTION = typer.Option(
+    ...,
+    "--season",
+    help="Season end year to load, e.g. 2024 for 2023-24. Repeat for several seasons.",
+)
+_GAMES_BACKFILL_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Directory to write one JSON report per season, NBA_<season>_games-backfill.json.",
 )
 _STATS_BACKFILL_OUTPUT_OPTION = typer.Option(
     None,
@@ -616,6 +628,58 @@ def backfill_player_postseason_stats(
     )
 
 
+@backfill_app.command("games")
+def backfill_games(
+    seasons: list[int] = _GAMES_BACKFILL_SEASON_OPTION,
+    output: Path | None = _GAMES_BACKFILL_OUTPUT_OPTION,
+    execute_approved_games_backfill: bool = typer.Option(
+        False,
+        "--execute-approved-games-backfill",
+        help="Required explicit approval to write cached games to DATABASE_URL.",
+    ),
+    require_complete: bool = typer.Option(
+        False,
+        "--require-complete",
+        help="Also fail when any selected game's box score is not cached.",
+    ),
+) -> None:
+    """Load cached schedules and box scores into the game tables (cache only, no network)."""
+
+    if not execute_approved_games_backfill:
+        raise typer.BadParameter(
+            "Refusing games backfill without --execute-approved-games-backfill"
+        )
+    if output is not None:
+        if output.exists() and not output.is_dir():
+            raise typer.BadParameter("--output must be a directory")
+        output.mkdir(parents=True, exist_ok=True)
+    settings = get_settings()
+    cache = HtmlCache(settings.scraper_cache_dir)
+    engine = create_db_engine(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            report = run_offline_games_backfill(session, cache=cache, season_end_years=seasons)
+    finally:
+        engine.dispose()
+
+    data = report.to_dict()
+    if output is None:
+        console.print_json(data=data)
+    else:
+        paths = []
+        for season in report.seasons:
+            path = output / f"NBA_{season.season_end_year}_games-backfill.json"
+            with path.open("w", encoding="utf-8") as handle:
+                json.dump(season.to_dict(), handle, indent=2)
+                handle.write("\n")
+            paths.append(str(path.resolve()))
+        summary = {key: value for key, value in data.items() if key != "seasons"}
+        console.print_json(data={**summary, "report_paths": paths})
+    if report.failed(require_complete=require_complete):
+        raise typer.Exit(code=1)
+
+
 @validation_app.command("offline-database")
 def validate_offline_database(
     backfill_report: Path = _OFFLINE_DATABASE_BACKFILL_REPORT_OPTION,
@@ -739,8 +803,12 @@ def validate_game_pilot(
     acquisition_report_paths: list[Path] | None = _GAME_PILOT_ACQUISITION_REPORT_OPTION,
     cache_root: Path | None = _STATS_COVERAGE_CACHE_ROOT_OPTION,
     output: Path | None = _GAME_PILOT_OUTPUT_OPTION,
+    database_identities: bool = typer.Option(
+        False, "--database-identities",
+        help="Read identity keys from DATABASE_URL instead of the cache and archive catalog.",
+    ),
 ) -> None:
-    """Reconcile the F8-001 pilot games from cached pages only (no network, no database)."""
+    """Reconcile cached pilot pages; optionally resolve identities against the database."""
 
     try:
         manifests = [load_game_pilot_manifest(path) for path in manifest_paths]
@@ -755,15 +823,25 @@ def validate_game_pilot(
     known_team_seasons = frozenset(
         (entry.team, entry.season_end_year) for entry in build_nba_team_season_manifest().entries
     )
+    known_player_ids = known_player_ids_from_cache(root)
+    if database_identities:
+        engine = create_db_engine(settings)
+        try:
+            with create_session_factory(engine)() as session:
+                known_player_ids, known_team_seasons = load_game_identity_keys(session)
+        finally:
+            engine.dispose()
     report = build_game_pilot_validation_report(
         manifests,
         cache=HtmlCache(root),
-        known_player_ids=known_player_ids_from_cache(root),
+        known_player_ids=known_player_ids,
         known_team_seasons=known_team_seasons,
         archive_last_season=SEASON_END_YEAR,
         acquisition_reports=acquisition_reports,
     )
-    _print_and_optionally_write_json(report.to_dict(), output)
+    data = report.to_dict()
+    data["identity_source"] = "database" if database_identities else "cache_and_catalog"
+    _print_and_optionally_write_json(data, output)
     if not report.passed:
         raise typer.Exit(code=1)
 

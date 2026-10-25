@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+from math import ceil
 from pathlib import Path
 from uuid import uuid4
 
@@ -49,7 +50,7 @@ _ROUND_TRIP_SCHEMAS = ("core", "stats")
 
 
 def main() -> int:
-    source_url = make_url(get_settings().database_url)
+    source_url = _validation_url(make_url(get_settings().database_url))
     if source_url.get_backend_name() != "postgresql":
         print("DATABASE_URL must configure PostgreSQL.", file=sys.stderr)
         return 1
@@ -60,9 +61,10 @@ def main() -> int:
     if temp_db_name == source_url.database:
         raise AssertionError("generated database name collided with the configured database")
 
-    admin_engine = create_engine(source_url, isolation_level="AUTOCOMMIT")
+    # Administration connects to postgres, never to the user's configured data database.
+    admin_engine = create_engine(source_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
     try:
-        print(f"Creating temporary database {temp_db_name!r}...")
+        print(f"Creating temporary database {temp_db_name!r}...", flush=True)
         with admin_engine.connect() as connection:
             connection.execute(text(f'CREATE DATABASE "{temp_db_name}"'))
     except Exception:
@@ -72,9 +74,25 @@ def main() -> int:
     try:
         return _migrate_and_test(source_url, temp_db_name)
     finally:
-        print(f"Dropping temporary database {temp_db_name!r}...")
+        print(f"Dropping temporary database {temp_db_name!r}...", flush=True)
         _drop_database(admin_engine, temp_db_name)
         admin_engine.dispose()
+
+
+def _validation_url(source_url: URL) -> URL:
+    """Bound every connection, including helpers and migration child processes.
+
+    Docker publishes PostgreSQL on IPv4 in this project's local compose file.
+    On Windows localhost can try unreachable IPv6 first; a default libpq
+    connection then waits minutes at every step. Keep the original hostname
+    (and explicit user overrides), selecting its IPv4 loopback address here.
+    """
+    defaults = {
+        "connect_timeout": str(max(2, ceil(get_settings().database_connect_timeout_seconds))),
+    }
+    if source_url.host == "localhost" and "hostaddr" not in source_url.query:
+        defaults["hostaddr"] = "127.0.0.1"
+    return source_url.update_query_dict({**defaults, **source_url.query})
 
 
 def _migrate_and_test(source_url, temp_db_name: str) -> int:
@@ -83,6 +101,7 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     child_env["DATABASE_URL"] = temp_url.render_as_string(hide_password=False)
     child_env[_REQUIRE_ENV] = "1"
     child_env[_TEST_DATABASE_ENV] = "1"
+    child_env["PYTHONUNBUFFERED"] = "1"
 
     if result := _run(
         child_env,
@@ -184,8 +203,12 @@ def _previous_head() -> str | None:
 
 
 def _run(child_env: dict[str, str], command: list[str]) -> int:
-    print(f"$ {' '.join(command)}")
-    return subprocess.run(command, env=child_env, check=False).returncode
+    print(f"$ {' '.join(command)}", flush=True)
+    try:
+        return subprocess.run(command, env=child_env, check=False, timeout=600).returncode
+    except subprocess.TimeoutExpired:
+        print("Validation step exceeded 600 seconds; stopping the lane.", file=sys.stderr)
+        return 1
 
 
 def _raw_schema_snapshot(database_url: URL) -> tuple[tuple[object, ...], ...]:

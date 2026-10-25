@@ -100,7 +100,7 @@ never matched by name — `player_name` is not a stable key.
 ### Game Grain
 
 Revision `0009_games_and_box_scores` adds the per-game grain the team predictor
-reads. Nothing writes it yet; the loader is its own card.
+reads. `nba-data backfill games` writes it (below).
 
 - `core.games` holds a game's identity, schedule, and status (`scheduled`,
   `final`, `postponed`) — never its result. Both teams reference
@@ -118,6 +118,48 @@ reads. Nothing writes it yet; the loader is its own card.
   the box score parser's constants by `tests/unit/test_game_models.py`.
   `docs/domain/BUSINESS_RULES.md` lists the invariants, including the
   cross-table ones the loader must enforce itself.
+
+### Offline game load
+
+```text
+cached league schedule pages -> select_season_games (F8-004 rule)
+cached box score page        -> parse_box_score_page
+                             -> load_game: gates, then upserts      (one transaction per game)
+                             -> derive_neutral_sites (second pass over the season)
+                             -> one JSON report per season
+```
+
+`nba-data backfill games --execute-approved-games-backfill --season <end year> [--season ...] [--output <dir>]
+[--require-complete]` reads only the cache: no HTTP client is constructed, and a
+box score that is not cached is reported as `missing_box_score`. Each selected
+game is gated and written by `scraping/loaders/games.py` and committed on its
+own, so a quarantined or failing game writes nothing while the others load. The
+report gives, per season, `expected`, `loaded`, `unchanged`,
+`missing_box_score`, `quarantined` (by reason, with game ids), `warnings`,
+`players_created`, `neutral_games`, and `game_types`. The command exits
+non-zero when any game is quarantined or fails, when a season selects no game,
+and, with `--require-complete`, when any box score is missing. A rerun over the
+same cache reports every game `unchanged` and writes nothing.
+
+The approval flag is required before an engine is constructed. `--output`
+names a directory, including for a single season. Corrupt schedule caches fail
+selection; corrupt box-score caches fail that game and let the others load.
+Neutral-site inference waits until every selected game exists in the database;
+partial loads report `neutral_site_deferred` and leave the flags unchanged.
+
+Like every write path, it writes to the database `DATABASE_URL` names. Loading
+the persistent `nba` database is an owner-approved step (F8-006), run from
+merged `origin/main` once revision 0009 is applied there.
+
+`validate game-pilot --database-identities` reads player and NBA team-season
+keys from `DATABASE_URL`, including players created only from inactive lists.
+Without that option, the pilot stays cache-only. Pages always come from cache.
+
+The disposable PostgreSQL lane (`bash scripts/validate_database.sh`) bounds
+connections and each child step, and connects to `postgres` for administration.
+It uses IPv4 for `localhost`, matching the compose port binding and avoiding
+Windows IPv6 fallback delays. Explicit connection URL options are preserved.
+On Windows, use Git Bash; the Windows `System32/bash.exe` requires WSL.
 
 ## Planned Direction
 

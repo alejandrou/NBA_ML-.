@@ -5,7 +5,11 @@ import pytest
 
 from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
 from nba_data.scraping.cache import CacheFetchMetadata, HtmlCache
-from nba_data.scraping.client import BasketballReferenceClient, RateLimitExceededError
+from nba_data.scraping.client import (
+    BasketballReferenceClient,
+    RateLimitExceededError,
+    RequestBudgetExhaustedError,
+)
 
 FETCHED_AT = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
 
@@ -379,3 +383,47 @@ def test_request_count_includes_the_429_that_stops_the_client() -> None:
         client.get("https://www.basketball-reference.com/teams/BOS/2024.html")
 
     assert client.request_count == 1
+
+
+@pytest.mark.unit
+def test_client_request_budget_is_checked_before_every_attempt_retries_included() -> None:
+    statuses = iter([500, 500, 200])
+    attempts: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        status = next(statuses)
+        attempts.append(status)
+        return httpx.Response(status, text="<html>ok</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(
+        _settings(), http_client=http_client, sleeper=lambda _: None, max_requests=2
+    )
+
+    with pytest.raises(RequestBudgetExhaustedError, match="budget of 2"):
+        client.get("https://www.basketball-reference.com/boxscores/202310240DEN.html")
+
+    assert attempts == [500, 500]
+    assert client.request_count == 2
+
+
+@pytest.mark.unit
+def test_client_without_a_budget_keeps_its_5xx_retries() -> None:
+    statuses = iter([500, 500, 200])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(next(statuses), text="<html>ok</html>")
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = BasketballReferenceClient(_settings(), http_client=http_client, sleeper=lambda _: None)
+
+    assert client.get("https://www.basketball-reference.com/boxscores/202310240DEN.html") == (
+        "<html>ok</html>"
+    )
+    assert client.request_count == 3
+
+
+@pytest.mark.unit
+def test_client_rejects_a_request_budget_below_one() -> None:
+    with pytest.raises(ValueError, match="max_requests must be at least 1"):
+        BasketballReferenceClient(_settings(), max_requests=0)

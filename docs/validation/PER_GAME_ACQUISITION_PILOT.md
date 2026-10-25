@@ -226,6 +226,9 @@ Game count: ten 1,230-game seasons plus 1,059 in 2019–20 and 1,080 in 2020–2
 The upcoming 2026–27 schedule is already published (88 games in its October
 page), which the product needs for its forecasts.
 
+How to plan, approve, batch, and resume the Stage 2 runs:
+`GAME_DATASET_ACQUISITION.md`.
+
 ## Running it again
 
 From the repository root, with a real contact in the user agent. Since

@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -27,6 +28,28 @@ from nba_data.scraping.game_pilot_acquisition import (
 from nba_data.scraping.game_pilot_manifest import (
     GamePilotManifestError,
     load_game_pilot_manifest,
+)
+from nba_data.scraping.game_season_acquisition import (
+    GameSeasonAcquisitionConfigurationError,
+    GameSeasonAcquisitionStopped,
+    acquire_game_season_manifest,
+    build_game_season_dry_run_report,
+    validate_game_season_acquisition_settings,
+)
+from nba_data.scraping.game_season_acquisition import (
+    validate_settings_within_manifest_policy as validate_settings_within_season_manifest_policy,
+)
+from nba_data.scraping.game_season_manifest import (
+    GameSeasonManifestError,
+    load_game_season_manifest,
+)
+from nba_data.scraping.game_season_planning import (
+    GameSeasonPlan,
+    GameSeasonPlanningError,
+    default_draft_path,
+    plan_game_box_scores,
+    plan_game_schedules,
+    write_draft_manifest,
 )
 from nba_data.scraping.nba_team_season_acquisition import (
     NbaTeamSeasonAcquisitionConfigurationError,
@@ -93,10 +116,21 @@ console = Console()
 def _main() -> None:
     configure_logging(get_settings())
 
+
 _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
     help="Optional path to write the acquisition JSON report.",
+)
+_GAME_SEASON_OPTION = typer.Option(
+    ...,
+    "--season",
+    help="Season end year, e.g. 2024 for 2023-24.",
+)
+_GAME_SEASON_DRAFT_OUTPUT_OPTION = typer.Option(
+    None,
+    "--output",
+    help="Where to write the draft manifest; defaults under reports/game-season/. Never overwrites.",
 )
 _OFFLINE_BACKFILL_OUTPUT_OPTION = typer.Option(
     None,
@@ -969,6 +1003,124 @@ def acquisition_acquire_game_pilot(
         raise typer.Exit(code=1) from exc
 
     _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("plan-game-schedules")
+def acquisition_plan_game_schedules(
+    season: int = _GAME_SEASON_OPTION,
+    output: Path | None = _GAME_SEASON_DRAFT_OUTPUT_OPTION,
+) -> None:
+    """Write a draft manifest of one season's schedule pages, from the cache only."""
+
+    settings = get_settings()
+    try:
+        plan = plan_game_schedules(
+            season,
+            cache=HtmlCache(settings.scraper_cache_dir),
+            planned_at=datetime.now(UTC),
+        )
+    except (GameSeasonPlanningError, GameSeasonManifestError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _write_game_season_draft(plan, season, output)
+
+
+@acquisition_app.command("plan-game-box-scores")
+def acquisition_plan_game_box_scores(
+    season: int = _GAME_SEASON_OPTION,
+    output: Path | None = _GAME_SEASON_DRAFT_OUTPUT_OPTION,
+) -> None:
+    """Write a draft manifest of one season's box scores, selected from cached schedule pages."""
+
+    settings = get_settings()
+    try:
+        plan = plan_game_box_scores(
+            season,
+            cache=HtmlCache(settings.scraper_cache_dir),
+            planned_at=datetime.now(UTC),
+        )
+    except (GameSeasonPlanningError, GameSeasonManifestError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _write_game_season_draft(plan, season, output)
+
+
+@acquisition_app.command("dry-run-game-season")
+def acquisition_dry_run_game_season(
+    manifest_path: Path,
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Plan a draft or approved Stage 2 season manifest without downloading anything."""
+
+    settings = get_settings()
+    try:
+        manifest = load_game_season_manifest(manifest_path, require_approval=False)
+    except GameSeasonManifestError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    report = build_game_season_dry_run_report(manifest, cache=cache, settings=settings)
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("acquire-game-season")
+def acquisition_acquire_game_season(
+    manifest_path: Path,
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for this Stage 2 season manifest.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved acquisition.",
+    ),
+    max_fetches: int | None = typer.Option(
+        None,
+        "--max-fetches",
+        min=1,
+        help="Stop cleanly after this many live requests; rerun to resume from the cache.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run controlled Stage 2 cache acquisition of one approved season manifest."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    try:
+        validate_game_season_acquisition_settings(settings)
+        manifest = load_game_season_manifest(manifest_path, require_approval=True)
+        validate_settings_within_season_manifest_policy(settings, manifest)
+    except (GameSeasonAcquisitionConfigurationError, GameSeasonManifestError) as exc:
+        # Keep validation diagnostics intact in logs and redirected stderr.
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    cache = HtmlCache(settings.scraper_cache_dir)
+    try:
+        with BasketballReferenceClient(
+            settings, max_429_retries=0, max_requests=max_fetches, follow_redirects=False
+        ) as client:
+            report = acquire_game_season_manifest(
+                manifest, cache=cache, client=client, max_fetches=max_fetches
+            )
+    except GameSeasonAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+def _write_game_season_draft(plan: GameSeasonPlan, season: int, output: Path | None) -> None:
+    path = output or default_draft_path(season, plan.kind)
+    try:
+        write_draft_manifest(plan.manifest, path)
+    except GameSeasonPlanningError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print_json(data={**plan.summary, "draft_path": str(path.resolve())})
 
 
 def _read_json_object(path: Path, label: str) -> dict[str, object]:

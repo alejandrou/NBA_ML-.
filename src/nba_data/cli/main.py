@@ -1095,7 +1095,9 @@ def acquisition_acquire_game_season(
         manifest = load_game_season_manifest(manifest_path, require_approval=True)
         validate_settings_within_season_manifest_policy(settings, manifest)
     except (GameSeasonAcquisitionConfigurationError, GameSeasonManifestError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
+        # Keep validation diagnostics intact in logs and redirected stderr.
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
 
     cache = HtmlCache(settings.scraper_cache_dir)
     try:

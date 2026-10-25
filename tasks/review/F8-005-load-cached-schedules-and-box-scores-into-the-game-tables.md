@@ -315,3 +315,17 @@ Source period conflicts warn; only stored-data gate failures quarantine games.
   fail-closed gates also cover minutes, game-id dates and negative stored values.
 - One existing FastAPI/Starlette TestClient deprecation warning remains in the
   PostgreSQL lane; changing HTTP dependencies is separate shared work.
+
+## CI follow-up (2026-10-25)
+
+- Run 40214918312 passed PostgreSQL integration, Ruff and mypy, but failed the
+  approval-refusal test because Rich inserted ANSI styles inside the flag text.
+  The CLI still exited 2 before constructing a database engine.
+- Reproduced the failure locally by forcing Rich ANSI output on Windows.
+  The test now checks both plain and ANSI rendering, strips styles with Click's
+  `unstyle`, and retains the no-database-access and exit-code assertions.
+  No product behavior or approval interlock changed.
+- `uv run pytest tests/unit/test_offline_games_backfill.py -q`: 20 passed.
+- Exact CI selection, `uv run pytest -m "not integration and not live" -q`:
+  1469 passed, 255 deselected, 47.27 seconds.
+- Ruff, mypy and both task lifecycle checks passed.

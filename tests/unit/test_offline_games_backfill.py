@@ -12,9 +12,13 @@ import json
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from datetime import date
+from functools import partial
 from pathlib import Path
 
 import pytest
+import typer.rich_utils as typer_rich_utils
+from click import unstyle
+from rich.console import Console
 from sqlalchemy import CheckConstraint, MetaData, create_engine, func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -458,14 +462,24 @@ def test_cli_require_complete_fails_on_a_missing_box_score(
 
 
 @pytest.mark.unit
-def test_cli_refuses_writes_before_constructing_an_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("colored", [False, True], ids=["plain", "ansi"])
+def test_cli_refuses_writes_before_constructing_an_engine(
+    monkeypatch: pytest.MonkeyPatch, colored: bool,
+) -> None:
     def forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("must refuse before database access")
 
     monkeypatch.setattr(cli_main, "create_db_engine", forbidden)
-    result = CliRunner().invoke(app, ["backfill", "games", "--season", str(SEASON)])
+    # Exercise CI's ANSI rendering on Windows too, at a deterministic width.
+    monkeypatch.setattr(typer_rich_utils, "Console", partial(Console, legacy_windows=False))
+    monkeypatch.setattr(typer_rich_utils, "FORCE_TERMINAL", colored)
+    monkeypatch.setattr(typer_rich_utils, "COLOR_SYSTEM", "standard" if colored else None)
+    monkeypatch.setattr(typer_rich_utils, "MAX_WIDTH", 80)
+    result = CliRunner().invoke(app, ["backfill", "games", "--season", str(SEASON)], color=True)
     assert result.exit_code == 2
-    assert "--execute-approved-games-backfill" in result.output
+    if colored:
+        assert "\x1b[" in result.output
+    assert "--execute-approved-games-backfill" in unstyle(result.output)
 
 
 @pytest.mark.unit

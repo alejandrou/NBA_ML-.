@@ -148,7 +148,7 @@ Neutral-site inference waits until every selected game exists in the database;
 partial loads report `neutral_site_deferred` and leave the flags unchanged.
 
 Like every write path, it writes to the database `DATABASE_URL` names. Loading
-the persistent `nba` database is an owner-approved step (F8-006), run from
+the persistent `nba` database is an owner-approved step (F8-018), run from
 merged `origin/main` once revision 0009 is applied there.
 
 `validate game-pilot --database-identities` reads player and NBA team-season

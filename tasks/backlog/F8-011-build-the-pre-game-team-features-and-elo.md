@@ -135,6 +135,21 @@ revision, or CLI command. Any write to the database.
 - Keep records frozen dataclasses so a test can mutate copies safely.
 - Order history by `(game_date, basketball_reference_game_id)`; the id breaks
   ties deterministically.
+- **Neutral encoding** (owner, 2026-10-29): a neutral game means neither team
+  is at home, as the Elo decision above already does; the rule does not change.
+  The build must report how many `NULL` `neutral_site` values it treated as
+  home. For 2015–2026 the expected count is 0 once F8-018 has loaded `nba`
+  (F8-016 decides the four seasons that are still `NULL` on F8-006's disposable
+  copy).
+- **Quarantined games** (owner, 2026-10-29): the 7 source-error games of
+  F8-006 stay out of `core.games`, and this card reads its schedule features
+  from `core.games` only. Accepted known limitation, for both teams of each
+  omitted game: rest days before the next retained game can be overestimated
+  (subject to the cap of 7) and a back-to-back can be hidden; seven-day counts
+  can be understated for several later games while the omitted game is inside
+  the window; Elo skips the 7 games, which affects later ratings too. Do not
+  read schedules from the cache to work around it. Record this under the
+  card's known limitations.
 
 # Durable knowledge updates
 

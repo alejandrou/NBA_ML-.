@@ -280,7 +280,7 @@ season from play-in, playoffs, and the NBA Cup final. Lineup changes between
 periods are not logged, and `pbpstats` does not read these pages. Findings and
 the Stage 2 cost (~14,440 box scores, ~25 h) are in the pilot record.
 
-### Stage 2 — game dataset and first predictor (`F8-002` to `F8-006`, `F8-011`)
+### Stage 2 — game dataset and first predictor (`F8-002` to `F8-006`, `F8-011`, `F8-016` to `F8-018`)
 
 Acquire schedule, results, and box scores from 2014–15 to the last complete
 season, plus the current season when relevant. Team model first; per-game
@@ -290,6 +290,15 @@ play-in, and playoffs are excluded; in-season tournament games that count as
 regular season are included once. Evaluation reconstructs a forecast **24 hours
 before tip-off**; interactive queries use the real query time and show their
 lead time. Horizons are never mixed when reporting.
+
+**Dataset result (F8-006, 2026-10-28).** All 14,442 selected games of 2014–15 to
+2025–26 are cached: 14,422 fetched in 25.2 h with no 429. On a disposable copy of
+`nba`, 14,435 load (28,870 team rows, 474,309 player rows, 39 players created)
+and a rerun is fully unchanged. Seven games stay quarantined: their pages' player
+minutes or turnovers do not sum to the team totals. In the four seasons with a
+quarantine, `neutral_site` is still `NULL`; F8-016 flags their 17 neutral games.
+The load into `nba` is pending (F8-018).
+Record: `docs/validation/GAME_DATASET_ACQUISITION.md`.
 
 ### Stage 3 — temporal evaluation and selection (`WF-009`, `F8-007`)
 

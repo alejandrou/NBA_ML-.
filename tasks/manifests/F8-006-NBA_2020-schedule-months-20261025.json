@@ -1,0 +1,113 @@
+{
+  "manifest_id": "F8-006-NBA_2020-schedule-months-20261025",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-10-25T17:59:00+00:00",
+  "approval_basis": "The owner's instruction of 2026-10-25, in reply to the F8-006 run plan (season pages, then month pages, then box scores season by season): \"Do them yourself i give you permission as the owner of the project\". Schedule run 2 of 2: the month pages the cached season page links, from which the box scores are planned.",
+  "scope": {
+    "season_end_year": 2020,
+    "page_type": "league_schedule",
+    "max_urls": 10
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "stop_on_first_failure": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "planning": {
+    "planned_at": "2026-10-25T17:52:05.693625+00:00",
+    "season_end_year": 2020,
+    "season_page_url": "https://www.basketball-reference.com/leagues/NBA_2020_games.html",
+    "season_page_cached": true,
+    "months": [
+      "october-2019",
+      "november",
+      "december",
+      "january",
+      "february",
+      "march",
+      "july",
+      "august",
+      "september",
+      "october-2020"
+    ],
+    "planned_pages": 10,
+    "cached_pages": 3,
+    "next_step": "acquire this manifest, then plan the box scores"
+  },
+  "entries": [
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-october-2019.html",
+      "season_end_year": 2020,
+      "month": "october-2019",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-november.html",
+      "season_end_year": 2020,
+      "month": "november",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-december.html",
+      "season_end_year": 2020,
+      "month": "december",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-january.html",
+      "season_end_year": 2020,
+      "month": "january",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-february.html",
+      "season_end_year": 2020,
+      "month": "february",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-march.html",
+      "season_end_year": 2020,
+      "month": "march",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-july.html",
+      "season_end_year": 2020,
+      "month": "july",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-august.html",
+      "season_end_year": 2020,
+      "month": "august",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-september.html",
+      "season_end_year": 2020,
+      "month": "september",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2020_games-october-2020.html",
+      "season_end_year": 2020,
+      "month": "october-2020",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2020_games.html."
+    }
+  ]
+}

@@ -29,7 +29,7 @@ validation:
   - bash scripts/validate_database.sh
   - uv run python scripts/validate_tasks.py
 critical_actions:
-  - None. The routes read the database. Serving real games needs F8-006's load and F8-002's revision on the persistent nba database, both owner-approved data-track steps outside this card.
+  - None. The routes read the database. Serving real games needs F8-018's load into the persistent nba database (F8-002's revision is already applied there), an owner-approved data-track step outside this card.
 ---
 
 # Goal
@@ -41,12 +41,12 @@ Stage 5 — "OKC vs Chicago tonight" starts by finding the game — and the
 
 # Evidence and current state
 
-- F8-002 (data, backlog) adds `core.games`, `stats.team_game_totals`, and
-  `stats.player_game_totals`. This card is its handoff: F8-002 records the
-  `## Open` line in `tasks/CROSS_TRACK.md` when it moves to review.
-- F8-006 loads 2014-15 to 2025-26, all `final`. F8-014 adds 2026-27 games as
-  `scheduled`, `final`, or `postponed` through the same table; they need no new
-  route.
+- F8-002 (data, done) added `core.games`, `stats.team_game_totals`, and
+  `stats.player_game_totals` (revision `0009`, already applied to `nba`). This
+  card is its handoff, recorded under `## Open` in `tasks/CROSS_TRACK.md`.
+- F8-018 loads 2014-15 to 2025-26 into `nba`, all `final` (acquired by
+  F8-006). F8-014 adds 2026-27 games as `scheduled`, `final`, or `postponed`
+  through the same table; they need no new route.
 - `API_CONTRACT.md` fixes the envelope, pagination (50, max 100), error codes,
   fixed `detail` strings, readiness required tables, private surrogate ids, no
   lineage columns, and "the API computes nothing".

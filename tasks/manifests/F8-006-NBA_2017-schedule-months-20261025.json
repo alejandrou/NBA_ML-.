@@ -1,0 +1,105 @@
+{
+  "manifest_id": "F8-006-NBA_2017-schedule-months-20261025",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-10-25T17:58:59+00:00",
+  "approval_basis": "The owner's instruction of 2026-10-25, in reply to the F8-006 run plan (season pages, then month pages, then box scores season by season): \"Do them yourself i give you permission as the owner of the project\". Schedule run 2 of 2: the month pages the cached season page links, from which the box scores are planned.",
+  "scope": {
+    "season_end_year": 2017,
+    "page_type": "league_schedule",
+    "max_urls": 9
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "stop_on_first_failure": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "planning": {
+    "planned_at": "2026-10-25T17:58:56.104028+00:00",
+    "season_end_year": 2017,
+    "season_page_url": "https://www.basketball-reference.com/leagues/NBA_2017_games.html",
+    "season_page_cached": true,
+    "months": [
+      "october",
+      "november",
+      "december",
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june"
+    ],
+    "planned_pages": 9,
+    "cached_pages": 0,
+    "next_step": "acquire this manifest, then plan the box scores"
+  },
+  "entries": [
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-october.html",
+      "season_end_year": 2017,
+      "month": "october",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-november.html",
+      "season_end_year": 2017,
+      "month": "november",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-december.html",
+      "season_end_year": 2017,
+      "month": "december",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-january.html",
+      "season_end_year": 2017,
+      "month": "january",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-february.html",
+      "season_end_year": 2017,
+      "month": "february",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-march.html",
+      "season_end_year": 2017,
+      "month": "march",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-april.html",
+      "season_end_year": 2017,
+      "month": "april",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-may.html",
+      "season_end_year": 2017,
+      "month": "may",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    },
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2017_games-june.html",
+      "season_end_year": 2017,
+      "month": "june",
+      "reason": "Month page linked from https://www.basketball-reference.com/leagues/NBA_2017_games.html."
+    }
+  ]
+}

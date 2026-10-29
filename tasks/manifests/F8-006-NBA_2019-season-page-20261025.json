@@ -1,0 +1,37 @@
+{
+  "manifest_id": "F8-006-NBA_2019-season-page-20261025",
+  "status": "approved",
+  "approved_by_owner": true,
+  "approved_at": "2026-10-25T17:57:14+00:00",
+  "approval_basis": "The owner's instruction of 2026-10-25, in reply to the F8-006 run plan (season pages, then month pages, then box scores season by season): \"Do them yourself i give you permission as the owner of the project\". Schedule run 1 of 2: the season page, whose month links name the month pages.",
+  "scope": {
+    "season_end_year": 2019,
+    "page_type": "league_schedule",
+    "max_urls": 1
+  },
+  "acquisition_policy": {
+    "cache_first": true,
+    "sequential": true,
+    "stop_on_first_failure": true,
+    "requests_per_minute": 10,
+    "max_requests_per_minute": 20,
+    "write_target": "HtmlCache .html.gz"
+  },
+  "planning": {
+    "planned_at": "2026-10-25T17:52:04.791648+00:00",
+    "season_end_year": 2019,
+    "season_page_url": "https://www.basketball-reference.com/leagues/NBA_2019_games.html",
+    "season_page_cached": false,
+    "planned_pages": 1,
+    "next_step": "acquire this manifest, then plan the schedules again"
+  },
+  "entries": [
+    {
+      "page_type": "league_schedule",
+      "url": "https://www.basketball-reference.com/leagues/NBA_2019_games.html",
+      "season_end_year": 2019,
+      "month": null,
+      "reason": "Season page: its month links name the month pages to plan next."
+    }
+  ]
+}

@@ -8,9 +8,9 @@ areas:
   - documentation
 priority: 87
 depends_on:
-  - F8-006
   - F8-013
   - F8-014
+  - F8-018
 read:
   - docs/ml/PREDICTOR_PLAN.md
   - docs/validation/CURRENT_SEASON_REFRESH.md
@@ -42,7 +42,9 @@ leave a one-instruction procedure for every later refresh. Stage 5's
 - F8-012 versions mutable pages as snapshots; F8-013 gives the gated
   `acquire-current-season` with a standing, bounded manifest; F8-014 loads
   identity, scheduled, final, and postponed games.
-- F8-006 has applied F8-002's revision to `nba` and loaded 2014-15 to 2025-26.
+- F8-002's revision `0009` is applied to `nba` (2026-10-24). F8-006 acquired
+  2014-15 to 2025-26 and loaded it on a disposable database; F8-018 loads it
+  into `nba`.
 - The 2026-27 regular season starts in late October 2026.
 - Every live run needs the owner's direct, current instruction (`AGENTS.md`).
 

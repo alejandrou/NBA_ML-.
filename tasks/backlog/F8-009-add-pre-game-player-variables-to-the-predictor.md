@@ -34,15 +34,15 @@ critical_actions:
 # Goal
 
 Stage 4, step one: add pre-game player variables built from the per-game lines
-F8-006 loads — expected rotation and minutes, and individual form weighted by
-expected minutes — and measure on the same games whether they beat the team
+F8-006 acquired and F8-018 loads into `nba` — expected rotation and minutes,
+and individual form weighted by expected minutes — and measure on the same games whether they beat the team
 model. The measured result decides whether play-by-play is acquired (F8-015).
 
 # Evidence and current state
 
 - `stats.player_game_totals` holds every line from 2014-15 to 2025-26 with
   participation, starter, seconds, the 15 counters, and plus-minus; inactive
-  lines have no stats (F8-002, F8-006).
+  lines have no stats (F8-002, F8-006, loaded into `nba` by F8-018).
 - F8-007's harness, splits, selection rule, and report exist; its selected team
   model and `team-pregame-v1` are the baseline.
 - Plan Stage 4: compare team → team + players on the same games; play-by-play

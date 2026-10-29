@@ -9,8 +9,8 @@ areas:
   - documentation
 priority: 92
 depends_on:
-  - F8-006
   - F8-011
+  - F8-018
   - WF-009
 read:
   - docs/ml/PREDICTOR_PLAN.md
@@ -44,7 +44,8 @@ the selected one, save it as a versioned artifact, and record the result.
   training windows (3, 5, all seasons), the metrics (log loss primary; Brier,
   calibration, accuracy, ROC-AUC), separate calibration, temporal-block
   intervals, "indistinguishable keeps the simpler", and a test season used once.
-- F8-006 loads 2014-15 to 2025-26 (end years 2015 to 2026). F8-011 builds the
+- F8-006 acquired 2014-15 to 2025-26 (end years 2015 to 2026) and loaded it on
+  a disposable database; F8-018 loads it into `nba`. F8-011 builds the
   `team-pregame-v1` features and Elo. WF-009 adds scikit-learn.
 - No `features` or `ml` table exists; F8-010 adds `ml.*` after this card.
 
@@ -146,7 +147,7 @@ registration (F8-010). Any scrape or database write. Changing
 
 # Implementation notes
 
-- Run `ml evaluate` against `nba` only after F8-006 has loaded it. On review,
+- Run `ml evaluate` against `nba` only after F8-018 has loaded it. On review,
   the reviewer may rerun it; it only reads.
 - joblib files are pickles: load only artifacts this repository wrote, after
   the hash check.

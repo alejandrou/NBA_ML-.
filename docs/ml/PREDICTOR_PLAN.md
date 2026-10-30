@@ -110,6 +110,55 @@ averaging per-game percentages. Opponent-strength adjustment is an extension;
 travel distance, time zones, and coaching continuity come after the basics are
 proven.
 
+### Feature definition `team-pregame-v1`
+
+Implemented in `src/nba_data/ml/` (`F8-011`): `team_games.py` reads the games in
+one `SELECT`, `elo.py` and `team_features.py` are pure Python with no numpy,
+pandas, or scikit-learn. Any change to a formula, window, or constant below
+bumps `FEATURE_DEFINITION_VERSION`.
+
+- **History** is every `final` game of type `regular_season` or `cup_final`;
+  **targets** are `regular_season` games only, never postponed ones. A
+  scheduled game is stored with no competition type, so it cannot be a target
+  until F8-010 classifies it. A team is its
+  `core.teams.basketball_reference_team_id`, stable from 2014–15.
+- **Cutoff.** Results-based features (Elo and every window) use only history
+  dated on or before `target date − 2 days`, or an earlier explicit cutoff.
+  Schedule features read every non-postponed game up to the day before the
+  target, never results.
+- **Elo** (FiveThirtyEight form): start 1500; K = 20; home advantage 100,
+  zeroed only when `neutral_site` is true (`NULL` counts as home, and the build
+  reports how many games it treated that way); margin multiplier
+  `(|margin| + 3)^0.8 / (7.5 + 0.006 · elo_diff_winner)`, home advantage
+  included in `elo_diff_winner`; between seasons a rating keeps 75 % and
+  regresses 25 % to 1505, once. A code with no earlier game starts at 1500.
+  Games update in `(game_date, game_id)` order; a game missing either score is
+  skipped and counted.
+- **Windows** of 5, 10, 20 games and season-to-date, reset each season. A short
+  window uses the games it has; an empty one, or a zero denominator, gives
+  `None`, never `0`. A game missing a counter a feature needs is skipped by that
+  feature and counted in `skipped_games`. These counts cover all history
+  passed to the build, not one target's games before its cutoff.
+- **Formulas.** Possessions `fga + 0.44·fta − orb + tov`, averaged over both
+  teams. Offensive, defensive, and net rating per 100 possessions; pace is
+  possessions per 48 minutes, a game lasting `seconds_played / 5 / 60` minutes;
+  margin is points minus opponent points per game. Four factors: eFG%
+  `(fg + 0.5·fg3) / fga`, TOV% `tov / (fga + 0.44·fta + tov)`, ORB%
+  `orb / (orb + opp drb)`, FT rate `ft / fga`.
+- **Schedule.** Rest days `(target − previous game) − 1`, capped at 7, `None`
+  for a team's first game of the season; back-to-back when the previous game
+  was the day before; games in the seven days before the target.
+- **Row.** Per target game: `elo_home`, `elo_away`, `elo_diff`, `is_neutral`,
+  `games_in_season_before_home/_away`, and `home − away` differences of rest,
+  back-to-back, seven-day count, and each of the nine results features over
+  each window (45 values). A difference with either side `None` is `None`. The
+  row carries no result of the target game.
+- **Known limitation.** The 7 source-error games F8-006 quarantined are absent
+  from `core.games`. For both teams of each one, rest before the next game can
+  be overestimated (up to the cap) and a back-to-back hidden, seven-day counts
+  understated while it is in the window, and Elo skips it, which shifts later
+  ratings.
+
 ### Individual statistics
 
 Do not invent another PER — the database already stores it and other advanced

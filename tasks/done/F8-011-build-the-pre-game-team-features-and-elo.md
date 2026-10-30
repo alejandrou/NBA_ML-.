@@ -124,11 +124,11 @@ revision, or CLI command. Any write to the database.
 
 # Impact
 
-- New read-only `nba_data.ml` package.
+- New read-only `nba_data.ml` package. `WF-009`'s boundary test will keep `nba_data.api` from importing it.
 
 # Cross-track impact
 
-- None. `WF-009`'s boundary test keeps `nba_data.api` from importing it.
+- None.
 
 # Implementation notes
 
@@ -158,29 +158,98 @@ revision, or CLI command. Any write to the database.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+Second review completed on 2026-10-30: no blocking findings remain. The owner
+authorized moving this card to done, committing, and pushing after this review.
 
 ## Automated validation
 
-- Command:
-- Result:
+- `uv run pytest tests/unit/test_elo.py tests/unit/test_team_pregame_features.py tests/unit/test_team_game_history_query.py`
+  — 46 passed (after the review fixes: no autoflush on a dirty Session,
+  postponed and unclassified targets refused, input-wide skip counts pinned).
+- `uv run pytest tests/integration/test_team_game_history_postgres.py` — 3
+  skipped without the disposable-database opt-in, as designed; they run in the
+  lane below.
+- `uv run ruff check .` — all checks passed (new files also `ruff format`ted).
+- `uv run mypy src/nba_data` — no issues in 98 source files.
+- `uv run pytest` — 1521 passed, 257 skipped (the integration lane).
+- `bash scripts/validate_database.sh` — 258 passed against
+  `nba_test_tmp_4c799e50a7a344cf`, including all three
+  `test_team_game_history_postgres.py` tests; database dropped.
+- `uv run python scripts/validate_tasks.py` — passed.
+- Read-only probe against the disposable F8-006 copy `nba_f8006_tmp` (not
+  `nba`): 14,435 history games, 2015–2026; features for all 14,432
+  regular-season targets built in 3.9 s, the read in 0.43 s; `skipped_games`
+  all 0; `null_neutral_as_home` = 4,914 — the four seasons F8-016 still has to
+  decide, as the owner's note predicted. (Opening the first connection to the
+  local container took 130 s on this machine, outside the query.)
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. On the disposable copy, run:
+   `uv run python -c "from sqlalchemy import create_engine; from sqlalchemy.orm import Session; from nba_data.ml.team_games import load_team_game_history; from nba_data.ml.team_features import build_team_features; g = load_team_game_history(Session(create_engine('postgresql+psycopg://nba:nba@localhost:5432/nba_f8006_tmp'))); b = build_team_features(g, target_ids=[x.game_id for x in g if x.game_type == 'regular_season']); print(len(g), len(b.rows), b.skipped_games, b.null_neutral_as_home); print(b.rows[-1])"`
+2. Inspect the last row: Elo values near 1500 ± a few hundred, `is_neutral`
+   a bool, 45 `diff_*_l5/_l10/_l20/_season` values plus the schedule
+   differences.
+3. Pick an opening-night game (`games_in_season_before_home == 0`).
 
-Expected result:
+Expected result: 14,435 records, 14,432 rows, all skips 0, 4,914 undetermined
+venues; the opening-night row has every results difference and
+`diff_rest_days` as `None`, and carried-over Elo values that are not 1500.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `build_team_features(g, target_ids=["202401010ZZZ"])` → `ValueError`
+   "not among the games".
+2. Pass a playoff or cup-final game id as a target → `ValueError`
+   "only regular-season games are targets"; a postponed game → "postponed";
+   a scheduled game with no `game_type` → "no competition type".
+3. Pass the same record twice in `games`, or a bare string as `target_ids` →
+   `ValueError` "appears twice" / `TypeError`.
 
-Expected result:
+Expected result: each call fails loudly; nothing is written anywhere.
 
 ## Known limitations
 
-- None.
+- The 7 games F8-006 quarantined are absent from `core.games`. For both teams
+  of each: rest before the next retained game can be overestimated (up to the
+  cap of 7) and a back-to-back hidden; seven-day counts can be understated for
+  several later games while the omitted game is inside the window; Elo skips
+  the 7 games, which affects later ratings too. Accepted by the owner
+  (2026-10-29); schedules are not read from the cache to work around it.
+- Until F8-016 and F8-018 land, 4,914 games of four seasons have `NULL`
+  `neutral_site` and count as home games; the build reports the number.
+- "Adding a new later game, or deleting one" is tested for games dated after
+  the target. A game between the cutoff and the target legitimately moves the
+  schedule features (rest, back-to-back, seven-day count), which read the
+  published schedule up to the day before the target by design; its scores and
+  counters are tested to change nothing.
+- `load_team_game_history` returns history only (final `regular_season` and
+  `cup_final`). **F8-010 integration requirement:** `core.games` stores a
+  scheduled game with `game_type` `NULL`, and the builder refuses such a target
+  ("no competition type"). F8-010 needs a schedule read and a reliable
+  competition classification before scheduled games can be targets, and must
+  test the stored shape. Unclassified scheduled records still feed schedule
+  features.
+- `skipped_games` counts cover all supplied history, not one target's history
+  up to its cutoff. A later incomplete game changes the counts but not any
+  feature value. Per-target coverage is `games_in_season_before_home/_away`.
+- Rest days are `(target − previous game) − 1`, so a back-to-back has 0 rest;
+  a team's first game of each season has `None` rest (windows reset each
+  season).
+- `docs/ml/PREDICTOR_PLAN.md` still opens with "Nothing in it is implemented",
+  stale since F8-002; left as the owner's status line.
+
+## Second-review validation (2026-10-30)
+
+- Rechecked the happy path, result cutoffs, season transitions, missing counters,
+  and target validation. The dirty-Session regression now verifies that reads
+  leave pending changes unflushed; postponed targets fail explicitly.
+- Focused unit tests: 46 passed. Full suite: 1521 passed, 257 skipped.
+- `uv run python scripts/validate_postgres_local.py`: 258 passed against
+  `nba_test_tmp_ca95085a6e854b0c`; temporary database dropped. This is the
+  Python entry point used by the Bash wrapper, unavailable in this shell.
+- Ruff, mypy (98 source files), and `git diff --check` passed.
+- No F8-011 cross-track entries or parked-card bookkeeping need closing.
+- Scheduled target classification remains an explicit F8-010 integration
+  requirement; input-wide skip counts and quarantined games remain documented
+  limitations.

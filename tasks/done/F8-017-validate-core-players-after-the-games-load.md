@@ -119,25 +119,54 @@ covers).
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_offline_database_validation.py`
+- Result: 14 passed (5 new: box-score-only players pass; a player with neither
+  a `player_season` nor a game line fails naming `ghostpl01`; a second player
+  with a `player_season` fails the pin of 1 with
+  `core.players has 2 players with a player_season; expected 1.`; a player
+  with two seasons and game lines counts once; three players named Chris Smith
+  with different IDs are judged per row, so only the one with neither fails).
+- Command: `uv run ruff check .` — All checks passed.
+- Command: `uv run mypy src/nba_data` — no issues in 94 source files.
+- Command: `uv run pytest` — 1475 passed, 254 skipped (the PostgreSQL
+  integration lane, skipped without its test database URL).
+- Command: `select current_database()` with the override — `nba_f8006_tmp`.
+  Read-only counts there: 2,693 players, 14,435 games.
+- Command: `DATABASE_URL=postgresql+psycopg://nba:nba@localhost:5432/nba_f8006_tmp uv run nba-data validate offline-database --backfill-report reports/f8-003/nba-load/offline-backfill.json`
+- Result: exit 0, `passed: true`, `issues: []`; `core.players` 2654,
+  `core.players_without_player_seasons` 39, `core.players_total` 2693, every
+  other count at its pin.
+- Command: `uv run python scripts/validate_tasks.py` (and `--all-worktrees`) — Task validation passed.
 
 ## Manual happy path
 
-1.
+1. With the override pointing at `nba_f8006_tmp` (confirm `select
+   current_database()` first), run the validator command above.
 
-Expected result:
+Expected result: exit 0, empty `issues`, `core.players` 2654 and
+`core.players_without_player_seasons` 39 and `core.players_total` 2693 in
+`table_counts`.
 
 ## Manual sad path
 
-1.
+1. In a disposable database (or a transaction you roll back on
+   `nba_f8006_tmp`), insert a `core.players` row with no `player_season` and no
+   `stats.player_game_totals` row, then run the validator.
 
-Expected result:
+Expected result: exit 1 with one issue,
+`players_without_player_seasons_or_games`, whose message and context name the
+inserted player's Basketball Reference ID. `pytest
+tests/unit/test_offline_database_validation.py -k without_season_or_game`
+covers the same case offline.
 
 ## Known limitations
 
-- None.
+- The report's `table_counts` gains two unpinned keys,
+  `core.players_without_player_seasons` and `core.players_total`;
+  `core.players` there now means players with a `player_season`.
+- The validator now reads `stats.player_game_totals`, so it needs a database at
+  revision 0009 or later (`nba` already is). Below that it raises a database
+  error rather than a report; `OFFLINE_DATABASE_PREPARATION.md` now states the
+  0009 minimum.

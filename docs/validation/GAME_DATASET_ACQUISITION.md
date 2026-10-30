@@ -283,12 +283,15 @@ or did-not-play roster lines), and none has a NULL Basketball Reference ID.
 `smithch07` and `thornma02` share a name with `smithch05` (Chris Smith) and
 `thornma01` (Marcus Thornton) but are different people.
 
-`validate offline-database` pins `core.players` at 2,654. On the loaded copy it
-therefore fails with one issue, `core.players has 2693 rows; expected 2654`, and
-nothing else. The fix is F8-017 (owner's rule, 2026-10-29): keep 2,654 for
-players with a `player_season`, and require every other player to have at least
-one `stats.player_game_totals` row. It must land before F8-018 can validate
-`nba` after the games load.
+`validate offline-database` pins `core.players` at 2,654. Before F8-017 the
+loaded copy therefore failed with one issue, `core.players has 2693 rows;
+expected 2654`, and nothing else. F8-017 applies the owner's rule (2026-10-29):
+the pinned 2,654 counts only players with a `player_season`, and every other
+player must have at least one `stats.player_game_totals` row. Rerun on the
+loaded copy (2026-10-30), the validator exits 0 with no issue and reports
+`core.players` 2,654, `core.players_without_player_seasons` 39 and
+`core.players_total` 2,693. F8-018 can
+now validate `nba` after the games load.
 
 ### Persistent database
 

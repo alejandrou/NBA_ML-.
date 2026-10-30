@@ -26,7 +26,9 @@ def session() -> Iterator[Session]:
     engine = create_engine("sqlite:///:memory:")
     connection = engine.connect()
     connection.exec_driver_sql("ATTACH DATABASE ':memory:' AS core")
+    connection.exec_driver_sql("ATTACH DATABASE ':memory:' AS stats")
     _create_core_tables(connection)
+    _create_stats_tables(connection)
 
     session_factory = sessionmaker(bind=connection, autoflush=False, expire_on_commit=False)
     with session_factory() as test_session:
@@ -62,6 +64,9 @@ def test_validate_offline_database_accepts_clean_phase_4d_shape(session: Session
 
     assert report.passed is True
     assert report.table_counts["core.team_seasons"] == 1
+    assert report.table_counts["core.players"] == 1
+    assert report.table_counts["core.players_without_player_seasons"] == 0
+    assert report.table_counts["core.players_total"] == 1
     assert report.season_counts == (
         {
             "season_year": 2024,
@@ -85,6 +90,177 @@ def test_validate_offline_database_reports_count_mismatch(session: Session) -> N
 
     assert report.passed is False
     assert _issue_codes(report) == {"table_count_mismatch"}
+
+
+@pytest.mark.unit
+def test_validate_offline_database_accepts_box_score_only_players(session: Session) -> None:
+    _insert_clean_dataset(session)
+    _insert_player(session, 2, "smithch07", "Chris Smith")
+    _insert_player(session, 3, "roberro01", "Rodney Rogers")
+    _insert_player_game_line(session, game_id=1, player_id=2)
+    _insert_player_game_line(session, game_id=1, player_id=3)
+    _insert_player_game_line(session, game_id=2, player_id=3)
+
+    report = validate_offline_database(session, _backfill_report(), _expectations())
+
+    assert report.passed is True
+    assert report.table_counts["core.players"] == 1
+    assert report.table_counts["core.players_without_player_seasons"] == 2
+    assert report.table_counts["core.players_total"] == 3
+
+
+@pytest.mark.unit
+def test_validate_offline_database_counts_each_player_with_seasons_once(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text("insert into core.seasons (id, season_year, league, label) "
+             "values (2, 2025, 'NBA', '2025')")
+    )
+    session.execute(
+        text(
+            "insert into core.team_seasons "
+            "(id, team_id, season_id, team_abbreviation) values (2, 1, 2, 'BOS')"
+        )
+    )
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (2, 1, 2)")
+    )
+    session.execute(
+        text(
+            "insert into core.player_team_seasons "
+            "(id, player_season_id, team_season_id) values (2, 2, 2)"
+        )
+    )
+    # The player with seasons also has game lines; that must not count the player twice.
+    _insert_player_game_line(session, game_id=1, player_id=1)
+    _insert_player_game_line(session, game_id=2, player_id=1)
+
+    report = validate_offline_database(
+        session,
+        _backfill_report(),
+        OfflineDatabaseValidationExpectations(
+            table_counts={
+                "core.seasons": 2,
+                "core.teams": 1,
+                "core.team_aliases": 1,
+                "core.team_seasons": 2,
+                "core.players": 1,
+                "core.player_seasons": 2,
+                "core.player_team_seasons": 2,
+            },
+            expected_start_year=2024,
+            expected_end_year=2025,
+            min_team_seasons_per_season=1,
+            min_player_seasons_per_season=1,
+            min_player_team_seasons_per_season=1,
+            expected_backfill_selected_inventory_entries=1,
+            expected_backfill_loaded_entries=1,
+            expected_backfill_loaded_rows=1,
+        ),
+    )
+
+    assert report.passed is True
+    assert report.table_counts["core.players"] == 1
+    assert report.table_counts["core.players_without_player_seasons"] == 0
+    assert report.table_counts["core.players_total"] == 1
+
+
+@pytest.mark.unit
+def test_validate_offline_database_keys_players_on_the_row_not_the_name(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    # smithch05 has a player_season; smithch07 shares the name and has only a
+    # game line; smithch09 shares it too and has neither, so only it fails.
+    _insert_player(session, 2, "smithch05", "Chris Smith")
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (2, 2, 1)")
+    )
+    session.execute(
+        text(
+            "insert into core.player_team_seasons "
+            "(id, player_season_id, team_season_id) values (2, 2, 1)"
+        )
+    )
+    _insert_player(session, 3, "smithch07", "Chris Smith")
+    _insert_player_game_line(session, game_id=1, player_id=3)
+    _insert_player(session, 4, "smithch09", "Chris Smith")
+
+    report = validate_offline_database(
+        session,
+        _backfill_report(),
+        _expectations(
+            table_counts={
+                "core.players": 2,
+                "core.player_seasons": 2,
+                "core.player_team_seasons": 2,
+            }
+        ),
+    )
+
+    assert report.passed is False
+    assert _issue_codes(report) == {"players_without_player_seasons_or_games"}
+    (issue,) = report.issues
+    assert issue.context["examples"] == [
+        {"player_id": 4, "basketball_reference_player_id": "smithch09"}
+    ]
+    assert report.table_counts["core.players"] == 2
+    assert report.table_counts["core.players_without_player_seasons"] == 2
+    assert report.table_counts["core.players_total"] == 4
+
+
+@pytest.mark.unit
+def test_validate_offline_database_fails_player_without_season_or_game(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_player(session, 2, "smithch07", "Chris Smith")
+    _insert_player_game_line(session, game_id=1, player_id=2)
+    _insert_player(session, 3, "ghostpl01", "Ghost Player")
+
+    report = validate_offline_database(session, _backfill_report(), _expectations())
+
+    assert report.passed is False
+    assert _issue_codes(report) == {"players_without_player_seasons_or_games"}
+    (issue,) = report.issues
+    assert "ghostpl01" in issue.message
+    assert "smithch07" not in issue.message
+    assert issue.context == {
+        "count": 1,
+        "examples": [{"player_id": 3, "basketball_reference_player_id": "ghostpl01"}],
+    }
+
+
+@pytest.mark.unit
+def test_validate_offline_database_pins_players_with_a_player_season(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_player(session, 2, "brownja02", "Jaylen Brown")
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (2, 2, 1)")
+    )
+    session.execute(
+        text(
+            "insert into core.player_team_seasons "
+            "(id, player_season_id, team_season_id) values (2, 2, 1)"
+        )
+    )
+
+    report = validate_offline_database(
+        session,
+        _backfill_report(),
+        _expectations(
+            table_counts={"core.player_seasons": 2, "core.player_team_seasons": 2}
+        ),
+    )
+
+    assert report.passed is False
+    assert _issue_codes(report) == {"table_count_mismatch"}
+    (issue,) = report.issues
+    assert issue.message == "core.players has 2 players with a player_season; expected 1."
 
 
 @pytest.mark.unit
@@ -357,6 +533,35 @@ def _create_core_tables(connection: Connection) -> None:
             roster_position varchar(50)
         )
         """
+    )
+
+
+def _create_stats_tables(connection: Connection) -> None:
+    connection.exec_driver_sql(
+        """
+        create table stats.player_game_totals (
+            game_id integer not null,
+            player_id integer not null,
+            primary key (game_id, player_id)
+        )
+        """
+    )
+
+
+def _insert_player(session: Session, player_id: int, bbref_id: str, full_name: str) -> None:
+    session.execute(
+        text(
+            "insert into core.players (id, basketball_reference_player_id, full_name) "
+            "values (:id, :bbref_id, :full_name)"
+        ),
+        {"id": player_id, "bbref_id": bbref_id, "full_name": full_name},
+    )
+
+
+def _insert_player_game_line(session: Session, *, game_id: int, player_id: int) -> None:
+    session.execute(
+        text("insert into stats.player_game_totals (game_id, player_id) values (:game_id, :player_id)"),
+        {"game_id": game_id, "player_id": player_id},
     )
 
 

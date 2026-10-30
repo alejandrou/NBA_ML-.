@@ -4,12 +4,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from nba_data.db.base import Base
 from nba_data.db.models import (
     Player,
+    PlayerGameTotals,
     PlayerSeason,
     PlayerTeamSeason,
     Season,
@@ -19,6 +20,12 @@ from nba_data.db.models import (
 )
 from nba_data.domain.team_codes import is_synthetic_team_code
 
+# `core.players` counts only players with at least one `core.player_season`:
+# the players with a cached player page. `backfill games` also creates players
+# from box-score lines with no player page (F8-005); their number is not pinned,
+# but each must have a `stats.player_game_totals` row (F8-017). The validator
+# therefore needs revision 0009 or later. `core.players_total` is the whole
+# table and is not pinned either.
 DEFAULT_PHASE_4D_TABLE_COUNTS = {
     "core.seasons": 27,
     "core.teams": 37,
@@ -106,6 +113,7 @@ def validate_offline_database(
     issues.extend(_team_season_player_issues(session, resolved_expectations))
     issues.extend(_synthetic_team_code_issues(session))
     issues.extend(_player_identifier_issues(session))
+    issues.extend(_players_without_seasons_or_games_issues(session))
     issues.extend(_backfill_report_issues(backfill_report, backfill_summary, resolved_expectations))
 
     return OfflineDatabaseValidationReport(
@@ -123,10 +131,18 @@ def _load_table_counts(session: Session) -> dict[str, int]:
         "core.teams": _count(session, Team),
         "core.team_aliases": _count(session, TeamAlias),
         "core.team_seasons": _count(session, TeamSeason),
-        "core.players": _count(session, Player),
+        "core.players": _count_players(session, with_player_season=True),
+        "core.players_without_player_seasons": _count_players(session, with_player_season=False),
+        "core.players_total": _count(session, Player),
         "core.player_seasons": _count(session, PlayerSeason),
         "core.player_team_seasons": _count(session, PlayerTeamSeason),
     }
+
+
+def _count_players(session: Session, *, with_player_season: bool) -> int:
+    has_player_season = exists().where(PlayerSeason.player_id == Player.id)
+    condition = has_player_season if with_player_season else ~has_player_season
+    return session.scalar(select(func.count()).select_from(Player).where(condition)) or 0
 
 
 def _load_season_counts(session: Session, league: str) -> tuple[dict[str, int], ...]:
@@ -156,6 +172,11 @@ def _load_season_counts(session: Session, league: str) -> tuple[dict[str, int], 
     )
 
 
+_TABLE_COUNT_LABELS = {
+    "core.players": "core.players has {} players with a player_season",
+}
+
+
 def _table_count_issues(
     table_counts: Mapping[str, int],
     expectations: OfflineDatabaseValidationExpectations,
@@ -164,12 +185,11 @@ def _table_count_issues(
     for table_name, expected_count in expectations.table_counts.items():
         actual_count = table_counts.get(table_name, 0)
         if actual_count != expected_count:
+            label = _TABLE_COUNT_LABELS.get(table_name, f"{table_name} has {{}} rows")
             issues.append(
                 OfflineDatabaseValidationIssue(
                     code="table_count_mismatch",
-                    message=(
-                        f"{table_name} has {actual_count} rows; expected {expected_count}."
-                    ),
+                    message=f"{label.format(actual_count)}; expected {expected_count}.",
                     context={
                         "table": table_name,
                         "actual": actual_count,
@@ -452,6 +472,36 @@ def _player_identifier_issues(session: Session) -> list[OfflineDatabaseValidatio
                 "player_name must not be used as a stable key."
             ),
             context={"count": missing},
+        )
+    ]
+
+
+def _players_without_seasons_or_games_issues(
+    session: Session,
+) -> list[OfflineDatabaseValidationIssue]:
+    """Fail every player with neither a `player_season` nor a box-score line."""
+
+    statement = (
+        select(Player.id, Player.basketball_reference_player_id)
+        .where(~exists().where(PlayerSeason.player_id == Player.id))
+        .where(~exists().where(PlayerGameTotals.player_id == Player.id))
+        .order_by(Player.basketball_reference_player_id, Player.id)
+    )
+    rows = [
+        {"player_id": row.id, "basketball_reference_player_id": row.basketball_reference_player_id}
+        for row in session.execute(statement)
+    ]
+    if not rows:
+        return []
+    examples = ", ".join(str(row["basketball_reference_player_id"]) for row in rows[:10])
+    return [
+        OfflineDatabaseValidationIssue(
+            code="players_without_player_seasons_or_games",
+            message=(
+                f"{len(rows)} players have neither a player_season nor a "
+                f"player_game_totals row: {examples}."
+            ),
+            context={"count": len(rows), "examples": rows[:10]},
         )
     ]
 

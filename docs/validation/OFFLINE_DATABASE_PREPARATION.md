@@ -32,11 +32,15 @@ uv run alembic check
 uv run alembic current
 ```
 
-The expected Phase 4D core database revision is:
+`validate offline-database` reads `stats.player_game_totals` (F8-017), so the
+database must be at least at:
 
 ```text
-0002_core_team_player_season
+0009_games_and_box_scores
 ```
+
+`0002_core_team_player_season` holds the Phase 4D core tables, but on a database
+below `0009` the validator stops with a database error instead of a report.
 
 ## Confirm Cached HTML Coverage
 
@@ -159,6 +163,17 @@ The 2000-2025 baseline before F8-003 was 26 seasons, 775 team-seasons and
 aliases, 2,551 players, 12,676 player-seasons, 14,344 player-team-seasons, and
 129,000 loaded backfill rows. Season 2026 alone adds 30 team-seasons, 582
 player-seasons, and 661 player-team-seasons.
+
+`core.players` counts only the players with at least one `core.player_seasons`
+row — the players with a cached player page. `backfill games` also creates a
+player for every box-score line with no player page (F8-005); those players have
+no `player_season`, so they are reported as `core.players_without_player_seasons`
+(39 after the 2014-15 to 2025-26 games load) and that number is not pinned. The
+unpinned `core.players_total` reports the whole table (2,693 after that load).
+Each of them must have at least one `stats.player_game_totals` row: a player with
+neither a `player_season` nor a box-score line fails the validator as
+`players_without_player_seasons_or_games`, naming its Basketball Reference ID
+(owner's rule, F8-017). Loading another season's games therefore needs no repin.
 
 The validation also checks duplicate logical rows, orphan relationships,
 team-seasons with no players, suspiciously low per-season counts, `TOT` misuse,

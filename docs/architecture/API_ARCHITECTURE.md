@@ -31,6 +31,8 @@ src/nba_data/db/repositories/queries/
 
 API may depend on DB query repositories, but repositories never depend on API or FastAPI. Routers may import services, schemas, and dependencies; services may import repositories and schemas; repositories may import Session and ORM models. Schemas never import Sessions, repositories, or scraping. API code never imports loaders, acquisition code, or scraping.
 
+The API never imports the ML stack either: no module the API or its query repositories can reach, including shared helpers and package initializers, imports `nba_data.ml`, `sklearn`, `numpy`, `scipy`, or `joblib`, even lazily; and starting the app and serving a request loads none of them. Forecasts are computed and stored by the `data` track and served as rows (F8-010), so `scikit-learn` being a runtime dependency of the package does not make it one of the API. `tests/unit/test_ml_dependency_boundary.py` enforces both rules.
+
 ## Health and readiness
 
 `GET /api/v1/health` is liveness only: it confirms the process without checking the database, creating a Session, invoking a repository, or using network services.

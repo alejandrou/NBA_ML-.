@@ -448,8 +448,11 @@ recorded in `tasks/CROSS_TRACK.md`; `F7-005` puts both in the browser.
 - A new runtime dependency (`nba_api`, `pbpstats`, `scikit-learn`) changes
   `pyproject.toml`/`uv.lock` and is therefore a `shared` card, which blocks both
   tracks. `httpx` is already a dependency, so a pilot can fetch without one.
-  `scikit-learn` is that card (`WF-009`); a test then keeps `nba_data.api` free
-  of any ML import.
+  `scikit-learn>=1.5` was added by `WF-009` as a runtime dependency (not an
+  extra) for `nba_data.ml` only; it brings `numpy`, `scipy`, `joblib`,
+  `threadpoolctl`, `narwhals`, and `cloudpickle`, with no pandas, XGBoost,
+  LightGBM, or matplotlib. `tests/unit/test_ml_dependency_boundary.py` keeps
+  `nba_data.api` and the query repositories free of any ML import.
 - The live-scraping approval gate (`--owner-approved`, approved manifests,
   acquisition guards) is a safety interlock. A second provider extends it; it
   never weakens or bypasses it. Every live run needs the owner's direct

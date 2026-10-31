@@ -23,6 +23,7 @@ src/nba_data/
   scraping/
     client.py
     cache.py
+    snapshot_cache.py
     parsers/
     normalizers/
     loaders/
@@ -56,6 +57,17 @@ the repository root.
   `<body>.html.gz.meta.json` provenance sidecar (`fetched_at`, `http_status`,
   `final_url`). The sidecar is written only for pages fetched after F4E-028;
   it is an index, not an invariant, and reading a body never requires it.
+- The cache has two roots (ADR 0022). The **archive cache**
+  (`SCRAPER_CACHE_DIR`, `data/raw/html`, `HtmlCache`) holds one body per URL
+  and never overwrites it. The **snapshot cache** (`SCRAPER_SNAPSHOT_DIR`,
+  `data/raw/snapshots`, `scraping/snapshot_cache.py`) holds pages that still
+  change — the `CURRENT_SEASON_END_YEAR` league schedule pages and team-season
+  pages, declared by `is_mutable_page` — as one timestamped snapshot per fetch,
+  `<host>/<slug>-<sha256[:16]>/<fetched_at UTC>.html.gz` with a required
+  sidecar. Nothing is replaced; readers take the latest snapshot and ignore any
+  archive copy of a mutable page. Settings reject overlapping roots, so the
+  archive inventory and backfills never see a snapshot. Box scores are
+  immutable and stay in the archive cache.
 - Parsers are pure functions from HTML to structured data.
 - Normalizers convert raw parsed rows into canonical shapes.
 - Validators check row counts, keys, ranges, and historical missing metrics.

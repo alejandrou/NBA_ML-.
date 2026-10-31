@@ -127,25 +127,66 @@ the season's games are permanently quarantined as source errors.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- `uv run pytest tests/unit/test_offline_games_backfill.py tests/unit/test_game_loader.py` — 94 passed.
+- `uv run ruff check .` — all checks passed.
+- `uv run mypy src/nba_data` — no issues in 99 source files.
+- `uv run pytest` — 1591 passed, 257 skipped.
+- `uv run python scripts/validate_tasks.py` (and `--all-worktrees`) — passed.
+- Mutation check: with `unloaded_game_ids` removed from the backfill call, the
+  missing-box-score and failed-load rerun tests fail (2 failed); restored.
+- Disposable rerun on `nba_f8006_tmp` (`select current_database()` checked first,
+  returned `nba_f8006_tmp`). Before: 4,914 NULL `neutral_site`, all in 2017, 2018,
+  2023, 2024.
+  - Run A (`reports/f8-016/disposable`), exit 1: 14,435 unchanged, 7 quarantined,
+    0 missing, 0 failed. `neutral_site_updates` 1,229 / 1,227 / 1,228 / 1,230 in
+    2016-17 / 2017-18 / 2022-23 / 2023-24, 0 in the other eight; no
+    `neutral_site_deferred`. Flagged exactly the 17 listed games. Afterwards
+    `select count(*) from core.games where neutral_site is null` = 0; 131 neutral
+    games across the twelve seasons. Only failure cause: the 7 quarantines.
+  - Run B (`reports/f8-016/disposable-rerun`), on the final code after the review
+    fix, exit 1: same counts, `neutral_site_updates` 0 in every season, same
+    neutral lists, 0 NULL.
+  - Run A ran before the review fix (unloaded games defer). That fix only
+    matters when a run has missing or failed games, and Run A had none; Run B
+    confirms the final code changes nothing.
+- Independent review (2026-10-31): repeated the 94 focused tests, full suite
+  (1,591 passed, 257 skipped), Ruff, mypy, and both task validators; all passed.
+  Followed the manual sad path: 4 passed, 20 deselected.
+- Independent manual happy path (`reports/f8-016/manual-review-20261031`):
+  checked `current_database()` through the configured connection before the
+  twelve-season cache-only backfill; returned `nba_f8006_tmp`. Exit 1, solely
+  the exact 7 documented quarantines; 14,435 unchanged, 0 loaded, 0 missing,
+  0 failed, 0 neutral-site updates in every season, no deferral warning.
+  Asserted the exact 17 neutral game IDs in the four quarantine seasons and
+  compared every game's flag against a pre-run snapshot: all 14,435 unchanged.
+  Final SQL NULL count was 0; the database still held 131 neutral games.
 
 ## Manual happy path
 
-1.
+1. Point `DATABASE_URL` at `nba_f8006_tmp` (after the `current_database()` check in
+   `GAME_DATASET_ACQUISITION.md`, "Rerunning it from the cache") and rerun the
+   card's `backfill games` command to a new `--output` directory.
+2. Run `select count(*) from core.games where neutral_site is null`.
 
-Expected result:
+Expected result: exit 1, caused only by the 7 quarantines; `neutral_site_updates` 0
+in every season (already set); the four quarantine seasons list the 17 games in
+`neutral_games`; the query returns 0.
 
 ## Manual sad path
 
-1.
+1. `uv run pytest tests/unit/test_offline_games_backfill.py -k "defers or earlier_runs"`.
 
-Expected result:
+Expected result: 4 passed (including the partial-season test). A rerun with a
+missing box score, a failed load, or an earlier run's quarantine that is now a
+missing box score reports
+`neutral_site_deferred` and leaves every existing True/False flag unchanged, even
+when an earlier run stored the affected game; a previous quarantine does not
+excuse a box score missing in the current run.
 
 ## Known limitations
 
-- None.
+- `nba` is unchanged; its games and flags are loaded by F8-018.
+- Called directly without `expected_game_ids`, `derive_neutral_sites` still infers
+  over whatever rows exist. Only the backfill passes the run's outcome.

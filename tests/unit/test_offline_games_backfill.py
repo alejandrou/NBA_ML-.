@@ -522,3 +522,108 @@ def test_partial_season_defers_neutral_inference(session: Session, cache: HtmlCa
     assert report.neutral_site_updates == 0
     assert report.warnings["neutral_site"][0]["code"] == "neutral_site_deferred"
     assert session.scalar(select(Game)).neutral_site is None
+
+
+@pytest.mark.unit
+def test_a_season_whose_only_gap_is_a_quarantine_still_infers_neutral_sites(
+    session: Session, cache: HtmlCache
+) -> None:
+    _cache_season(cache, box_scores=SELECTED)
+    BOX_OVERRIDES["202310250NYK"] = {"game_type": GAME_TYPE_UNKNOWN}
+    BOX_OVERRIDES["202404140DEN"] = {"venue": "Accor Arena, Paris, France"}
+
+    first = _run(session, cache).seasons[0]
+    rerun = _run(session, cache).seasons[0]
+
+    assert first.quarantined == {"unknown_game_type": ["202310250NYK"]}
+    assert "neutral_site" not in first.warnings
+    assert first.neutral_site_updates == 4
+    assert first.neutral_games == [
+        {"game_id": "202404140DEN", "venue": "Accor Arena, Paris, France"}
+    ]
+    assert rerun.neutral_site_updates == 0
+    assert rerun.neutral_games == first.neutral_games
+    stored = dict(
+        session.execute(select(Game.basketball_reference_game_id, Game.neutral_site)).all()
+    )
+    assert stored == {
+        "202310240DEN": False,
+        "202310260PHI": False,
+        "202310270DEN": False,
+        "202404140DEN": True,
+    }
+
+
+def _flags(session: Session) -> dict[str, bool | None]:
+    return dict(
+        session.execute(select(Game.basketball_reference_game_id, Game.neutral_site)).all()
+    )
+
+
+def _infer_with_a_quarantine(session: Session, cache: HtmlCache) -> dict[str, bool | None]:
+    """A first run that quarantines one game and infers; the flags it leaves."""
+
+    _cache_season(cache, box_scores=SELECTED)
+    BOX_OVERRIDES["202310250NYK"] = {"game_type": GAME_TYPE_UNKNOWN}
+    BOX_OVERRIDES["202404140DEN"] = {"venue": "Accor Arena, Paris, France"}
+    first = _run(session, cache).seasons[0]
+    assert "neutral_site" not in first.warnings
+    flags = _flags(session)
+    assert flags["202404140DEN"] is True
+    # On the next run the Paris game's venue reads as home: an inference would flip it.
+    BOX_OVERRIDES["202404140DEN"] = {}
+    return flags
+
+
+def _assert_deferred(report, session: Session, flags: dict[str, bool | None]) -> None:  # type: ignore[no-untyped-def]
+    assert report.neutral_site_updates == 0
+    assert report.neutral_games == []
+    assert report.warnings["neutral_site"][0]["code"] == "neutral_site_deferred"
+    assert _flags(session) == flags
+
+
+@pytest.mark.unit
+def test_a_missing_box_score_defers_even_when_an_earlier_run_stored_the_game(
+    session: Session, cache: HtmlCache
+) -> None:
+    flags = _infer_with_a_quarantine(session, cache)
+    cache.path_for_url(box_score_url("202310260PHI")).unlink()
+
+    report = _run(session, cache).seasons[0]
+
+    assert report.missing_box_score == ["202310260PHI"]
+    _assert_deferred(report, session, flags)
+
+
+@pytest.mark.unit
+def test_a_failed_load_defers_even_when_an_earlier_run_stored_the_game(
+    session: Session, cache: HtmlCache, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    flags = _infer_with_a_quarantine(session, cache)
+    real_load = backfill_module.load_game
+
+    def flaky_load(session: Session, schedule, box, lineage, *, season_end_year):  # type: ignore[no-untyped-def]
+        if schedule.game_id == "202310260PHI":
+            raise RuntimeError("disk full")
+        return real_load(session, schedule, box, lineage, season_end_year=season_end_year)
+
+    monkeypatch.setattr(backfill_module, "load_game", flaky_load)
+
+    report = _run(session, cache).seasons[0]
+
+    assert report.failed == {"202310260PHI": "RuntimeError: disk full"}
+    _assert_deferred(report, session, flags)
+
+
+@pytest.mark.unit
+def test_an_earlier_runs_quarantine_does_not_excuse_a_later_missing_box_score(
+    session: Session, cache: HtmlCache
+) -> None:
+    flags = _infer_with_a_quarantine(session, cache)
+    cache.path_for_url(box_score_url("202310250NYK")).unlink()
+
+    report = _run(session, cache).seasons[0]
+
+    assert report.quarantined == {}
+    assert report.missing_box_score == ["202310250NYK"]
+    _assert_deferred(report, session, flags)

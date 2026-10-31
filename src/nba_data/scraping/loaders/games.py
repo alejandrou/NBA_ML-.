@@ -14,7 +14,8 @@ player line carries, and nothing read from a blank cell.
 
 `derive_neutral_sites` is the second pass: once a season is loaded, a game is
 neutral when its venue city differs from the city of most of its home team's
-home games that season.
+home games that season. A game quarantined in the same run does not hold the
+season back; a missing box score or a failed load does.
 
 The caller owns the transaction; nothing here commits.
 """
@@ -488,22 +489,32 @@ def derive_neutral_sites(
     season_end_year: int,
     *,
     expected_game_ids: frozenset[str] | None = None,
+    quarantined_game_ids: frozenset[str] = frozenset(),
+    unloaded_game_ids: frozenset[str] = frozenset(),
 ) -> NeutralSiteResult:
-    """Second pass over a loaded season: update `neutral_site` only, where it changed."""
+    """Second pass over a loaded season: update `neutral_site` only, where it changed.
+
+    With `expected_game_ids`, every expected game must be loaded except those in
+    `quarantined_game_ids` — the games the same run quarantined as source errors.
+    `unloaded_game_ids` are the games the same run could not load (no box score,
+    or a failed load); any of them defers even when an earlier run stored the
+    row. Deferring changes no flag and reports `neutral_site_deferred`.
+    """
 
     repository = GameRepository(session)
     season_id = repository.season_id(season_end_year)
     if season_id is None:
         return NeutralSiteResult(neutral_games=(), updated=0, warnings=())
     games = repository.final_game_venues(season_id)
-    if expected_game_ids is not None and not expected_game_ids.issubset(
-        game.basketball_reference_game_id for game in games
-    ):
+    if unloaded_game_ids or (expected_game_ids is not None and not (
+        expected_game_ids - quarantined_game_ids
+    ).issubset(game.basketball_reference_game_id for game in games)):
         return NeutralSiteResult(
             neutral_games=(), updated=0,
             warnings=(GameIssue(
                 WARNING_NEUTRAL_SITE_DEFERRED,
-                "neutral-site inference needs every selected game loaded; no flags changed",
+                "neutral-site inference needs every selected game loaded or quarantined;"
+                " no flags changed",
             ),),
         )
     decided, warnings = neutral_sites(games)

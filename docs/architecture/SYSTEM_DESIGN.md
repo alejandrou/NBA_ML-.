@@ -156,8 +156,10 @@ same cache reports every game `unchanged` and writes nothing.
 The approval flag is required before an engine is constructed. `--output`
 names a directory, including for a single season. Corrupt schedule caches fail
 selection; corrupt box-score caches fail that game and let the others load.
-Neutral-site inference waits until every selected game exists in the database;
-partial loads report `neutral_site_deferred` and leave the flags unchanged.
+Neutral-site inference waits until every selected game exists in the database,
+except games quarantined in the same run. A missing box score or a failed load in
+the run reports `neutral_site_deferred` and leaves the flags unchanged, even when
+an earlier run stored that game.
 
 Like every write path, it writes to the database `DATABASE_URL` names. Loading
 the persistent `nba` database is an owner-approved step (F8-018), run from

@@ -118,25 +118,79 @@ found here stops the card and goes to a new one.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+Owner instruction, 2026-10-31: *"then start this one and do it now"*. Branch
+cut at merged `origin/main` `139ccff` (F8-016 #67, F8-017 #63); no product code
+changed. Times UTC; reports under `reports/f8-018/`.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: preflight `select current_database()` plus table counts (read-only).
+- Result: `nba`, `0009_games_and_box_scores`; game tables 0 / 0 / 0;
+  `core.players` 2,654.
+- Command: `backfill games` 2015–2026 `--require-complete --output reports/f8-018/nba-load`
+- Result: exit 1, 18:21–18:59 (38 min). expected 14,442, loaded 14,435,
+  quarantined 7 (`201703250LAC`, `201711110UTA`, `201712040NOP`,
+  `201711240DEN`, `202212250DEN`, `202303020GSW`, `202311210PHI` — the
+  documented ones), `missing_box_score` 0 and `failed` 0 in every season, 39
+  players created, 14,435 neutral-site updates, 131 neutral games.
+- Command: the same with `--output reports/f8-018/nba-rerun`
+- Result: exit 1, 18:59–20:03 (63 min). 14,435 `unchanged`, loaded 0, the same 7
+  quarantined, 0 players created, 0 neutral-site updates.
+- Command: read-only counts on `nba` after the load.
+- Result: 14,435 games, 28,870 team rows, 474,309 player rows, 2,693 players; 0
+  games with NULL `neutral_site`, 131 neutral.
+- Command: `uv run nba-data validate offline-database --backfill-report reports/f8-003/nba-load/offline-backfill.json`
+- Result: exit 0, `passed: true`, `issues: []`; `core.players` 2,654,
+  `core.players_without_player_seasons` 39, `core.players_total` 2,693.
+- Command: `uv run pytest -m "not integration and not live"`
+- Result: 1590 passed, 258 deselected.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
 
 ## Manual happy path
 
-1.
+1. Against `nba`, run `select count(*) from core.games`,
+   `stats.team_game_totals`, `stats.player_game_totals`, and
+   `select count(*) from core.games where neutral_site is null`.
 
-Expected result:
+Expected result: 14,435, 28,870, 474,309, and 0.
+
+2. `uv run nba-data validate offline-database --backfill-report reports/f8-003/nba-load/offline-backfill.json`
+
+Expected result: exit 0, `passed: true`, no issues.
 
 ## Manual sad path
 
-1.
+1. Rerun `backfill games` for one season, e.g. `--season 2018`, against `nba`
+   with `--execute-approved-games-backfill --require-complete --output <tmp>`.
 
-Expected result:
+Expected result: exit 1 only for its 3 quarantines; 1,227 `unchanged`, 0
+loaded, 0 players created, 0 neutral-site updates — nothing written.
 
 ## Known limitations
 
-- None.
+- The 7 quarantined games stay out of `nba` until the source pages change.
+- The 22 `line_score_disagrees` quarter-score mismatches are stored as loaded.
+- `validate offline-database` checks the archive baseline, not completeness of
+  the game dataset; the separate game-table counts and report reconciliation
+  above establish the load result.
+
+## Closing review — 2026-10-31
+
+Owner explicitly requested review and, if no blocking issue remained, moving
+the card to done, committing, and pushing.
+
+- Repeated the read-only checks against confirmed `nba`: 14,435 games, 28,870
+  team rows, 474,309 player rows, 0 NULL neutral-site flags, 131 neutral games.
+- Repeated the declared `validate offline-database` command: exit 0,
+  `passed: true`, `issues: []`.
+- Reconciled all 12 load and rerun reports: 14,442 expected, exactly the 7
+  documented quarantines, no missing box scores or failures; the load created
+  39 players, and the rerun loaded 0 games, left 14,435 unchanged, created 0
+  players, and updated 0 neutral-site flags. The existing 2018 rerun reports
+  1,227 unchanged and 3 quarantines; the optional new reload was not repeated.
+- Checked all 12 seasons' database game and neutral counts against the load
+  reports. Every game has both matching home/away team totals; every team
+  total has player lines; none of the quarantined game IDs is loaded.
+- No blocking findings or product-code changes. Existing source limitations
+  remain documented above. No new live acquisition or database write.

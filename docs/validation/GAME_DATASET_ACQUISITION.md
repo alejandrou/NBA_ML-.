@@ -300,15 +300,35 @@ now validate `nba` after the games load.
 
 ### Persistent database
 
-F8-006 ends at the disposable load (owner, 2026-10-29). Loading `nba` is
-F8-018, after F8-016 and F8-017 are merged, each step from merged `origin/main`
-on a new explicit owner instruction, recorded here in the order they run:
+F8-006 ends at the disposable load (owner, 2026-10-29). F8-018 loaded `nba` on
+2026-10-31, after F8-016 (#67) and F8-017 (#63) were merged, from a branch cut
+at merged `origin/main` (`139ccff`) with no product change. Owner instruction,
+2026-10-31: *"then start this one and do it now"*, given for the steps below.
+Times are UTC; reports are under `reports/f8-018/` (not committed).
 
 1. Revision `0009` applied to `nba` — done on 2026-10-24
    (`MIGRATION_HEAD_HANDOVER.md`), before F8-006. F8-018 applies no migration.
-2. `backfill games` for 2015–2026 against `nba`, with `--require-complete
-   --output reports/f8-018/nba-load`, and a rerun — pending (F8-018).
-3. `validate offline-database` passing on `nba` afterwards — pending (F8-018).
+2. Preflight, read-only, in the same shell as the runs: `select
+   current_database()` returned `nba`, `alembic_version` was
+   `0009_games_and_box_scores`, `core.games`, `stats.team_game_totals` and
+   `stats.player_game_totals` held 0 rows, and `core.players` 2,654.
+3. `backfill games` for 2015–2026 with `--require-complete --output
+   reports/f8-018/nba-load`, 18:21–18:59 (38 min), exit 1:
+
+   | Run | Wall | Result |
+   |---|---:|---|
+   | load | 38 min | 14,435 loaded, the same 7 quarantined (table above), `missing_box_score` 0 and `failed` 0 in every season, 39 players created, 14,435 neutral-site updates |
+   | rerun (`nba-rerun`, 18:59–20:03) | 63 min | 14,435 `unchanged`, the same 7 quarantined, 0 players created, 0 neutral-site updates |
+
+   Both exit 1 only because of the quarantines. `nba` then holds 14,435 games,
+   28,870 team rows, 474,309 player rows, and 2,693 players (2,654 + 39); no
+   game has `neutral_site` NULL, and 131 are neutral (2, 2, 3, 3, 3, 91, 0, 0,
+   4, 7, 8, 8 from 2014-15 to 2025-26). The warnings and `game_types` match the
+   disposable runs.
+4. `validate offline-database --backfill-report
+   reports/f8-003/nba-load/offline-backfill.json` on `nba`: exit 0, `passed:
+   true`, no issue; `core.players` 2,654,
+   `core.players_without_player_seasons` 39, `core.players_total` 2,693.
 
 ## Rerunning it from the cache
 

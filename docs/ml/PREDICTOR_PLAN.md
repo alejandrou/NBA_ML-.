@@ -344,9 +344,12 @@ lead time. Horizons are never mixed when reporting.
 2025–26 are cached: 14,422 fetched in 25.2 h with no 429. On a disposable copy of
 `nba`, 14,435 load (28,870 team rows, 474,309 player rows, 39 players created)
 and a rerun is fully unchanged. Seven games stay quarantined: their pages' player
-minutes or turnovers do not sum to the team totals. In the four seasons with a
-quarantine, `neutral_site` is still `NULL`; F8-016 flags their 17 neutral games.
-The load into `nba` is pending (F8-018).
+minutes or turnovers do not sum to the team totals. F8-016 decides
+`neutral_site` in the four seasons with a quarantine (17 neutral games).
+**Loaded into `nba` (F8-018, 2026-10-31):** the same 14,435 games, 28,870 team
+rows, 474,309 player rows, and 39 players created; 131 neutral games and no NULL
+`neutral_site`; a rerun is fully unchanged and `validate offline-database`
+passes.
 Record: `docs/validation/GAME_DATASET_ACQUISITION.md`.
 
 ### Stage 3 — temporal evaluation and selection (`WF-009`, `F8-007`)

@@ -426,7 +426,10 @@ original = snapshot_cache._publish
 def publish_then_die(temp_path, final_path, what):
     if what == "snapshot file":
         os._exit(17)
-    original(temp_path, final_path, what)
+    if sys.argv[4] == "hard-link":
+        os.link(temp_path, final_path)
+    else:
+        original(temp_path, final_path, what)
 
 
 snapshot_cache._publish = publish_then_die
@@ -438,11 +441,22 @@ snapshot_cache.SnapshotCache(sys.argv[1]).write(
 
 
 @pytest.mark.unit
-def test_a_killed_writer_leaves_an_incomplete_write_that_recovery_clears(tmp_path) -> None:
+@pytest.mark.parametrize("publication", ["native", "hard-link"])
+def test_a_killed_writer_leaves_an_incomplete_write_that_recovery_clears(
+    tmp_path, publication: str
+) -> None:
     cache = SnapshotCache(tmp_path)
 
     completed = subprocess.run(
-        [sys.executable, "-c", _KILLED_WRITER, str(tmp_path), OCTOBER_URL, FIRST_FETCH.isoformat()],
+        [
+            sys.executable,
+            "-c",
+            _KILLED_WRITER,
+            str(tmp_path),
+            OCTOBER_URL,
+            FIRST_FETCH.isoformat(),
+            publication,
+        ],
         check=False,
         capture_output=True,
         text=True,
@@ -452,9 +466,22 @@ def test_a_killed_writer_leaves_an_incomplete_write_that_recovery_clears(tmp_pat
     assert completed.returncode == 17, completed.stderr
     leftovers = cache.incomplete_writes(OCTOBER_URL)
     assert list(leftovers) == _files(tmp_path)
-    assert len(leftovers) == 2
-    assert any(path.name.endswith("Z.html.gz.meta.json") for path in leftovers)
-    assert any(path.name.endswith(".tmp") for path in leftovers)
+    # POSIX publication retains the metadata's temp name as a hard link;
+    # Windows native publication renames it. Exercise both on Windows too.
+    uses_hard_link = publication == "hard-link" or os.name != "nt"
+    assert len(leftovers) == (3 if uses_hard_link else 2)
+    sidecars = [path for path in leftovers if path.name.endswith("Z.html.gz.meta.json")]
+    body_temps = [
+        path
+        for path in leftovers
+        if ".html.gz." in path.name and ".meta.json." not in path.name and path.suffix == ".tmp"
+    ]
+    metadata_temps = [path for path in leftovers if ".meta.json." in path.name]
+    assert len(sidecars) == 1
+    assert len(body_temps) == 1
+    assert len(metadata_temps) == int(uses_hard_link)
+    if uses_hard_link:
+        assert metadata_temps[0].samefile(sidecars[0])
     # Not a snapshot: readers see nothing.
     assert cache.latest(OCTOBER_URL) is None
     # The orphan sidecar refuses only its own timestamp.

@@ -56,7 +56,8 @@ and the archive cache keeps its never-overwrite contract unchanged.
   its cause. The archive copy of a mutable page is ignored by snapshot readers.
 - **A killed writer leaves an incomplete write, recovered by hand.** A process
   killed between the two publishes leaves a sidecar without a body and a temp
-  body. Neither is a snapshot and readers ignore them; the orphan sidecar only
+  body. On POSIX, the sidecar's temporary hard-link name also remains.
+  These files are not snapshots and readers ignore them; the orphan sidecar only
   refuses a rewrite with its exact timestamp, and a real refetch has a new one.
   `SnapshotCache.incomplete_writes(url)` lists these files without touching
   them. Recovery: with no writer running for that page, delete the listed files.

@@ -162,23 +162,23 @@ Requests are live requests for that season's box scores; 2025-26 includes the
 one failed request. Bytes are uncompressed / cached (`.html.gz`) MiB. Wall is the
 time spent fetching, excluding the stops. *Line-score warnings* are
 `line_score_disagrees`. *Neutral* is the number of games flagged `neutral_site`
-(see "Neutral sites" for the four seasons marked *deferred*).
+after the F8-016 rerun (see "Neutral sites").
 
 | Season | Schedule requests | Box-score requests | MiB | Wall | Expected | Loaded | Quarantined | Line-score warnings | Players created | Neutral | Player lines |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 2014-15 | 8 | 1,227 | 556 / 69.3 | 2.13 h | 1,230 | 1,230 | 0 | 1 | 2 | 2 | 36,306 |
 | 2015-16 | 10 | 1,230 | 558 / 69.5 | 2.15 h | 1,230 | 1,230 | 0 | 0 | 0 | 2 | 36,550 |
-| 2016-17 | 10 | 1,230 | 558 / 69.5 | 2.15 h | 1,230 | 1,229 | 1 | 1 | 0 | deferred | 36,657 |
-| 2017-18 | 10 | 1,230 | 557 / 69.5 | 2.15 h | 1,230 | 1,227 | 3 | 5 | 6 | deferred | 40,579 |
+| 2016-17 | 10 | 1,230 | 558 / 69.5 | 2.15 h | 1,230 | 1,229 | 1 | 1 | 0 | 3 | 36,657 |
+| 2017-18 | 10 | 1,230 | 557 / 69.5 | 2.15 h | 1,230 | 1,227 | 3 | 5 | 6 | 3 | 40,579 |
 | 2018-19 | 10 | 1,230 | 558 / 69.6 | 2.15 h | 1,230 | 1,230 | 0 | 0 | 5 | 3 | 40,396 |
 | 2019-20 | 7 | 1,056 | 479 / 59.8 | 1.85 h | 1,059 | 1,059 | 0 | 0 | 3 | 91 | 35,219 |
 | 2020-21 | 7 | 1,078 | 492 / 61.0 | 1.88 h | 1,080 | 1,080 | 0 | 3 | 0 | 0 | 35,671 |
 | 2021-22 | 10 | 1,230 | 557 / 69.6 | 2.15 h | 1,230 | 1,230 | 0 | 3 | 6 | 0 | 41,950 |
-| 2022-23 | 10 | 1,230 | 558 / 69.6 | 2.15 h | 1,230 | 1,228 | 2 | 1 | 1 | deferred | 40,856 |
-| 2023-24 | 6 | 1,226 | 558 / 69.5 | 2.14 h | 1,231 | 1,230 | 1 | 4 | 3 | deferred | 43,398 |
+| 2022-23 | 10 | 1,230 | 558 / 69.6 | 2.15 h | 1,230 | 1,228 | 2 | 1 | 1 | 4 | 40,856 |
+| 2023-24 | 6 | 1,226 | 558 / 69.5 | 2.14 h | 1,231 | 1,230 | 1 | 4 | 3 | 7 | 43,398 |
 | 2024-25 | 6 | 1,228 | 559 / 69.7 | 2.15 h | 1,231 | 1,231 | 0 | 1 | 5 | 8 | 43,421 |
 | 2025-26 | 7 | 1,228 | 561 / 69.7 | 2.15 h | 1,231 | 1,231 | 0 | 3 | 8 | 8 | 43,306 |
-| **Total** | **101** | **14,423** | **6,552 / 816** | **25.2 h** | **14,442** | **14,435** | **7** | **22** | **39** | | **474,309** |
+| **Total** | **101** | **14,423** | **6,552 / 816** | **25.2 h** | **14,442** | **14,435** | **7** | **22** | **39** | **131** | **474,309** |
 
 Twenty box scores were already cached (archive and the F8-001 pilot), so 14,422
 pages were fetched. The schedule pages add 35 MB uncompressed, 5.6 MB cached,
@@ -196,8 +196,9 @@ reports/f8-006/disposable/run1` (and `run2`).
 |---|---:|---:|---|
 | 1 | 1 | 31 min | 14,435 loaded, 7 quarantined, `missing_box_score` 0 in every season, 39 players created |
 | 2 (rerun) | 1 | 29 min | 14,435 `unchanged`, the same 7 quarantined, 0 players created, 0 neutral-site updates |
+| 3 (F8-016, 2026-10-31) | 1 | ~30 min | 14,435 `unchanged`, the same 7 quarantined; neutral sites inferred in the four quarantine seasons (below) |
 
-Both runs exit 1 only because of the quarantines. The database then holds 14,435
+All three runs exit 1 only because of the quarantines. The database then holds 14,435
 games, 28,870 team rows, 474,309 player rows (32.9 a game), and 2,693 players
 (2,654 + 39). `game_types` shows `regular_season` and exactly three `cup_final`
 (2023-24 to 2025-26); there is no other heading.
@@ -226,7 +227,8 @@ stay quarantined.
   The games are listed in the per-season reports.
 - `cup_final_plus_minus_zeros`, `202312090LAL` (the 2023-24 Cup final): every
   plus-minus is 0 on the page; stored as NULL.
-- `neutral_site_deferred` in 2016-17, 2017-18, 2022-23, and 2023-24 (below).
+- `neutral_site_deferred` in 2016-17, 2017-18, 2022-23, and 2023-24 in runs 1
+  and 2; none after F8-016 (below).
 
 ### Neutral sites
 
@@ -236,11 +238,12 @@ Mexico City, and 1 in Paris; none in 2020-21 and 2021-22; Mexico City, Paris,
 Berlin, London, the Cup semifinals and final in Las Vegas, and the Spurs'
 Austin games (2024-25, 2025-26).
 
-The loader infers neutral sites only when every selected game of the season is
-loaded. A quarantined game is never loaded, so the four seasons with
-quarantines keep `neutral_site = NULL` for all their 4,914 games. Running the
-same city rule read-only over those seasons (owner, 2026-10-29) decides every
-game, with no undetermined game and no warning, and flags 17:
+Runs 1 and 2 inferred neutral sites only when every selected game of the
+season was loaded. A quarantined game is never loaded, so the four seasons with
+quarantines kept `neutral_site = NULL` for all their 4,914 games. Since F8-016,
+a game quarantined in the same run does not hold the season back; run 3 decided
+every game of those seasons, with no undetermined game and no warning, and
+flagged these 17 (the same 17 a read-only check found on 2026-10-29):
 
 | Season | Games | Venue |
 |---|---|---|
@@ -256,9 +259,11 @@ game, with no undetermined game and no warning, and flags 17:
 | 2023-24 | `202401110CLE` | Paris |
 | 2023-24 | `202403150SAS`, `202403170SAS` | Austin |
 
-F8-016 makes the loader infer them: a season whose only unloaded games were
-quarantined in the same run is inferred; a missing box score still defers.
-With it, the twelve seasons hold 131 neutral games.
+Run 3 updated every game of the four seasons (1,229, 1,227, 1,228, and 1,230
+`neutral_site_updates`) and none in the other eight. Afterwards no game of the
+twelve seasons has `neutral_site` NULL, and they hold 131 neutral games. A
+missing box score or a failed load in a run still defers the season, even when
+an earlier run stored the game.
 
 **Austin** (owner, 2026-10-29): the city rule stays unchanged, so the Spurs'
 Austin games are neutral — 8 games from 2022-23 to 2025-26. No venue is

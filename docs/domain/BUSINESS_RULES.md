@@ -263,8 +263,11 @@ No venue, or no single most common home city, leaves `neutral_site` NULL
 (undetermined). It is a rule over the published venues, not a curated list:
 each season's neutral games are listed in the report for review.
 The backfill defers this pass until all selected games are present in the
-database. An incomplete season reports `neutral_site_deferred` and changes no
-flags, so an isolated cached game abroad cannot establish a team's home city.
+database, except games quarantined as source errors in the same run. A run
+with a missing box score or a failed load in the season reports
+`neutral_site_deferred` and changes no flags — even when an earlier run stored
+that game — so an isolated cached game abroad cannot establish a team's home
+city.
 
 **Created players.** A player with a box score line or inactive entry who is
 missing from `core.players` is created with the id and link text of the box

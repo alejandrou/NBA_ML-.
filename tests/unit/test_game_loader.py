@@ -48,6 +48,7 @@ from nba_data.scraping.loaders.games import (
     WARNING_HOME_CITY_TIED,
     WARNING_LINE_SCORE_DISAGREES,
     WARNING_LINE_SCORE_UNREADABLE,
+    WARNING_NEUTRAL_SITE_DEFERRED,
     GameLineage,
     derive_neutral_sites,
     load_game,
@@ -859,6 +860,59 @@ def test_the_neutral_pass_updates_only_neutral_site_and_reruns_as_a_no_op(
         session.execute(select(Game.basketball_reference_game_id, Game.neutral_site)).all()
     )
     assert stored == {"202401100DEN": False, "202401110DEN": False, "202401120DEN": True}
+
+
+@pytest.mark.unit
+def test_the_neutral_pass_excuses_only_quarantines_and_defers_on_unloaded_games(
+    session: Session,
+) -> None:
+    venues = (
+        (10, "Ball Arena, Denver, Colorado"),
+        (11, "Ball Arena, Denver, Colorado"),
+        (12, "Accor Arena, Paris, France"),
+    )
+    for day, venue in venues:
+        game_id = f"202401{day}0DEN"
+        _load(
+            session,
+            schedule=_schedule(game_id=game_id, game_date=date(2024, 1, day)),
+            box=_box(venue=venue),
+        )
+    session.commit()
+    loaded = frozenset(f"202401{day}0DEN" for day, _ in venues)
+    expected = loaded | {"202401130DEN", "202401140DEN"}
+
+    def flags() -> dict[str, bool | None]:
+        return dict(
+            session.execute(select(Game.basketball_reference_game_id, Game.neutral_site)).all()
+        )
+
+    deferred = derive_neutral_sites(
+        session, SEASON, expected_game_ids=expected,
+        quarantined_game_ids=frozenset({"202401130DEN"}),
+    )
+
+    assert deferred.updated == 0
+    assert [warning.code for warning in deferred.warnings] == [WARNING_NEUTRAL_SITE_DEFERRED]
+    assert set(flags().values()) == {None}
+
+    decided = derive_neutral_sites(
+        session, SEASON, expected_game_ids=expected,
+        quarantined_game_ids=frozenset({"202401130DEN", "202401140DEN"}),
+    )
+    session.commit()
+    unloaded = derive_neutral_sites(
+        session, SEASON, expected_game_ids=expected,
+        quarantined_game_ids=frozenset({"202401130DEN", "202401140DEN"}),
+        unloaded_game_ids=frozenset({"202401100DEN"}),
+    )
+
+    assert decided.updated == 3
+    assert [warning.code for warning in unloaded.warnings] == [WARNING_NEUTRAL_SITE_DEFERRED]
+    assert unloaded.updated == 0
+    assert flags() == {"202401100DEN": False, "202401110DEN": False, "202401120DEN": True}
+    assert decided.neutral_games == (("202401120DEN", "Accor Arena, Paris, France"),)
+    assert decided.warnings == ()
 
 
 @pytest.mark.unit

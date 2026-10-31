@@ -5,8 +5,10 @@ pages (`select_season_games`): the regular season plus the NBA Cup final. Each
 selected game whose box score is cached is gated and loaded by `load_game` in
 its own transaction, committed before the next; a quarantined or failed game
 writes nothing and the others still load. A game whose box score is not cached
-is coverage (`missing_box_score`), not a row. When the season's games are in,
-a second pass derives `neutral_site` from the venues of the whole season.
+is coverage (`missing_box_score`), not a row. When this run loaded every
+selected game, or quarantined it, a second pass derives `neutral_site` from the
+venues of the whole season; a missing box score or a failed load defers it, even
+when an earlier run stored that game.
 
 Only the cache is read. No HTTP client is constructed here and nothing is
 fetched; a page that is not cached stays missing.
@@ -236,6 +238,8 @@ def _backfill_season(
             expected_game_ids=frozenset(
                 game.game_id for game in selection.games if game.game_id is not None
             ),
+            quarantined_game_ids=frozenset(report.quarantine_details),
+            unloaded_game_ids=frozenset(report.missing_box_score) | frozenset(report.failed),
         )
         session.commit()
     except Exception as exc:

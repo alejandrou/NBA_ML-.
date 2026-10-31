@@ -1,7 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _VALID_LOG_LEVELS = frozenset({"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"})
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     scraper_timeout_seconds: float = Field(default=30.0, gt=0)
     scraper_cache_dir: Path = Path("data/raw/html")
     scraper_force_refresh: bool = False
+    scraper_snapshot_dir: Path = Path("data/raw/snapshots")
 
     @field_validator("scraper_user_agent")
     @classmethod
@@ -64,6 +66,25 @@ class Settings(BaseSettings):
             )
             raise ValueError(msg)
         return normalized
+
+    @model_validator(mode="after")
+    def snapshot_dir_must_be_outside_the_cache(self) -> Self:
+        # The archive inventory and backfills walk every file under the cache
+        # root; a snapshot inside it would be read as an archived page.
+        cache_dir = self.scraper_cache_dir.resolve(strict=False)
+        snapshot_dir = self.scraper_snapshot_dir.resolve(strict=False)
+        if (
+            snapshot_dir == cache_dir
+            or cache_dir in snapshot_dir.parents
+            or snapshot_dir in cache_dir.parents
+        ):
+            msg = (
+                f"SCRAPER_SNAPSHOT_DIR={str(self.scraper_snapshot_dir)!r} overlaps "
+                f"SCRAPER_CACHE_DIR={str(self.scraper_cache_dir)!r}; the two roots "
+                "must be separate"
+            )
+            raise ValueError(msg)
+        return self
 
 
 @lru_cache

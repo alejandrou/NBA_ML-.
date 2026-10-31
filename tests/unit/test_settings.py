@@ -17,12 +17,14 @@ def test_settings_defaults() -> None:
     assert settings.scraper_min_delay_seconds == MINIMUM_SCRAPER_DELAY_SECONDS
     assert settings.scraper_cache_dir == Path("data/raw/html")
     assert settings.scraper_force_refresh is False
+    assert settings.scraper_snapshot_dir == Path("data/raw/snapshots")
 
 
 @pytest.mark.unit
 def test_settings_environment_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SCRAPER_MAX_REQUESTS_PER_MINUTE", "5")
     monkeypatch.setenv("SCRAPER_CACHE_DIR", "tmp/html")
+    monkeypatch.setenv("SCRAPER_SNAPSHOT_DIR", "tmp/snapshots")
     monkeypatch.setenv("API_READINESS_TIMEOUT_SECONDS", "0.5")
     monkeypatch.setenv("DATABASE_CONNECT_TIMEOUT_SECONDS", "3")
 
@@ -30,6 +32,7 @@ def test_settings_environment_override(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert settings.scraper_max_requests_per_minute == 5
     assert settings.scraper_cache_dir == Path("tmp/html")
+    assert settings.scraper_snapshot_dir == Path("tmp/snapshots")
     assert settings.api_readiness_timeout_seconds == 0.5
     assert settings.database_connect_timeout_seconds == 3.0
 
@@ -92,3 +95,17 @@ def test_settings_normalizes_log_level_case() -> None:
     settings = Settings(log_level="debug", _env_file=None)
 
     assert settings.log_level == "DEBUG"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "snapshot_dir",
+    ["data/raw/html", "data/raw/html/snapshots", "data/raw", "./data/raw/html/../html"],
+)
+def test_settings_rejects_a_snapshot_dir_overlapping_the_cache(snapshot_dir: str) -> None:
+    with pytest.raises(ValidationError, match="SCRAPER_SNAPSHOT_DIR"):
+        Settings(
+            scraper_cache_dir=Path("data/raw/html"),
+            scraper_snapshot_dir=Path(snapshot_dir),
+            _env_file=None,
+        )

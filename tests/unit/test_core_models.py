@@ -38,6 +38,16 @@ def test_core_identifier_constraints_are_explicit() -> None:
     assert Team.__table__.c.basketball_reference_team_id.nullable is False
 
 
+def test_team_bref_id_is_indexed_only_by_its_unique_constraint() -> None:
+    # Revision 0010 dropped the non-unique duplicate; the constraint's own index
+    # serves every lookup on the column. Checked by columns, not by name, so a
+    # duplicate under another name fails too.
+    bref_id = ("basketball_reference_team_id",)
+
+    assert _index_names_on(Team, bref_id) == set()
+    assert _unique_constraint_names_on(Team, bref_id) == {"uq_core_teams_bref_id"}
+
+
 def test_team_season_constraints_reject_tot_as_real_team() -> None:
     assert "uq_core_team_seasons_team_season" in _constraint_names(
         TeamSeason, UniqueConstraint
@@ -134,6 +144,23 @@ def _constraint_names(model: type, constraint_type: type) -> set[str]:
 
 def _index_names(model: type) -> set[str]:
     return {index.name for index in model.__table__.indexes if isinstance(index, Index)}
+
+
+def _index_names_on(model: type, columns: tuple[str, ...]) -> set[str]:
+    return {
+        index.name
+        for index in model.__table__.indexes
+        if tuple(column.name for column in index.columns) == columns
+    }
+
+
+def _unique_constraint_names_on(model: type, columns: tuple[str, ...]) -> set[str]:
+    return {
+        constraint.name
+        for constraint in model.__table__.constraints
+        if isinstance(constraint, UniqueConstraint)
+        and tuple(column.name for column in constraint.columns) == columns
+    }
 
 
 def _foreign_key_targets(model: type) -> set[str]:

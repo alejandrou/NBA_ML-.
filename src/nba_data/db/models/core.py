@@ -49,7 +49,6 @@ class Team(Base):
             reject_synthetic_team_code_sql("current_abbreviation", nullable=True),
             name="ck_core_teams_current_abbreviation_not_synthetic",
         ),
-        Index("ix_core_teams_bref_id", "basketball_reference_team_id"),
         {"schema": "core"},
     )
 

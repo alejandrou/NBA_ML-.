@@ -149,3 +149,12 @@ def test_the_read_leaves_pending_changes_unflushed_with_autoflush_on(
 
 def _refuse(*args: object, **kwargs: object) -> None:
     raise AssertionError("the history read must not flush or commit")
+
+
+def test_through_season_filters_in_postgres(postgres_session: Session) -> None:
+    _seed(postgres_session)
+
+    records = load_team_game_history(postgres_session, through_season=2024)
+
+    assert records
+    assert {record.season_year for record in records} == {2024}

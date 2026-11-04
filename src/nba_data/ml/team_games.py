@@ -52,8 +52,14 @@ class TeamGameRecord:
     away: TeamBox
 
 
-def load_team_game_history(session: Session) -> list[TeamGameRecord]:
-    """Every history game, ordered by `(game_date, basketball_reference_game_id)`."""
+def load_team_game_history(
+    session: Session, *, through_season: int | None = None
+) -> list[TeamGameRecord]:
+    """Every history game, ordered by `(game_date, basketball_reference_game_id)`.
+
+    `through_season` stops at that end year, so an evaluation can leave its test
+    season unread until the model is selected.
+    """
 
     home_ts = aliased(TeamSeason)
     away_ts = aliased(TeamSeason)
@@ -95,6 +101,8 @@ def load_team_game_history(session: Session) -> list[TeamGameRecord]:
         )
         .order_by(Game.game_date, Game.basketball_reference_game_id)
     )
+    if through_season is not None:
+        statement = statement.where(Season.season_year <= through_season)
 
     width = len(_BOX_FIELDS) + 1
     records = []

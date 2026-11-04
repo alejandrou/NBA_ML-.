@@ -197,3 +197,12 @@ def test_an_empty_database_gives_no_records(session: Session) -> None:
     session.query(Game).delete()
 
     assert load_team_game_history(session) == []
+
+
+def test_through_season_leaves_later_seasons_unread(
+    session: Session, statements: StatementLog
+) -> None:
+    records = load_team_game_history(session, through_season=2024)
+
+    assert {record.season_year for record in records} == {2024}
+    assert len(statements.statements) == 1

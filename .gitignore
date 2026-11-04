@@ -26,6 +26,7 @@ data/cache/
 geckodriver.exe
 reports/
 data/exports/
+data/models/
 
 *.pyc
 *.pyo

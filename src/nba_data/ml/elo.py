@@ -3,6 +3,8 @@
 The constants are part of feature definition `team-pregame-v1`; changing one
 changes the features and bumps that version. A rating is read before a game and
 updated after it, and the caller feeds games in `(game_date, game_id)` order.
+`EloRatings` overrides `k` and the home advantage only for the Elo candidate in
+F8-007's grid; the features always use these defaults.
 """
 
 from __future__ import annotations
@@ -19,10 +21,10 @@ ELO_SEASON_CARRY = 0.75
 ELO_SEASON_MEAN = 1505.0
 
 
-def home_advantage(neutral_site: bool | None) -> float:
+def home_advantage(neutral_site: bool | None, points: float = ELO_HOME_ADVANTAGE) -> float:
     """Zero only on a known neutral floor; an undetermined venue counts as home."""
 
-    return 0.0 if neutral_site is True else ELO_HOME_ADVANTAGE
+    return 0.0 if neutral_site is True else points
 
 
 def expected_home_win(elo_home: float, elo_away: float, advantage: float) -> float:
@@ -44,7 +46,9 @@ class _Rating:
 class EloRatings:
     """Every team's rating as of the last game fed to `update`."""
 
-    def __init__(self) -> None:
+    def __init__(self, k: float = ELO_K, home_points: float = ELO_HOME_ADVANTAGE) -> None:
+        self._k = k
+        self._home_points = home_points
         self._ratings: dict[str, _Rating] = {}
 
     def pregame(self, team_code: str, season_year: int) -> float:
@@ -73,12 +77,12 @@ class EloRatings:
         season = game.season_year
         elo_home = self.pregame(game.home.team_code, season)
         elo_away = self.pregame(game.away.team_code, season)
-        advantage = home_advantage(game.neutral_site)
+        advantage = home_advantage(game.neutral_site, self._home_points)
         home_diff = elo_home + advantage - elo_away
         elo_diff_winner = home_diff if margin > 0 else -home_diff
 
         shift = (
-            ELO_K
+            self._k
             * margin_multiplier(margin, elo_diff_winner)
             * ((1.0 if margin > 0 else 0.0) - expected_home_win(elo_home, elo_away, advantage))
         )

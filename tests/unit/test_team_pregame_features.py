@@ -21,6 +21,7 @@ from nba_data.ml.team_features import (
 from nba_data.ml.team_games import TeamBox, TeamGameRecord
 
 ML_PACKAGE = Path(__file__).resolve().parents[2] / "src" / "nba_data" / "ml"
+FEATURE_MODULES = ("team_games.py", "elo.py", "team_features.py")
 
 
 def _box(code: str, pts: int | None, **counters: int | None) -> TeamBox:
@@ -569,9 +570,11 @@ def test_undetermined_venues_are_treated_as_home_and_counted() -> None:
 # --- boundaries -------------------------------------------------------------------------
 
 
-def test_the_ml_package_imports_no_numeric_library() -> None:
+def test_the_feature_modules_import_no_numeric_library() -> None:
+    """F8-007's models use scikit-learn; what defines the features stays plain Python."""
+
     forbidden = {"numpy", "pandas", "sklearn", "scipy"}
-    for path in sorted(ML_PACKAGE.glob("*.py")):
+    for path in (ML_PACKAGE / name for name in FEATURE_MODULES):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):

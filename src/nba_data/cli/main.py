@@ -107,10 +107,12 @@ cache_app = typer.Typer(help="HTML cache utilities.")
 backfill_app = typer.Typer(help="Controlled raw HTML backfill utilities.")
 acquisition_app = typer.Typer(help="Phase 4D-A acquisition planning utilities.")
 validation_app = typer.Typer(help="Offline data quality validation utilities.")
+ml_app = typer.Typer(help="Pre-game predictor evaluation.")
 app.add_typer(cache_app, name="cache")
 app.add_typer(backfill_app, name="backfill")
 app.add_typer(acquisition_app, name="acquisition")
 app.add_typer(validation_app, name="validate")
+app.add_typer(ml_app, name="ml")
 console = Console()
 
 
@@ -119,6 +121,16 @@ def _main() -> None:
     configure_logging(get_settings())
 
 
+_ML_OUTPUT_OPTION = typer.Option(
+    ...,
+    "--output",
+    help="Where to write the evaluation JSON report. Never replaces a different report.",
+)
+_ML_ARTIFACT_DIR_OPTION = typer.Option(
+    ...,
+    "--artifact-dir",
+    help="Directory that receives the versioned model artifact.",
+)
 _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
@@ -844,6 +856,43 @@ def validate_game_pilot(
     _print_and_optionally_write_json(data, output)
     if not report.passed:
         raise typer.Exit(code=1)
+
+
+@ml_app.command("evaluate")
+def ml_evaluate(
+    output: Path = _ML_OUTPUT_OPTION,
+    artifact_dir: Path = _ML_ARTIFACT_DIR_OPTION,
+) -> None:
+    """Run the Stage 3 protocol over the loaded games; reads the database, never writes it."""
+
+    # The numerical stack loads only for this command, not for every CLI start.
+    from nba_data.ml.artifact import ArtifactConflictError
+    from nba_data.ml.evaluation import run_and_publish
+    from nba_data.ml.team_games import load_team_game_history
+
+    settings = get_settings()
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            # One snapshot for both reads, and the database refuses any write.
+            session.connection(
+                execution_options={
+                    "isolation_level": "REPEATABLE READ",
+                    "postgresql_readonly": True,
+                }
+            )
+            summary = run_and_publish(
+                lambda season: load_team_game_history(session, through_season=season),
+                output=output,
+                artifact_dir=artifact_dir,
+            )
+    except (ArtifactConflictError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+
+    console.print_json(data=summary)
 
 
 @acquisition_app.command("dry-run-nba-team-seasons")

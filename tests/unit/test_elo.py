@@ -151,3 +151,19 @@ def test_an_unscored_or_tied_game_is_refused(
 
     with pytest.raises(ValueError, match=message):
         EloRatings().update(game)
+
+
+def test_overrides_change_the_shift_and_the_defaults_stay_the_feature_constants() -> None:
+    default, explicit, stronger = EloRatings(), EloRatings(20.0, 100.0), EloRatings(30.0, 100.0)
+    game = _game("g", "AAA", "BBB", 110, 100, season=2023)
+    for ratings in (default, explicit, stronger):
+        ratings.update(game)
+
+    assert default.pregame("AAA", 2023) == explicit.pregame("AAA", 2023)
+    gained = default.pregame("AAA", 2023) - ELO_START
+    assert stronger.pregame("AAA", 2023) - ELO_START == pytest.approx(gained * 1.5)
+
+
+def test_a_neutral_floor_ignores_an_overridden_home_advantage() -> None:
+    assert home_advantage(True, 70.0) == 0.0
+    assert home_advantage(False, 70.0) == 70.0

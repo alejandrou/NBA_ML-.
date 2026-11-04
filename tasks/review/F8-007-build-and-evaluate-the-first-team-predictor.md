@@ -159,29 +159,46 @@ registration (F8-010). Any scrape or database write. Changing
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_ml_splits.py tests/unit/test_ml_models.py tests/unit/test_ml_evaluation.py tests/unit/test_ml_artifact.py tests/unit/test_cli_ml.py tests/unit/test_ml_dependency_boundary.py`
+- Result: pass (run as part of the full suite below, and before it).
+- Command: `uv run ruff check .`
+- Result: all checks passed.
+- Command: `uv run mypy src/nba_data`
+- Result: no issues in 104 source files, with numpy kept opaque by `src/nba_data/ml/_numpy.py` (see Known limitations).
+- Command: `uv run pytest`
+- Result: 1694 passed, 258 skipped (integration, covered by the next command).
+- Command: `bash scripts/validate_database.sh`
+- Result: 259 integration tests passed on a temporary database, which was then dropped.
+- Command: `uv run nba-data ml evaluate --output reports/ml/f8-007/evaluation-2.json --artifact-dir data/models` (against `nba`, one read-only `REPEATABLE READ` transaction, run twice after the review fixes; `SHOW` confirmed `repeatable read` and `transaction_read_only = on`)
+- Result: selected logistic (C 0.01, last 5), calibrated; test log loss 0.6012 against home-rate 0.6874; Stage 5 go. Both runs: report SHA-256 `f0968b863e78...`, input SHA-256 `95d297abaf04...`, artifact `logistic-team-pregame-v1-f369530d6c6e`. Compared with the pre-fix `evaluation.json` (`6aa21d157792...`, kept): selection, calibration, test, every validation metric, and the artifact are unchanged; only the added report fields differ.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: passed after the move to `tasks/review/`.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. `uv run nba-data ml evaluate --output reports/ml/f8-007/rerun.json --artifact-dir data/models`
+2. Compare `reports/ml/f8-007/rerun.json` with `evaluation-2.json`.
+3. Read `docs/ml/TEAM_PREDICTOR_EVALUATION.md` against the report's `selection` and `test` sections.
 
-Expected result:
+Expected result: the two reports are byte-identical, `data/models/` still holds one directory, and the summary shows `logistic`, `stage_5_go: true`.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Flip one byte of `data/models/logistic-team-pregame-v1-f369530d6c6e/model.joblib` on a copy of the directory, then call `load_artifact` on the copy.
+2. Edit one character of a copy of `reports/ml/f8-007/evaluation-2.json`, then rerun the command in the happy path with `--output` at that copy.
+3. Run the command with `DATABASE_URL` pointing at a disposable database holding only part of a season.
 
-Expected result:
+Expected result: (1) `ArtifactIntegrityError`, nothing unpickled; (2) exit 1, "exists with different content", the file untouched; (3) exit 1, "incomplete game data: season ...: N scored regular-season games, expected M", no report and no artifact.
 
 ## Known limitations
 
-- None.
+- The test season was scored in five runs, all after selection: two before the review fixes and three after (the third proved the refusal to replace `evaluation.json`). The fixes changed no selection input, and every number stayed the same. A later protocol change needs a new test season.
+- `nba_data.ml.inventory` hard-codes the 2015-2026 counts and the 7 quarantines from `docs/validation/GAME_DATASET_ACQUISITION.md`. A reload that resolves a quarantine must update it, or the evaluation stops.
+- A game with a blank score now stops the evaluation instead of being skipped, so `skipped_target_game_ids` lists the 7 documented quarantines.
+- numpy 2.5's stubs are newer than `[tool.mypy] python_version = "3.11"`, which stops mypy. Fixing that belongs to `pyproject.toml` (shared track), so `ml/_numpy.py` hides numpy from mypy instead. It also means `numpy` and `joblib` are imported directly while reaching the project only through scikit-learn. A shared card should raise the mypy target, declare both, and delete the shim.
+- The readings the card left open (2015 not a training row, Elo's window, the home rate on home floors, the artifact's window) are recorded in the evaluation document.
+- Logistic chose the edge of its grid (C = 0.01). The grid is fixed for this card; a smaller C would be a later experiment on a new test season.
+- Calibration's gain on 2025 was 0.00016 of log loss: kept by rule, not by size.
+- Outside the card's stated scope: `.gitignore` gains `data/models/` (it was not ignored); `elo.py` takes optional `k` and home-points overrides whose defaults keep `team-pregame-v1` unchanged; `load_team_game_history` gains `through_season`; `src/nba_data/ml/inventory.py` is new (review finding); `test_the_ml_package_imports_no_numeric_library` now guards the three feature modules, since this card puts scikit-learn in the package.

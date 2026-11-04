@@ -387,6 +387,11 @@ the home-rate baseline on the test season. The features are `team-pregame-v1`
 (`F8-011`): Elo, efficiencies, pace, margin, and four factors over 5, 10, 20
 games and season-to-date, plus rest and schedule density.
 
+**Result (2026-11-04, `F8-007`):** calibrated logistic regression, C = 0.01, last
+five seasons, selected over Elo and boosting by that rule. Test log loss 0.6012
+against the home-rate baseline's 0.6874, so Stage 5 goes ahead. Details in
+`docs/ml/TEAM_PREDICTOR_EVALUATION.md`.
+
 ### Stage 4 — players and play-by-play (`F8-009`, `F8-015`)
 
 Add pre-game rotation and individual variables first, then play-by-play:

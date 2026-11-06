@@ -103,9 +103,67 @@ approval.
   `docs/architecture/API_CONTRACT.md` for the served contract.
 - If the legacy scraper does not extract player IDs yet, document that as debt.
 - Basketball Reference renders current player names retroactively across the
-  cached archive. No era-specific names were observed, so a displayed name is
-  source text rather than historical identity and must not replace
-  `basketball_reference_player_id`.
+  cached archive, so a displayed name is source text rather than historical
+  identity and must not replace `basketball_reference_player_id`. This is a
+  positive finding, not an absence of evidence: the `salaries2` table, which no
+  parser reads, preserves the era name while every table the loader reads prints
+  the current one on the same page. `kanteen01` is Enes Freedom in the roster and
+  Enes Kanter in `salaries2` on the 2012 UTA page; `pendeje02` is Jeff Ayres and
+  Jeff Pendergraph on 2010 POR; `walkebi01` is Henry Walker and Bill Walker on
+  2009 BOS.
+
+### What `core.players.full_name` means
+
+`full_name` is **the current name as Basketball Reference renders it**. It
+describes the player today and explains what the column means; it does not make a
+name an identifier, and the rule against using `player_name` as a key stands.
+
+Two writers set it, and **the first non-fallback name from either one wins.**
+`get_or_create_player` (team-season loader) replaces a stored value only if that
+value is still the id fallback. `GameRepository.create_player` (games loader)
+writes box score link text, only for a player missing from `core.players`, and
+never updates an existing row.
+
+Measured against the cached archive of 805 team pages and 14,482 box scores:
+
+- **The team-season loader has one candidate name per player.** Each of the 2,654
+  player ids carries exactly one `player_name` across the nine tables it reads, so
+  no reload order of team pages changes a stored value.
+- **Box scores also have one name per player**, across 1,766 ids. 39 of them
+  appear on no team page and are created from box score links; they have no
+  player-season.
+- **One player differs between the two sources, by a diacritic only:** `clavevi01`
+  is *Victor Claver* on team pages and *Víctor Claver* in box scores. `nba` stores
+  the team-page spelling because his team pages happened to load first. Nothing
+  enforces that: the games loader needs a game's team-season rows, not every
+  player's, so a rebuild that loaded his box scores first would store the other
+  spelling. It is the one name in the archive that depends on load order.
+
+**There is no alias model in v1.** A `player_aliases` table would hold no real
+aliases: the only competing names in the archive are the two `clavevi01`
+spellings above, which are one name with and without an accent. The question reopens only if a source that renders
+era-specific names is added.
+
+**`full_name` is `NOT NULL` and falls back to `basketball_reference_player_id`.**
+No row in the cached archive reaches that path: no team-page row carries a player
+id without a name, and the games loader quarantines an unnamed new player rather
+than falling back. The fallback stays as a safety net because that is a property
+of today's archive, not a guarantee.
+
+**The player-page `<h1>` is not a separate name.** It matches the team-page name
+byte for byte for all 2,654 players on team pages, and those are the only players
+with a cached player page, so it gets no field of its own.
+
+**Do not reopen this by scanning every table on a page.** Such a scan finds 197
+players "rendered under more than one string". All 197 come from `salaries2`,
+which never reaches the database. Measure the tables the loaders actually read.
+That figure is from the 775-page archive, before the 2026 season pages arrived.
+
+**`core.players.slug` was dropped by revision `0011_drop_player_slug`.** Nothing
+ever wrote or read it. A slug has to survive a rebuild, which rules out the
+surrogate id, and retroactive re-rendering rules out a normalized name. The only
+stable source left is `basketball_reference_player_id`, which the row already
+carries.
 
 ## Source Team Codes and Trades
 

@@ -82,7 +82,6 @@ def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
                         id=1,
                         basketball_reference_player_id="jamesle01",
                         full_name="LeBron James",
-                        slug="lebron-james",
                     ),
                     Player(
                         id=3, basketball_reference_player_id="smithjo01", full_name="John Smith"
@@ -298,7 +297,7 @@ def test_detail_strings_never_echo_the_request(vertical_client: TestClient) -> N
 
 @pytest.mark.unit
 def test_no_private_column_reaches_any_player_body(vertical_client: TestClient) -> None:
-    """Surrogate ids, the slug, and the stint roster fields stay private."""
+    """Surrogate ids and the stint roster fields stay private."""
     player_keys = {"basketball_reference_player_id", "full_name"}
     season_keys = {"season_year", "league", "teams"}
 
@@ -308,7 +307,6 @@ def test_no_private_column_reaches_any_player_body(vertical_client: TestClient) 
     for item in vertical_client.get("/api/v1/players/jamesle01/seasons").json()["items"]:
         assert set(item) == season_keys, item
     assert set(vertical_client.get("/api/v1/players/jamesle01/seasons/2004").json()) == season_keys
-    assert "lebron-james" not in vertical_client.get("/api/v1/players/jamesle01").text
 
 
 @pytest.mark.unit

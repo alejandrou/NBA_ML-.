@@ -162,6 +162,50 @@ def test_real_team_name_upgrades_existing_abbreviation_fallback(session: Session
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [("Enes Kanter", "Enes Freedom"), ("Enes Freedom", "Enes Kanter")],
+)
+def test_first_non_fallback_player_name_stands_in_either_load_order(
+    session: Session, first: str, second: str
+) -> None:
+    """Pins the mechanism: a later, different name never replaces a real one.
+
+    Every player in the archive offers one name, so this order cannot change a
+    stored value today. The test records what would happen if a source ever
+    offered a second.
+    """
+    for name in (first, second):
+        batch = _batch(rows=[_row(player_name=name, basketball_reference_player_id="kanteen01")])
+        load_team_season_core(session, batch)
+
+    player = session.scalar(
+        select(Player).where(Player.basketball_reference_player_id == "kanteen01")
+    )
+    assert _count(session, Player) == 1
+    assert player is not None
+    assert player.full_name == first
+
+
+@pytest.mark.unit
+def test_id_fallback_full_name_is_replaced_by_the_first_real_name(session: Session) -> None:
+    unnamed = _batch(rows=[_row(player_name="", basketball_reference_player_id="tatumja01")])
+    named = _batch(
+        rows=[_row(player_name="Jayson Tatum", basketball_reference_player_id="tatumja01")]
+    )
+
+    load_team_season_core(session, unnamed)
+    player = session.scalar(select(Player))
+    assert player is not None
+    assert player.full_name == "tatumja01"
+
+    load_team_season_core(session, named)
+
+    assert _count(session, Player) == 1
+    assert player.full_name == "Jayson Tatum"
+
+
+@pytest.mark.unit
 def test_player_name_is_not_used_as_identity(session: Session) -> None:
     batch = _batch(
         rows=[

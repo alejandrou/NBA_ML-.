@@ -46,6 +46,7 @@ _REQUIRE_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
 # generated moments ago and drops before it returns.
 _TEST_DATABASE_ENV = "NBA_DATA_TEST_DATABASE"
 _ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
+_GUARD_SLUG = "slug-guard"
 _ROUND_TRIP_SCHEMAS = ("core", "stats")
 
 
@@ -133,6 +134,9 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
     print("Revision 0008 rejected an unrecognized raw object without deleting it.")
     _drop_unexpected_raw_table(temp_url)
 
+    if result := _check_populated_slug_blocks_0011(child_env, temp_url):
+        return result
+
     if result := _check_newest_revision_round_trip(child_env, temp_url):
         return result
 
@@ -149,6 +153,28 @@ def _migrate_and_test(source_url, temp_db_name: str) -> int:
 
     _verify_empty(temp_url)
     print(f"PostgreSQL validation passed against {temp_db_name!r}.")
+    return 0
+
+
+def _check_populated_slug_blocks_0011(child_env: dict[str, str], temp_url: URL) -> int:
+    """Prove 0011 refuses a populated `core.players.slug` and leaves it intact."""
+
+    if result := _run(
+        child_env,
+        ["uv", "run", "alembic", "upgrade", "0010_drop_redundant_team_index"],
+    ):
+        return result
+
+    _insert_populated_slug(temp_url)
+    guard_result = _run(
+        child_env, ["uv", "run", "alembic", "upgrade", "0011_drop_player_slug"]
+    )
+    if guard_result == 0:
+        raise RuntimeError("Revision 0011 unexpectedly dropped a populated slug")
+    if _populated_slug(temp_url) != _GUARD_SLUG:
+        raise RuntimeError("Failed revision 0011 upgrade changed the populated slug")
+    print("Revision 0011 rejected a populated slug without changing it.")
+    _delete_populated_slug(temp_url)
     return 0
 
 
@@ -220,16 +246,25 @@ def _raw_schema_snapshot(database_url: URL) -> tuple[tuple[object, ...], ...]:
 def _schema_snapshot(
     database_url: URL, schemas: tuple[str, ...]
 ) -> tuple[tuple[object, ...], ...]:
-    """Columns, constraints, indexes, and relations of the named schemas."""
+    """Columns, constraints, indexes, and relations of the named schemas.
+
+    Columns compare by logical position, not `ordinal_position`. The latter is
+    PostgreSQL's `attnum`, and a dropped column leaves its slot behind for good,
+    so a correct downgrade that re-adds a column can never get the old number
+    back. A reordered, added, or missing column still differs here.
+    """
 
     statements = (
         """
-        SELECT table_schema, table_name, column_name, ordinal_position, data_type,
-               udt_name, is_nullable, column_default, character_maximum_length,
-               datetime_precision
+        SELECT table_schema, table_name, column_name,
+               row_number() OVER (
+                   PARTITION BY table_schema, table_name ORDER BY ordinal_position
+               ) AS logical_position,
+               data_type, udt_name, is_nullable, column_default,
+               character_maximum_length, datetime_precision
         FROM information_schema.columns
         WHERE table_schema = ANY(:schemas)
-        ORDER BY table_schema, table_name, ordinal_position
+        ORDER BY table_schema, table_name, logical_position
         """,
         """
         SELECT n.nspname, c.relname, con.conname, con.contype,
@@ -264,6 +299,41 @@ def _schema_snapshot(
                     text(statement), {"schemas": list(schemas)}
                 ).tuples()
             )
+    finally:
+        engine.dispose()
+
+
+def _insert_populated_slug(database_url: URL) -> None:
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO core.players (full_name, slug) "
+                    "VALUES ('Slug Guard', :slug)"
+                ),
+                {"slug": _GUARD_SLUG},
+            )
+    finally:
+        engine.dispose()
+
+
+def _populated_slug(database_url: URL) -> str | None:
+    engine = create_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            return connection.scalar(
+                text("SELECT slug FROM core.players WHERE full_name = 'Slug Guard'")
+            )
+    finally:
+        engine.dispose()
+
+
+def _delete_populated_slug(database_url: URL) -> None:
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("DELETE FROM core.players WHERE full_name = 'Slug Guard'"))
     finally:
         engine.dispose()
 

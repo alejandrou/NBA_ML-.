@@ -411,6 +411,36 @@ def test_missing_players_are_created_from_box_score_links_without_a_player_seaso
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("team_page_first", "stored"),
+    [(True, "Victor Claver"), (False, "Víctor Claver")],
+)
+def test_the_first_name_stands_whichever_source_loads_first(
+    session: Session, team_page_first: bool, stored: str
+) -> None:
+    """Pins `clavevi01`: the one player the two sources spell differently."""
+    box = _box(visitor=_team("BOS", 101, inactive=(InactivePlayer("clavevi01", "Víctor Claver"),)))
+    repository = CoreRepository(session)
+
+    if team_page_first:
+        repository.get_or_create_player(
+            basketball_reference_player_id="clavevi01", full_name="Victor Claver"
+        )
+        session.commit()
+    _load(session, box=box)
+    if not team_page_first:
+        repository.get_or_create_player(
+            basketball_reference_player_id="clavevi01", full_name="Victor Claver"
+        )
+
+    player = session.scalar(
+        select(Player).where(Player.basketball_reference_player_id == "clavevi01")
+    )
+    assert player is not None
+    assert player.full_name == stored
+
+
+@pytest.mark.unit
 def test_a_rerun_creates_no_player_twice(session: Session) -> None:
     _load(session)
     session.commit()

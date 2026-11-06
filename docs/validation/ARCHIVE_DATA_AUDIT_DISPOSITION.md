@@ -39,7 +39,7 @@ outside this repository.
 | DB-04 † | `validate official-stats` reconciles one backfill report against all stats tables; backfill commands exit 0 on partial row failure | implemented | [F4E-016](../../tasks/done/F4E-016-consolidate-backfill-report-validation.md) |
 | DB-05 | `player_name_display` is NULL across the player-page-fed stats tables, with nothing documenting why | confirmed as a documentation defect, planned | [F4E-019](../../tasks/backlog/F4E-019-document-player-name-display-source-semantics.md) |
 | DB-06 † | Nothing asserts that `core.player_seasons` and `stats.*` agree, so dropped rows are invisible at query time | confirmed, deferred | [F4E-017](../../tasks/planning/F4E-017-classify-expected-stats-coverage-from-cache.md) → [F4E-018](../../tasks/planning/F4E-018-add-a-stats-coverage-invariant-to-the-4e-validator.md) |
-| DB-07 | No public `slug`; `core.players.slug` exists and is never written | deferred | [F6-004](../../tasks/planning/F6-004-define-public-player-stats-api-contract.md), with the column's fate in [F4E-021](../../tasks/planning/F4E-021-decide-player-identity-and-alias-model.md) |
+| DB-07 | No public `slug`; `core.players.slug` existed and was never written | resolved | Column dropped by revision `0011_drop_player_slug` ([F4E-021](../../tasks/done/F4E-021-define-player-name-and-drop-the-slug-column.md)); the API question only in [F6-004](../../tasks/done/F6-004-record-the-public-player-and-stats-api-contract.md) |
 | DB-08 | Game logs are absent from the archive | accepted | — |
 | DB-09 | Boxscores are absent from the archive | accepted | — |
 

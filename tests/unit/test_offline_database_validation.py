@@ -499,8 +499,7 @@ def _create_core_tables(connection: Connection) -> None:
         create table core.players (
             id integer primary key,
             basketball_reference_player_id varchar(32),
-            full_name varchar(200) not null,
-            slug varchar(200)
+            full_name varchar(200) not null
         )
         """
     )

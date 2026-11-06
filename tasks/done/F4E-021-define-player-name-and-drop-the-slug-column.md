@@ -335,31 +335,101 @@ the database.
 - `docs/validation/ARCHIVE_DATA_AUDIT_DISPOSITION.md` — DB-07 resolved: the
   column is dropped, not deferred.
 
+# Cross-track impact
+
+- None.
+
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
+## Changes from the card as written
+
+The card predates F8-002 and F4E-033. It said to expect this drift, and each item
+below was resolved in favor of what the repository now holds.
+
+- **Revision number.** The head was `0010_drop_redundant_team_index`, so the
+  revision is `0011_drop_player_slug`, not `0009`, and revises `0010`.
+- **Second writer.** `GameRepository.create_player` also writes `full_name`,
+  which the card did not cover. Measured and documented: 14,482 box scores, 1,766
+  ids, one name each, 39 ids on no team page, and one diacritic-only disagreement
+  with team pages (`clavevi01`).
+- **Numbers.** The archive grew, so the docs use 805 team pages and 2,654 players
+  rather than 775 and 2,551. Re-measured: 0 ids with two names, 0 rows without a
+  name, 0 `<h1>` differences. The 197 `salaries2` figure was not re-measured and
+  is labelled as coming from the 775-page archive. The three `salaries2` era-name
+  examples used in the docs were re-checked; `hardati02` and `rebraze01` were not.
+- **F6-004.** It is already done and `API_CONTRACT.md` already says no `slug` is
+  published, so the planning-card edit no longer applies. The done card was left
+  alone. DB-07 now links to it in `tasks/done/`.
+- **`grep slug src/`.** It also hits `snapshot_cache.py` and
+  `game_season_manifest.py`, unrelated to the column. No hit refers to it.
+
+Files changed outside the card's scope:
+
+- `scripts/validate_postgres_local.py`: **a validation gate was changed.** The
+  round trip failed because `ordinal_position` is PostgreSQL's `attnum`, and a
+  dropped column keeps its slot, so a re-added `slug` is 5 rather than 4. The
+  snapshot now compares logical column order. The alternative was rebuilding
+  `core.players` in the downgrade, across two foreign keys.
+- `tests/unit/test_player_api.py`, `tests/unit/test_player_service.py`: `slug`
+  fixture values removed, plus the assertion that depended on one. These are
+  app-track tests, but `Player(slug=...)` no longer constructs. Nothing in
+  `src/nba_data/api` reads the column, so the app needs no follow-up.
+- `docs/architecture/IMPACT_MAP.md`: chain and preflight note.
+- `tests/unit/test_game_loader.py`: the `clavevi01` name in both source orders.
+
+Added after review:
+
+- `0011` now refuses to run while any slug is populated, and the disposable lane
+  proves the refusal leaves the value intact. The check is a SQL `DO` block
+  rather than the suggested Python query, so it also protects `--sql` output.
+- `BUSINESS_RULES.md` no longer claims the team-page spelling wins by dependency.
+  The first non-fallback name from either loader wins, and `nba`'s spelling of
+  `clavevi01` reflects the order it happened to load in.
 
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_team_season_loader.py tests/unit/test_core_models.py tests/unit/test_offline_database_validation.py`, plus the two player API test files
+- Result: 62 passed before review; after review `test_game_loader.py`, `test_team_season_loader.py` and `test_postgres_validation_runner.py` gave 90 passed.
+- Command: `uv run ruff check .`
+- Result: passed.
+- Command: `bash scripts/validate_database.sh`
+- Result: exit 0, 259 passed, the populated-slug refusal case passed, and "The head revision's downgrade exactly restored
+  0010_drop_redundant_team_index." The first run failed as described above; the
+  tracebacks left in a passing log belong to the expected 0008 guard case.
+- Command: `uv run pytest`
+- Result: 1699 passed, 258 skipped, 7 warnings.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: passed.
+- Command: `git diff -- alembic/versions/0001_initial_raw_core.py`
+- Result: empty.
 
 ## Manual happy path
 
-1.
-2.
-3.
+1. Run `bash scripts/validate_database.sh`.
+2. Find the line reporting that the head revision's downgrade restored `0010`.
+3. Read the Players section of `docs/domain/BUSINESS_RULES.md`.
 
-Expected result:
+Expected result: exit 0 with that line present, and the section defines
+`full_name`, both writers, and the `clavevi01` exception.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. On a disposable database at `0010`, set one `core.players.slug` value.
+2. Run `uv run alembic upgrade 0011_drop_player_slug`.
+3. Read `core.players.slug` and the revision in `alembic_version`.
 
-Expected result:
+Expected result: the upgrade fails with "Refusing to drop populated
+core.players.slug", the value is unchanged, and the database is still at `0010`.
+`bash scripts/validate_database.sh` runs this same case.
 
 ## Known limitations
 
-- None.
+- `scripts/preflight_migration_data.py` has no `0011` check, so a populated slug
+  shows up as a failed upgrade rather than a preflight verdict. The local `nba`
+  held 0 non-NULL of 2,693 rows on 2026-11-06.
+- `nba` is at `0009`, so applying this needs `0010` and `0011`, from merged
+  `origin/main`, with owner approval. As with every revision,
+  `/api/v1/health/ready` answers 503 against `nba` until then.
+- `clavevi01` stores *Víctor Claver* if a rebuild loads his box scores before his
+  team pages. Left as is: the loader code was out of scope.
+- DB-07 now links to this card under `tasks/done/`.

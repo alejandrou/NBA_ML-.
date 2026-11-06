@@ -8,9 +8,9 @@ from nba_data.db.repositories.queries.players import PlayerSeasonIdentity
 
 
 def _player(**overrides: object) -> SimpleNamespace:
-    """A stand-in row carrying no surrogate id or slug, because the response has neither.
+    """A stand-in row carrying no surrogate id, because the response has none.
 
-    Leaving them out means a mapping that started reading one would fail here
+    Leaving it out means a mapping that started reading it would fail here
     rather than quietly pass on a value the contract keeps private.
     """
     values: dict[str, object] = {
@@ -39,7 +39,7 @@ def test_list_players_maps_only_the_public_fields(monkeypatch: pytest.MonkeyPatc
     received: dict[str, object] = {}
     players = [
         _player(),
-        _player(basketball_reference_player_id="smithjo01", full_name="John Smith", slug="x"),
+        _player(basketball_reference_player_id="smithjo01", full_name="John Smith"),
     ]
 
     def fake_count(session: object) -> int:

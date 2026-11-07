@@ -36,7 +36,7 @@ critical_actions:
 Stage 4, step one: add pre-game player variables built from the per-game lines
 F8-006 acquired and F8-018 loads into `nba` — expected rotation and minutes,
 and individual form weighted by expected minutes — and measure on the same games whether they beat the team
-model. The measured result decides whether play-by-play is acquired (F8-015).
+model. A go starts play-by-play (F8-015); a no-go hands that decision to F8-019.
 
 # Evidence and current state
 
@@ -51,7 +51,7 @@ model. The measured result decides whether play-by-play is acquired (F8-015).
 # Human decisions or resources
 
 - [x] **Players first** (decided 2026-10-18); play-by-play is a separate card,
-      `F8-015`, gated by this card's measured result.
+      `F8-015`, gated by the rule below.
 - [x] **Features** (`team-player-pregame-v1` = `team-pregame-v1` plus):
       per team, the expected minutes of each player = their mean seconds over the
       team's last 10 games before the cutoff in which the player had a line (inactive
@@ -68,10 +68,13 @@ model. The measured result decides whether play-by-play is acquired (F8-015).
 - [x] **Comparison**: the selected team model's family, refitted with the new
       feature set, against the team model on 2025 by F8-007's selection rule.
       The 2026 test season is scored once for the record.
-- [x] **Go/no-go for play-by-play, fixed now**: F8-015 starts only if the
-      player feature set is selected over the team set on 2025 (its 95 %
-      block-bootstrap interval of the log-loss difference lies entirely below
-      0). Otherwise Stage 4 stops after this card and the result is recorded.
+- [x] **Go/no-go for play-by-play** (decided 2026-10-18, revised 2026-11-06
+      before any result): F8-015 starts if the player feature set is selected
+      over the team set on 2025 (its 95 % block-bootstrap interval of the
+      log-loss difference lies entirely below 0), and F8-019 is deleted unrun.
+      Otherwise F8-019 takes a second look, because this card measures
+      box-score variables, not what play-by-play adds. Stage 4 stops only if
+      that is also a no-go.
 - [x] **The served model does not change here.** Promoting the player model to
       `ml.model_versions` is a later card, after F8-010 exists.
 - [x] **Injuries stay out**: designed in the plan, not part of Stage 4.
@@ -87,8 +90,9 @@ model. The measured result decides whether play-by-play is acquired (F8-015).
   player with only inactive lines has expected minutes 0; a rotation with fewer
   than 8 players; a team's first game (`None`, not `0`).
 - The report compares both feature sets on identical game ids and states the
-  go/no-go for F8-015 by the rule above; `TEAM_PREDICTOR_EVALUATION.md` and
-  `PREDICTOR_PLAN.md` Stage 4 record it, dated.
+  outcome by the rule above: F8-015 starts, or F8-019 is next.
+  `TEAM_PREDICTOR_EVALUATION.md` and `PREDICTOR_PLAN.md` Stage 4 record it,
+  dated.
 
 # Scope
 
@@ -98,8 +102,8 @@ feature-set option), `tests/unit/test_player_*.py`,
 
 # Out of scope
 
-Play-by-play (F8-015). Availability and injuries. Promoting a model to serving.
-Any table or revision.
+Play-by-play (F8-015). Quarter boxes (F8-019). Availability and injuries.
+Promoting a model to serving. Any table or revision.
 
 # Impact
 
@@ -114,6 +118,8 @@ Any table or revision.
 
 - Reuse F8-011's history ordering and windows; keep player and team features
   in separate modules so `team-pregame-v1` stays byte-identical.
+- Keep expected minutes and the rotation callable on their own: F8-019 reuses
+  them for its impact feature.
 
 # Durable knowledge updates
 

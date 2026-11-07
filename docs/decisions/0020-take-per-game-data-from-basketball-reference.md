@@ -3,7 +3,8 @@
 ## Status
 
 Accepted, 2026-09-23, by F8-001. A no-go from the F8-001 pilot
-(`docs/validation/PER_GAME_ACQUISITION_PILOT.md`) reopens it.
+(`docs/validation/PER_GAME_ACQUISITION_PILOT.md`) reopens it. Amended 2026-11-06
+— see *Amendment*.
 
 ## Context
 
@@ -80,3 +81,13 @@ decision on its terms.
 - **Team game logs** (one page per team-season): far fewer requests for team
   totals, but no player lines and no "did not play" reasons. Worth measuring if
   per-game acquisition proves too slow for Stage 2.
+
+## Amendment — 2026-11-06 (F8-015)
+
+NBA.com is no longer a Stage 4 candidate. On 2026-10-18 Stage 4 chose its own
+period-start inference over these pages, so it needs no second provider,
+crosswalk, or terms decision. A probe on 2026-11-06 supports that choice: quarter
+boxes and logged substitutions reproduced published plus-minus
+(`docs/validation/PER_GAME_ACQUISITION_PILOT.md`). If that inference fails on
+the acquired games, the question goes back to the owner; it never falls back to
+NBA.com on its own.

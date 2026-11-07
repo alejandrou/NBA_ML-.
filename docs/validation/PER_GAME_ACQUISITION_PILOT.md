@@ -14,7 +14,7 @@ Reference again; the reconciliation can, from the cache.
 | Schedule and results | **Go** | 24 of 24 pages parsed with no issue, upcoming games included; every pilot game found with the same teams and final score as its box score. |
 | Team and player box scores | **Go** | 30 of 30 parsed with no issue; final score agrees across five sources; player lines sum to team totals; every game type classified from the heading. |
 | Play-by-play: events and scoring | **Go** | Present for every game back to 1999–2000; final score, periods, and every player's points reconcile; per-period points reconcile in 29 of 30 (the 30th is a source error, below). |
-| Play-by-play: lineups and possessions | **Not yet** | Lineup changes between periods are never logged, and `pbpstats` does not read these pages. Stage 4 needs its own period-start lineup inference or an NBA.com pilot. |
+| Play-by-play: lineups and possessions | **Not yet** | Lineup changes between periods are never logged, and `pbpstats` does not read these pages. Stage 4 needs its own period-start lineup inference or an NBA.com pilot. Probed offline on 2026-11-06: see *Period-start lineup probe*. |
 
 **Recommendation for Stage 2:** league schedule month pages for the calendar and
 results, and one box score page per regular-season game — about 14,550
@@ -206,11 +206,75 @@ Each of these changes how the Stage 2 loader or schema must behave.
     lineup into the next contradicts a logged substitution 6–20 times per game
     (mean 11.3), always after the first period. Lineup and possession
     reconstruction needs period-start inference. `pbpstats` reads NBA.com
-    formats, not these pages.
+    formats, not these pages. *Probed on 2026-11-06:* the box score's quarter
+    boxes resolve every period start in scope (below).
 13. **URLs are not always guessable.** The 2019–20 season has
     `NBA_2020_games-october-2019.html` and `-october-2020.html`; month links
     must be read from the season page, not constructed. Postponed games that were
     never played are not listed.
+
+## Period-start lineup probe (2026-11-06)
+
+A throwaway offline probe measured the inference `F8-015` needs. It fetched
+nothing and is not kept in the repository; `F8-015` implements the method with
+tests, so these figures measure the method, not a delivered component.
+
+**Method.** A player with seconds in a period's box (`box-<CODE>-q<n>-basic` or
+`box-<CODE>-ot<n>-basic`) started that period unless their first logged
+substitution in it brings them in. The game is then walked event by event, and
+at equal clock scoring events apply before substitutions.
+
+In scope below means the 20 pilot games from 2014–15 on that are regular-season
+games or Cup finals.
+
+| Check | In scope | All 30 games |
+|---|---:|---:|
+| Period starts resolved to five, with period boxes | 178 of 178 | 269 of 270 |
+| Period starts resolved to five, from that period's events alone | 177 of 178 | 268 of 270 |
+| Both methods name five players but differ | 0 | 0 |
+| Substitutions whose leaving player is off the floor | 0 of 1,020 | 1 of 1,538 |
+| Event mentions of a player off the floor | 0 of 10,460 | 2 of 15,431 |
+| Player-period minutes within 1.5 s of the period box | 1,513 of 1,579 | 2,278 of 2,363 |
+
+The one period start left unresolved is the second overtime of `200910300CHA`.
+
+Against published plus-minus, on the 18 in-scope games with real values (the
+2023 Cup final publishes zeros and the 2025 final none):
+
+| Same-clock order | Player lines exact | Games fully exact |
+|---|---:|---:|
+| Scoring before substitutions | 392 of 394 | 17 of 18 |
+| Feed order | 153 of 394 | 0 |
+| Substitutions before scoring | 82 of 394 | 0 |
+
+The two inexact lines are off by 2, in one game. Measured against the period
+boxes, the walk misplaces 0.075 % of 603,004 player-seconds. These are 178
+period starts in 20 games: zero misses there is still compatible with a true
+rate near 2 %, so `F8-015` measures every acquired game again.
+
+All 4,670 field-goal attempts in the pilot's games from 2014–15 on state a
+distance or "at rim", so shot profiles need no lineups.
+
+### Period boxes across the cache
+
+An audit of all 14,452 cached box score pages took 219 s on 16 processes.
+
+| Check | Result |
+|---|---:|
+| Four quarter boxes for both teams | 14,452 of 14,452 |
+| Team-periods with player seconds within 5 s of five times the period | 117,329 of 117,430 |
+| Games whose period points sum to the final for both teams | 14,431 of 14,452 |
+| Games with a player's period minutes missing the game's by more than one second per period | 1,885, of which 1,582 in 2014–15 and 2015–16 |
+
+On every fourth page (3,613 games, 7,226 team-games), period totals match the
+full game for points in 7,222 team-games, free-throw attempts in 7,219,
+field-goal attempts in 7,105, and offensive rebounds in 7,111; the other gaps are
+1 or 2. Turnovers differ in about half, because period boxes leave out the team's
+own turnovers (finding 5): the gap equals them in 7,122 team-games. Of 76,742
+player lines, 74,888 are within a second of the game's minutes and 436 miss by
+more than 15 s.
+
+The margin after three quarters is at least 20 in 15.8 % of the cached games.
 
 ## Cost of Stage 2
 

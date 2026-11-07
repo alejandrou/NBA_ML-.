@@ -208,8 +208,8 @@ schedule (`/leagues/NBA_<year>_games[-<month>].html`), box score
 (`/boxscores/<game_id>.html`), and play-by-play (`/boxscores/pbp/<game_id>.html`)
 pages, through the existing client, cache, limits, and approval gate. Its player
 and team ids are the ones `core` is keyed on, so no cross-provider mapping is
-needed. NBA.com stays a candidate for Stage 4 play-by-play only, where `pbpstats`
-compatibility matters, behind its own pilot and the owner's terms decision.
+needed. NBA.com stayed a candidate for Stage 4 play-by-play, where `pbpstats`
+compatibility matters, until Stage 4 chose its own reconstruction on 2026-10-18.
 
 ## 3. Proposed database extension
 
@@ -276,6 +276,11 @@ Original event codes are kept beside their normalized class, unknown events stay
 recoverable, and unresolved actors keep their external id and are flagged. Each
 source correction becomes a content-identified version; providers are never
 mixed in one reconstruction.
+
+**Decided 2026-11-06:** these tables, and `features.possessions`,
+`features.lineup_stints`, and `features.lineup_stint_players` below, are built
+only if the evaluation keeps play-by-play features (`F8-015`). The measurement
+runs from the cached pages, so no migration comes before the result.
 
 ### Derived data and models
 
@@ -392,7 +397,7 @@ five seasons, selected over Elo and boosting by that rule. Test log loss 0.6012
 against the home-rate baseline's 0.6874, so Stage 5 goes ahead. Details in
 `docs/ml/TEAM_PREDICTOR_EVALUATION.md`.
 
-### Stage 4 — players and play-by-play (`F8-009`, `F8-015`)
+### Stage 4 — players and play-by-play (`F8-009`, `F8-019`, `F8-015`)
 
 Add pre-game rotation and individual variables first, then play-by-play:
 possessions, team profiles, regularized impact. Compare team → team + players →
@@ -401,10 +406,31 @@ the sample, also report the basic model on that sample. Millions of events do
 not change that the target has one result per game; possessions are never
 counted as independent wins.
 
-**Fixed 2026-10-18:** players first (`F8-009`, no new acquisition). Play-by-play
-(`F8-015`) is acquired only if the player features win by the Stage 3 rule; its
-lineups come from our own period-start inference, measured on the 30 pilot
-games, with no NBA.com pilot in Stage 4.
+**Fixed 2026-10-18, revised 2026-11-06 before any Stage 4 result:** players
+first (`F8-009`, no new acquisition). Play-by-play (`F8-015`) is acquired if the
+player features win by the Stage 3 rule. If they do not, `F8-019` takes a second
+look, because `F8-009` measures box-score variables, not what play-by-play adds:
+`team-quarter-pregame-v1` adds a blowout-free rating and a quarter-level
+regularized impact built from the quarter boxes already cached, with no request
+and no schema, and faces the same rule. Two no-gos close Stage 4. Two looks at
+2025 raise the chance of a false go from about 2.5 % to about 5 %; that costs an
+acquisition, not a wrong model, because `F8-015`'s own evaluation still decides
+what stays.
+
+Lineups come from our own period-start inference, with no NBA.com pilot in
+Stage 4. A probe on 2026-11-06 recovered them offline: on the 20 pilot games in
+scope, 178 of 178 period starts resolve to five players, and walking the game
+reproduces 392 of 394 published plus-minus lines. The gate is therefore
+reconciliation with published plus-minus, not resolving five names. Record:
+`docs/validation/PER_GAME_ACQUISITION_PILOT.md`.
+
+Order inside `F8-015`: reconstruction on the pilot → acquisition by season,
+newest first, of only the seasons the selected window needs (with `last_5`,
+2019–20 to 2025–26: about 8,300 pages and 14.5 hours; 2014–15 produces no
+training row and is never acquired) → reconciliation of every acquired game →
+lineup-free features, evaluated → regularized impact, evaluated → schema and
+loader, only if features are kept. Each step faces the incumbent by the Stage 3
+rule, with the incumbent's family, window, and regularization unchanged.
 
 ### Stage 5 — local query (`F6-020`, `F8-010`, `F6-021`, `F7-005`; current-season data in `F8-012` to `F8-014` and `F8-008`)
 

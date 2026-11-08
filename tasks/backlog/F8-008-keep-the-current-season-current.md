@@ -11,6 +11,7 @@ depends_on:
   - F8-013
   - F8-014
   - F8-018
+  - F8-020
 read:
   - docs/ml/PREDICTOR_PLAN.md
   - docs/validation/CURRENT_SEASON_REFRESH.md
@@ -26,7 +27,7 @@ validation:
   - uv run python scripts/validate_tasks.py
 critical_actions:
   - Approving the standing `current_season_refresh` manifest for season 2027 — the owner's decision, recorded in the manifest.
-  - The first live refresh (`acquire-current-season`, ~60 requests including the 30 team pages, ~6 minutes) and every later one — the owner's direct instruction for each run.
+  - The first live refresh and any catch-up batches (request count depends on month pages, missing team pages, and missing box scores), and every later refresh — the owner's direct instruction for each run.
   - Loading season 2027 into the persistent nba database — from merged origin/main only, with the owner's approval.
 ---
 
@@ -47,6 +48,10 @@ leave a one-instruction procedure for every later refresh. Stage 5's
   into `nba`.
 - The 2026-27 regular season starts in late October 2026.
 - Every live run needs the owner's direct, current instruction (`AGENTS.md`).
+- F8-020 must provide bounded catch-up before this execution-only card starts:
+  the refresh refuses a backlog above 150 missing box scores, and the existing
+  Stage 2 manifest cannot acquire season 2027. Measure the actual backlog from
+  snapshots; no calendar date alone establishes its size.
 
 # Human decisions or resources
 
@@ -61,7 +66,7 @@ leave a one-instruction procedure for every later refresh. Stage 5's
 # Acceptance criteria
 
 - The owner approves `tasks/manifests/F8-008-current-season-2027.json`
-  (drafted by `F8-013`'s command), and the dry run for the chosen `as-of` shows
+  (drafted with the offline helper in the refresh guide), and the dry run for the chosen `as-of` shows
   the plan before the first live run.
 - First refresh, on the owner's instruction: the report shows no failure and no
   429; snapshots of the season page, its month pages, and 30 team pages exist;

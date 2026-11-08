@@ -16,7 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class RateLimitExceededError(Exception):
-    """Raised when the remote site keeps responding with rate-limit errors."""
+    """Raised when the remote site keeps responding with rate-limit errors.
+
+    `retry_after_seconds` is the wait the last 429 asked for (`Retry-After`, or
+    60 seconds without one), so a caller that stops can say when to resume.
+    """
+
+    def __init__(self, message: str, *, retry_after_seconds: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
 
 
 class RequestBudgetExhaustedError(Exception):
@@ -146,7 +154,7 @@ class BasketballReferenceClient:
                 logger.warning("HTTP 429 for %s; retry_after=%s", url, retry_after)
                 if too_many_requests > self._max_429_retries:
                     msg = f"Repeated HTTP 429 while requesting {url}; stop the scraping job"
-                    raise RateLimitExceededError(msg)
+                    raise RateLimitExceededError(msg, retry_after_seconds=retry_after)
                 self._sleeper(max(retry_after, 60.0))
                 continue
 

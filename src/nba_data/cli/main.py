@@ -1,5 +1,6 @@
 import json
-from datetime import UTC, datetime
+import re
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import typer
@@ -18,6 +19,21 @@ from nba_data.scraping.backfill_manifest import (
 )
 from nba_data.scraping.cache import HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
+from nba_data.scraping.current_season_acquisition import (
+    CurrentSeasonAcquisitionConfigurationError,
+    CurrentSeasonAcquisitionStopped,
+    build_current_season_dry_run_report,
+    refresh_current_season,
+    validate_current_season_acquisition_settings,
+)
+from nba_data.scraping.current_season_acquisition import (
+    validate_settings_within_manifest_policy as validate_settings_within_current_season_policy,
+)
+from nba_data.scraping.current_season_manifest import (
+    CurrentSeasonManifestError,
+    load_current_season_manifest,
+)
+from nba_data.scraping.current_season_planning import CurrentSeasonPlanningError
 from nba_data.scraping.game_pilot_acquisition import (
     GamePilotAcquisitionConfigurationError,
     GamePilotAcquisitionStopped,
@@ -87,6 +103,7 @@ from nba_data.scraping.player_page_acquisition import (
     validate_player_page_acquisition_settings,
 )
 from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
+from nba_data.scraping.snapshot_cache import SnapshotCache
 from nba_data.validation.game_pilot import (
     build_game_pilot_validation_report,
     known_player_ids_from_cache,
@@ -1236,6 +1253,110 @@ def acquisition_acquire_game_season(
             )
     except GameSeasonAcquisitionStopped as exc:
         _print_and_optionally_write_json(exc.report.to_dict(), output)
+        raise typer.Exit(code=1) from exc
+
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+_AS_OF_OPTION = typer.Option(
+    ...,
+    "--as-of",
+    help="The refresh date, YYYY-MM-DD. Required: the refresh never reads the clock.",
+)
+_AS_OF_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+
+
+def _parse_as_of(value: str) -> date:
+    try:
+        if _AS_OF_RE.fullmatch(value) is None:
+            raise ValueError(value)
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise typer.BadParameter(f"--as-of must be a YYYY-MM-DD date, not {value!r}") from exc
+
+
+@acquisition_app.command("dry-run-current-season")
+def acquisition_dry_run_current_season(
+    manifest_path: Path,
+    as_of: str = _AS_OF_OPTION,
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Print the current-season refresh plan from the latest snapshots, offline."""
+
+    as_of_date = _parse_as_of(as_of)
+    settings = get_settings()
+    try:
+        manifest = load_current_season_manifest(manifest_path, require_approval=False)
+        report = build_current_season_dry_run_report(
+            manifest,
+            as_of=as_of_date,
+            snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+            archive=HtmlCache(settings.scraper_cache_dir),
+            settings=settings,
+        )
+    except (CurrentSeasonManifestError, CurrentSeasonPlanningError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    _print_and_optionally_write_json(report.to_dict(), output)
+
+
+@acquisition_app.command("acquire-current-season")
+def acquisition_acquire_current_season(
+    manifest_path: Path,
+    as_of: str = _AS_OF_OPTION,
+    owner_approved: bool = typer.Option(
+        False,
+        "--owner-approved",
+        help="Required explicit owner approval for this current-season refresh.",
+    ),
+    execute_approved_manifest: bool = typer.Option(
+        False,
+        "--execute-approved-manifest",
+        help="Required explicit confirmation to execute the approved refresh.",
+    ),
+    max_fetches: int | None = typer.Option(
+        None,
+        "--max-fetches",
+        min=1,
+        help="Stop cleanly after this many live requests; rerun to resume.",
+    ),
+    output: Path | None = _ACQUISITION_OUTPUT_OPTION,
+) -> None:
+    """Run one gated refresh of the current season: schedule, team pages, new box scores."""
+
+    if not owner_approved or not execute_approved_manifest:
+        msg = "Refusing acquisition without --owner-approved and --execute-approved-manifest"
+        console.print(msg)
+        raise typer.Exit(code=1)
+
+    as_of_date = _parse_as_of(as_of)
+    settings = get_settings()
+    try:
+        validate_current_season_acquisition_settings(settings)
+        manifest = load_current_season_manifest(manifest_path, require_approval=True)
+        validate_settings_within_current_season_policy(settings, manifest)
+    except (CurrentSeasonAcquisitionConfigurationError, CurrentSeasonManifestError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    try:
+        with BasketballReferenceClient(
+            settings, max_429_retries=0, max_requests=max_fetches, follow_redirects=False
+        ) as client:
+            report = refresh_current_season(
+                manifest,
+                as_of=as_of_date,
+                snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+                archive=HtmlCache(settings.scraper_cache_dir),
+                client=client,
+                max_fetches=max_fetches,
+            )
+    except CurrentSeasonAcquisitionConfigurationError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    except CurrentSeasonAcquisitionStopped as exc:
+        _print_and_optionally_write_json(exc.report.to_dict(), output)
+        typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
     _print_and_optionally_write_json(report.to_dict(), output)

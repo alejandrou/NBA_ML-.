@@ -175,6 +175,20 @@ It uses IPv4 for `localhost`, matching the compose port binding and avoiding
 Windows IPv6 fallback delays. Explicit connection URL options are preserved.
 On Windows, use Git Bash; the Windows `System32/bash.exe` requires WSL.
 
+## The `ml` schema
+
+`ml.model_versions` records each saved model, by artifact hash, with at most one
+active (a partial unique index). `ml.predictions` holds the forecasts actually
+issued, one row per `(game, model, cutoff)`, written once and never updated. The
+served forecast is the active model's row with the latest `cutoff_date`, except
+that a postponed game (`core.games.status`) is served as unavailable whatever its
+rows say. A game no longer `scheduled` gets a new row only if the model has none.
+
+`nba-data ml register-model`, `ml predict`, and `ml activate` are the only writers.
+All three run the same load-target guard as the other loaders. Artifacts stay under `data/models/`,
+and a row's `name` is its directory. The API reads these tables and loads no
+model (F8-010, F6-021).
+
 ## Planned Direction
 
 Work after the read-only API, in order:

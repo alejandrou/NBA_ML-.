@@ -154,6 +154,18 @@ _ML_ARTIFACT_DIR_OPTION = typer.Option(
     "--artifact-dir",
     help="Directory that receives the versioned model artifact.",
 )
+_ML_REGISTER_ARTIFACT_ARGUMENT = typer.Argument(..., help="The artifact directory to register.")
+_ML_ACTIVATE_OPTION = typer.Option(False, "--activate", help="Make this the single active model.")
+_ML_PREDICT_FROM_OPTION = typer.Option(
+    ..., "--from", formats=["%Y-%m-%d"], help="First game date."
+)
+_ML_PREDICT_TO_OPTION = typer.Option(..., "--to", formats=["%Y-%m-%d"], help="Last game date.")
+_ML_PREDICT_MODEL_OPTION = typer.Option(
+    None, "--model", help="A registered model to prepare instead of the active one."
+)
+_ML_PREDICT_ARTIFACT_DIR_OPTION = typer.Option(
+    Path("data/models"), "--artifact-dir", help="Directory holding the registered artifacts."
+)
 _ACQUISITION_OUTPUT_OPTION = typer.Option(
     None,
     "--output",
@@ -916,6 +928,98 @@ def ml_evaluate(
         engine.dispose()
 
     console.print_json(data=summary)
+
+
+@ml_app.command("register-model")
+def ml_register_model(
+    artifact: Path = _ML_REGISTER_ARTIFACT_ARGUMENT,
+    activate: bool = _ML_ACTIVATE_OPTION,
+) -> None:
+    """Verify a saved model and record it in ml.model_versions."""
+
+    from nba_data.ml.artifact import ArtifactIntegrityError
+    from nba_data.ml.register import register_model
+
+    settings = get_settings()
+    _require_ml_write_target(settings.database_url)
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            registered = register_model(session, artifact, activate=activate)
+            session.commit()
+    except (ArtifactIntegrityError, OSError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+
+    console.print_json(data=registered.to_dict())
+
+
+@ml_app.command("activate")
+def ml_activate(name: str) -> None:
+    """Make a registered model active, once it covers every forecast being served."""
+
+    from nba_data.ml.register import activate_model
+
+    settings = get_settings()
+    _require_ml_write_target(settings.database_url)
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            activated = activate_model(session, name)
+            session.commit()
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+
+    console.print_json(data=activated.to_dict())
+
+
+@ml_app.command("predict")
+def ml_predict(
+    start: datetime = _ML_PREDICT_FROM_OPTION,
+    end: datetime = _ML_PREDICT_TO_OPTION,
+    artifact_dir: Path = _ML_PREDICT_ARTIFACT_DIR_OPTION,
+    model: str | None = _ML_PREDICT_MODEL_OPTION,
+) -> None:
+    """Write the active or the named model's forecasts for the games in a window."""
+
+    from nba_data.ml.artifact import ArtifactIntegrityError
+    from nba_data.ml.predict import publish_predictions
+
+    settings = get_settings()
+    _require_ml_write_target(settings.database_url)
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            # One snapshot, so the cutoff and the history it bounds agree.
+            session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+            report = publish_predictions(
+                session,
+                start=start.date(),
+                end=end.date(),
+                artifact_dir=artifact_dir,
+                model_name=model,
+            )
+            session.commit()
+    except (ArtifactIntegrityError, OSError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+
+    console.print_json(data=report.to_dict())
+
+
+def _require_ml_write_target(database_url: str) -> None:
+    try:
+        require_load_target(database_url)
+    except LoadTargetError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
 
 
 @acquisition_app.command("dry-run-nba-team-seasons")

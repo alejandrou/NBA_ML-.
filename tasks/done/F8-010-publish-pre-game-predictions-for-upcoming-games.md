@@ -151,29 +151,88 @@ A scheduler.
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+Run 2026-11-08 on `feature/F8-010-publish-pregame-predictions`.
+
+| Command | Result |
+|---|---|
+| The seven focused unit modules from `validation:` | 91 passed |
+| `uv run ruff check .` | All checks passed |
+| `uv run mypy src/nba_data` | No issues in 114 files |
+| `uv run pytest` | 1879 passed, 295 skipped (the integration lane, run below) |
+| `bash scripts/validate_database.sh` | Passed: 296 integration tests, `alembic check` clean, and the `0012` downgrade restored `0011` exactly, `ml` included |
+| `uv run python scripts/validate_tasks.py` | Passed after the move to review |
+
+The two integration modules from `validation:` ran inside that database lane,
+not on their own: they skip without a disposable database.
+
+The real artifact `logistic-team-pregame-v1-f369530d6c6e` passes its hash check
+and holds every metadata key registration needs (loaded read-only). It was not
+registered anywhere. No acquisition ran, and `nba` was not touched.
 
 ## Manual happy path
 
-1.
-2.
-3.
+On a disposable database whose name starts with `nba_test`, at the head revision:
 
-Expected result:
+1. Load games with `DATABASE_URL` pointing at it, including at least five final
+   games per team before a `scheduled` game.
+2. `uv run nba-data ml register-model data/models/logistic-team-pregame-v1-f369530d6c6e --activate`
+3. `uv run nba-data ml predict --from <date> --to <date>`, then run it again.
+
+Expected result: step 2 reports `created: true, is_active: true`. The first
+predict writes one row per game, `available` with probabilities summing to 1.
+The rerun reports `written: 0`.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. Append a byte to `model.joblib` in a copy of the artifact and register the copy.
+2. Run `ml predict` with no active model, or over a window with no games.
+3. Run either command with `DATABASE_URL` naming `nba` from this branch.
 
-Expected result:
+Expected result: each exits 1 with the reason and writes nothing. Step 3 is
+refused by the load-target guard before an engine exists, so it is safe to try.
+
+## Review fixes (2026-11-08)
+
+A code review found five gaps; all are fixed with tests, with no schema change.
+
+1. **Status changes.** A game no longer `scheduled` gets a row only if this model
+   has none, so an issued forecast is never buried. A postponed game keeps its
+   rows and is listed in `postponed_with_forecast`; `F6-021` now answers it as
+   unavailable from `core.games.status`.
+2. **Venues.** Publication resolves a NULL `neutral_site` from arena names, for
+   targets and Elo history, without writing to `core`. An unknown target venue is
+   withheld; unresolved history is counted in `history_venues_unresolved`.
+3. **Eligibility.** An unclassified game is forecast only on its home team's floor
+   and within each team's 82 games. Others get no row and are named in `withheld`.
+4. **Activation.** `ml predict --model NAME` prepares an inactive model, and
+   `ml activate NAME` (new) switches. Activation, including
+   `register-model --activate`, refuses while a scheduled game the current model
+   covers has no `available` forecast from the new one.
+5. **History quality.** Each team's last five known games must all have every
+   statistic, or the game gets `insufficient_history`. `inputs` records
+   `complete_recent_games_home` and `_away`; the report counts
+   `blocked_by_blank_statistics`.
 
 ## Known limitations
 
-- None.
+- **Neutral-floor regular-season games are withheld.** Nothing distinguishes the
+  Cup final from another neutral game before it is played, so Mexico City, Paris,
+  and Cup semifinal games get no forecast either (404 on the route, named in the
+  report). Marking the Cup final at load would release them.
+- **A postponed game's forecast relies on `F6-021`.** The `available` row stays
+  stored, because the card fixes the key and forbids updates. The route must apply
+  the status rule added to its card.
+- **`team_season_missing` is never written.** `core.games` requires both team
+  seasons by foreign key, so the case cannot arise. The value stays in the check
+  set the card fixed.
+- **Stale games hold the cutoff.** A game left `scheduled` after its date stops
+  the cutoff there until a refresh finishes it, by design.
+
+Changes outside the card's stated scope, each required by it: `alembic/env.py`
+and `scripts/validate_postgres_local.py` (include `ml`);
+`tests/unit/test_team_pregame_features.py` (its "only `team_games.py` touches the
+database" rule now also exempts `register.py` and `predict.py`, which the card
+places in `ml/`). Both `ml` commands also run `require_load_target`, which the
+card did not name, so they refuse `nba` unless on clean merged code.

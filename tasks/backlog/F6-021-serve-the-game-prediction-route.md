@@ -71,7 +71,10 @@ plan's Stage 5 query.
       `Prediction not found`; an `unavailable` row → 200 with its reason.
       Strings fixed, never interpolated.
 - [x] **Which row**: the active model's row with the latest `cutoff_date`, the
-      rule `F8-010` defines.
+      rule `F8-010` defines. If that row exists and `core.games.status` is
+      `postponed`, answer `unavailable` with `game_not_scheduled` and null
+      probabilities: a forecast issued before the postponement stays stored but
+      is never served as live.
 - [x] **Readiness** adds `ml.model_versions` and `ml.predictions`.
 
 # Acceptance criteria
@@ -82,7 +85,8 @@ plan's Stage 5 query.
   `core.games`, the active `ml.model_versions` row, and its latest-cutoff
   `ml.predictions` row; never mutates the Session.
 - Offline `TestClient` tests: available; unavailable with each of the three
-  reasons; no row → 404 `Prediction not found`; unknown and malformed game id
+  reasons; a postponed game with an `available` row → 200 `unavailable`,
+  `game_not_scheduled`; no row → 404 `Prediction not found`; unknown and malformed game id
   → 404 `Game not found`; two cutoffs (latest wins); an inactive model's newer
   row ignored; no active model → 404 `Prediction not found`; probabilities
   asserted as JSON numbers equal to the stored values (`0.512345` stays

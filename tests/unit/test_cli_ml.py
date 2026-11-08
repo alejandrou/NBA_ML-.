@@ -106,6 +106,32 @@ def test_both_paths_are_required(tmp_path: Path) -> None:
     assert result.exit_code != 0
 
 
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["ml", "register-model", "somewhere"],
+        ["ml", "activate", "somewhere"],
+        ["ml", "predict", "--from", "2026-12-01", "--to", "2026-12-02"],
+    ],
+)
+def test_ml_writes_are_refused_before_an_engine_exists(
+    monkeypatch: pytest.MonkeyPatch, arguments: list[str]
+) -> None:
+    def refused(database_url: str) -> None:
+        raise main.LoadTargetError("Refusing to load persistent database 'nba'")
+
+    def no_engine(settings: object) -> None:
+        raise AssertionError("an engine was created")
+
+    monkeypatch.setattr(main, "require_load_target", refused)
+    monkeypatch.setattr(main, "create_db_engine", no_engine)
+
+    result = runner.invoke(main.app, arguments)
+
+    assert result.exit_code == 1
+    assert "Refusing to load" in result.output
+
+
 def test_starting_the_cli_does_not_load_the_numerical_stack() -> None:
     code = (
         "import sys\n"

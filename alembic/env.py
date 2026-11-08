@@ -71,7 +71,7 @@ target_metadata = Base.metadata
 
 def include_name(name: str | None, type_: str, parent_names: dict[str, str]) -> bool:
     if type_ == "schema":
-        return name in {"core", "stats"}
+        return name in {"core", "stats", "ml"}
     return True
 
 

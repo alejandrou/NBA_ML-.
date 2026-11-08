@@ -8,6 +8,7 @@ from nba_data.db.models.core import (
     TeamAlias,
     TeamSeason,
 )
+from nba_data.db.models.ml import ModelVersion, Prediction
 from nba_data.db.models.stats import (
     PlayerGameTotals,
     PlayerPostseasonAdjShooting,
@@ -48,7 +49,9 @@ from nba_data.db.models.stats import (
 
 __all__ = [
     "Game",
+    "ModelVersion",
     "Player",
+    "Prediction",
     "PlayerGameTotals",
     "PlayerPostseasonAdjShooting",
     "PlayerPostseasonAdvanced",

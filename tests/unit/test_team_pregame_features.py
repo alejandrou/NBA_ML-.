@@ -586,9 +586,10 @@ def test_the_feature_modules_import_no_numeric_library() -> None:
             assert not roots & forbidden, f"{path.name} imports {roots & forbidden}"
 
 
-def test_only_team_games_touches_the_database() -> None:
+def test_only_the_database_modules_touch_the_database() -> None:
+    # `register` and `predict` write `ml.*` (F8-010); features and models stay pure.
     for path in sorted(ML_PACKAGE.glob("*.py")):
-        if path.name == "team_games.py":
+        if path.name in ("team_games.py", "register.py", "predict.py"):
             continue
         source = path.read_text(encoding="utf-8")
         assert "sqlalchemy" not in source, path.name

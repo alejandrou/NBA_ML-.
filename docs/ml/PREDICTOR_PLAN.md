@@ -119,8 +119,8 @@ bumps `FEATURE_DEFINITION_VERSION`.
 
 - **History** is every `final` game of type `regular_season` or `cup_final`;
   **targets** are `regular_season` games only, never postponed ones. A
-  scheduled game is stored with no competition type, so it cannot be a target
-  until F8-010 classifies it. A team is its
+  scheduled game is stored with no competition type, and `F8-010` classifies it
+  as regular season when it publishes a forecast. A team is its
   `core.teams.basketball_reference_team_id`, stable from 2014–15.
 - **Cutoff.** Results-based features (Elo and every window) use only history
   dated on or before `target date − 2 days`, or an earlier explicit cutoff.
@@ -445,6 +445,29 @@ API needs no ML dependency. Missing required data yields an explicit
 "forecast unavailable" with a reason — never a 50–50 stand-in. Data and model
 reach the `app` track as handoffs (`F8-002` → `F6-020`, `F8-010` → `F6-021`)
 recorded in `tasks/CROSS_TRACK.md`; `F7-005` puts both in the browser.
+
+**Data path (`F8-010`).** `nba-data ml register-model <artifact dir> [--activate]`
+records a verified artifact; `nba-data ml predict --from D --to D [--model NAME]`
+writes one row per game in the window for the active or the named model. The
+cutoff is `min(game_date − 2 days, latest complete date)`, and a date is complete
+when no game on or before it is still `scheduled`.
+
+- A game no longer `scheduled` gets `game_not_scheduled` only if the model has no
+  row for it, so an issued forecast is never buried. A postponed game can still
+  hold an `available` row, so the API checks `core.games.status` before serving.
+- Either team lacking 5 prior games, or a blank statistic in its last five, gets
+  `insufficient_history`; `inputs` records the complete count per team.
+- `neutral_site` stays NULL in a season in progress, so publication compares each
+  game's arena with the one most of the home team's games list, for targets and
+  for Elo history alike, without writing to `core`.
+- Schedule pages do not mark a coming playoff, play-in, or Cup final game. An
+  unclassified game is forecast only on its home team's floor and within each
+  team's 82 games. Anything else, or an unknown venue, gets no row and is named
+  under `withheld` in the report. Neutral-floor regular-season games are withheld
+  with them until something can tell them from the Cup final.
+- A replacement model is prepared with `--model`, then switched with
+  `nba-data ml activate NAME`, which refuses while it lacks an `available` forecast
+  for a scheduled game the current model covers.
 
 ### Acceptance tests across stages
 

@@ -47,7 +47,7 @@ _REQUIRE_ENV = "NBA_DATA_REQUIRE_POSTGRES_INTEGRATION"
 _TEST_DATABASE_ENV = "NBA_DATA_TEST_DATABASE"
 _ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
 _GUARD_SLUG = "slug-guard"
-_ROUND_TRIP_SCHEMAS = ("core", "stats")
+_ROUND_TRIP_SCHEMAS = ("core", "stats", "ml")
 
 
 def main() -> int:

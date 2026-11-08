@@ -11,7 +11,7 @@ from typing import Any, Literal, TypeGuard
 from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
 
-from nba_data.db.repositories.queries.seasons import NBA_LEAGUE, get_season_years
+from nba_data.db.repositories.queries.seasons import NBA_LEAGUE, get_archive_season_years
 from nba_data.domain.team_codes import (
     is_aggregate_only_team_code,
     is_multi_team_marker,
@@ -984,7 +984,7 @@ def _coverage_issues(
             )
         )
 
-    loaded_season_years = get_season_years(session)
+    loaded_season_years = get_archive_season_years(session)
     in_scope_entries = 0
     excluded_seasons: set[int] = set()
     for entry in artifact.entries:

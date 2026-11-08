@@ -143,6 +143,19 @@ def test_load_season_scope_returns_the_nba_years_present(session: Session) -> No
 
 
 @pytest.mark.unit
+def test_load_season_scope_leaves_out_the_season_in_progress(session: Session) -> None:
+    session.add_all(
+        [
+            Season(league="NBA", season_year=2026, label="2026"),
+            Season(league="NBA", season_year=2027, label="2027"),
+        ]
+    )
+    session.flush()
+
+    assert load_season_scope(session) == frozenset({2026})
+
+
+@pytest.mark.unit
 def test_load_season_scope_refuses_an_unseeded_seasons_table(session: Session) -> None:
     with pytest.raises(EmptySeasonScopeError, match="backfill offline"):
         load_season_scope(session)

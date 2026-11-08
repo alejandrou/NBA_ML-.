@@ -337,6 +337,47 @@ season page for them. An existing player is never renamed from a box score.
 box score URL, its cache path, and the `box_score` parser contract
 (`validation/parser_contracts.py`); `core.games` has no lineage columns.
 
+### Loading the season in progress (F8-014)
+
+`nba-data backfill current-season-identity` loads the season and its 30
+team-seasons from the latest snapshots. It loads **no roster, player-season, or
+team-season statistics**: they change daily, and the archive's coverage checks
+would expect rows that do not exist. Players enter through box score links.
+
+`nba-data backfill current-season-games` applies the latest month snapshots to
+`core.games`. There is no schedule history table: history lives in the
+snapshots, and `core.games` holds the current observation.
+
+| From | To | When |
+|---|---|---|
+| (new) | `scheduled` | the game is on the schedule |
+| `scheduled` | `final` | the row has a score, its box score is cached, and it passes F8-005's gates |
+| `scheduled` | `postponed` | the latest snapshot no longer lists the game at its date, or marks it postponed |
+| `postponed` | `scheduled` | it reappears at the same date |
+
+- A rescheduled game has a new id, as Basketball Reference makes it, so it is a
+  new row and the old one stays `postponed`.
+- An unplayed game's id is built from its date and the home team's link code. A
+  link that disagrees with the built id fails the run.
+- A `scheduled` row may change only `start_time_et` and `venue`. `neutral_site`
+  stays NULL for the whole season in progress, on `final` rows too: a partial
+  season cannot establish a team's home city.
+- A `final` row is never changed by a refresh. A different score, start time,
+  or arena, a lost score, or a game no longer listed is a conflict: the run
+  fails and writes nothing. So does a changed date or team on any stored row. A
+  `final` row holds the box score's `Arena, City, State`, so its arena is
+  compared with the text before the first comma.
+- A scored row whose box score is missing or quarantined stays `scheduled`. A
+  missing box score is reported; a quarantine also fails the run.
+- A linked month with no snapshot, or with no games, refuses the run, so a gap
+  in the snapshots can never read as postponed games. The same holds for a month
+  the season page stops linking: a `scheduled` game in a month with no listed
+  game refuses the run.
+- Both commands refuse to run without `--execute-approved-current-season-load`.
+  A database whose name does not start with `nba_test` counts as persistent, and
+  is loaded only from a checkout whose `HEAD` is on `origin/main` and whose `src`
+  and `alembic` have no uncommitted changes.
+
 ## Official Stats and Generated Metrics
 
 - Official scraped data remains separate from project-generated metrics.

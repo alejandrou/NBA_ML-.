@@ -126,9 +126,10 @@ season. Schema changes beyond what F8-002 already holds. Predictions (F8-010).
 
 # Cross-track impact
 
-- Additive, no new contract: `F6-020` already serves all three statuses.
-  Record the line under `## Open` in `tasks/CROSS_TRACK.md` against `F6-020` if
-  it is not done yet, otherwise under `## Log`.
+- Additive, no new contract: `F6-020` already serves all three statuses. Recorded
+  under `## Open` in `tasks/CROSS_TRACK.md`, because `F6-020` is not done. Once
+  2027 is loaded, `core.seasons` also lists it, with 30 team-seasons and no
+  player-seasons.
 
 # Implementation notes
 
@@ -141,29 +142,56 @@ season. Schema changes beyond what F8-002 already holds. Predictions (F8-010).
 
 # Review evidence
 
-Filled in before the card moves to `tasks/review/`.
-
 ## Automated validation
 
-- Command:
-- Result:
+- Command: `uv run pytest tests/unit/test_current_season_identity_loader.py tests/unit/test_current_season_games_loader.py tests/unit/test_game_loader.py tests/unit/test_offline_database_validation.py` plus the season-scope tests
+- Result: all passed (198 tests in the focused run, including the official-stats and player-scope files).
+- Command: `uv run ruff check .`
+- Result: All checks passed.
+- Command: `uv run mypy src/nba_data`
+- Result: no issues in 111 source files.
+- Command: `uv run pytest`
+- Result: 1816 passed, 260 skipped. The skips are the PostgreSQL lane, run by the next command.
+- Command: `bash scripts/validate_database.sh`
+- Result: 261 passed on disposable `nba_test_tmp_672749b59d1f44e4`, including `tests/integration/test_current_season_load_postgres.py`; the database was dropped afterwards.
+- Command: `uv run python scripts/validate_tasks.py`
+- Result: Task validation passed.
+- Not run: `uv run pytest tests/integration/...` on its own (the disposable lane above covers those files). Nothing was loaded into `nba`, and no page was fetched.
 
 ## Manual happy path
 
-1.
-2.
-3.
+Run against a disposable database whose name starts with `nba_test`, with `DATABASE_URL` naming it. The real 2027
+snapshots do not exist until F8-008's first refresh, so steps 2-3 need them or a
+hand-built snapshot root.
 
-Expected result:
+1. `uv run nba-data backfill current-season-identity --season 2027 --execute-approved-current-season-load`
+2. `uv run nba-data backfill current-season-games --season 2027 --as-of 2026-11-08 --output reports/f8-014/current-season.json --execute-approved-current-season-load`
+3. Run both commands again.
+
+Expected result: step 1 reports 1 season and 30 team-seasons created. Step 2
+reports `new->scheduled` and `scheduled->final` counts and statuses, and exits 0.
+Step 3 reports zero created and an empty `transitions`.
 
 ## Manual sad path
 
-1.
-2.
-3.
+1. `uv run nba-data backfill current-season-identity --season 2026 --execute-approved-current-season-load`
+2. `uv run nba-data backfill current-season-games --season 2027 --as-of 2026-07-01 --execute-approved-current-season-load`
+3. With no snapshots in `SCRAPER_SNAPSHOT_DIR`, run either command for 2027 with the flag.
+4. With `DATABASE_URL` naming `nba`, run either command with the flag from this branch.
+5. Run either command without the flag.
 
-Expected result:
+Expected result: steps 1-4 print `Error: ...`, exit 1, and write nothing; step 4 names `HEAD` or uncommitted changes and does not connect. Step 5 exits 2 and does not connect.
 
 ## Known limitations
 
-- None.
+- `neutral_site` stays NULL on every 2027 game, `final` included, so the predictor treats those games as home games and counts them as undetermined. F8-005's inference needs a whole season's venues, and running it later would change `final` rows. An end-of-season pass would need its own decision.
+- The checkout guard reads the local `origin/main` ref and does not fetch. It cannot tell whether the owner approved a run: `--execute-approved-current-season-load` records that decision, and the rule that only the owner authorizes it stays procedural.
+- `build-stats-coverage` reads only the cache, so loading 2027 cannot change it; only `validate official-stats` and the producers needed the archive scope.
+- An unreadable start time on any schedule row refuses the whole run, so one bad row blocks the refresh until the snapshot is corrected.
+- F8-021's page identity validation is not done. A team page must name a team, but its name is not compared with the schedule.
+
+## Changes outside the stated scope
+
+- `db/repositories/queries/seasons.py`, `scraping/player_page_scope.py`, `validation/official_stats.py`: without an archive-only scope, loading 2027 would bring the 336 cached 2027 player rows into scope and fail both producers and `validate official-stats`.
+- `scraping/current_season_planning.py`: adds `require_latest_month_pages`; the existing planning is unchanged.
+- `db/load_guard.py` and `--execute-approved-current-season-load` on both commands: review finding, the card specified no guard. `tasks/backlog/F8-008-keep-the-current-season-current.md` validation commands carry the flag.

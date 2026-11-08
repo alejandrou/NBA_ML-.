@@ -661,3 +661,95 @@ def _backfill_report(
 
 def _issue_codes(report) -> set[str]:
     return {issue.code for issue in report.issues}
+
+
+def _insert_season_with_team_seasons(
+    session: Session, *, season_id: int, season_year: int, team_seasons: int
+) -> None:
+    session.execute(
+        text("insert into core.seasons (id, season_year, league, label) values (:id, :year, 'NBA', 'x')"),
+        {"id": season_id, "year": season_year},
+    )
+    for offset in range(team_seasons):
+        code = f"T{chr(65 + offset // 26)}{chr(65 + offset % 26)}"
+        identifier = 1000 * season_id + offset
+        session.execute(
+            text(
+                "insert into core.teams "
+                "(id, basketball_reference_team_id, current_abbreviation, current_name) "
+                "values (:id, :code, :code, :code)"
+            ),
+            {"id": identifier, "code": f"{code}{season_id}"},
+        )
+        session.execute(
+            text(
+                "insert into core.team_seasons (id, team_id, season_id, team_abbreviation) "
+                "values (:id, :id, :season_id, :code)"
+            ),
+            {"id": identifier, "season_id": season_id, "code": code},
+        )
+
+
+def _expectations_ignoring_new_teams(teams: int) -> OfflineDatabaseValidationExpectations:
+    return _expectations(table_counts={"core.teams": 1 + teams})
+
+
+@pytest.mark.unit
+def test_validate_offline_database_accepts_a_loaded_current_season_identity(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_season_with_team_seasons(session, season_id=2, season_year=2027, team_seasons=30)
+
+    report = validate_offline_database(
+        session, _backfill_report(), _expectations_ignoring_new_teams(30)
+    )
+
+    assert report.passed is True, report.to_dict()
+    assert report.table_counts["core.seasons"] == 1
+    assert report.table_counts["core.team_seasons"] == 1
+
+
+@pytest.mark.unit
+def test_validate_offline_database_requires_exactly_30_current_season_team_seasons(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_season_with_team_seasons(session, season_id=2, season_year=2027, team_seasons=29)
+
+    report = validate_offline_database(
+        session, _backfill_report(), _expectations_ignoring_new_teams(29)
+    )
+
+    assert _issue_codes(report) == {"current_season_identity_mismatch"}
+
+
+@pytest.mark.unit
+def test_validate_offline_database_refuses_player_seasons_in_the_current_season(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_season_with_team_seasons(session, season_id=2, season_year=2027, team_seasons=30)
+    session.execute(
+        text("insert into core.player_seasons (id, player_id, season_id) values (2, 1, 2)")
+    )
+
+    report = validate_offline_database(
+        session, _backfill_report(), _expectations_ignoring_new_teams(30)
+    )
+
+    assert "current_season_identity_mismatch" in _issue_codes(report)
+
+
+@pytest.mark.unit
+def test_validate_offline_database_still_flags_a_season_beyond_the_current_one(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    _insert_season_with_team_seasons(session, season_id=2, season_year=2028, team_seasons=30)
+
+    report = validate_offline_database(
+        session, _backfill_report(), _expectations_ignoring_new_teams(30)
+    )
+
+    assert "season_coverage_mismatch" in _issue_codes(report)

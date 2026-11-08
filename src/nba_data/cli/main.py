@@ -9,6 +9,7 @@ from rich.console import Console
 from nba_data import __version__
 from nba_data.config.logging_config import configure_logging
 from nba_data.config.settings import get_settings
+from nba_data.db.load_guard import LoadTargetError, require_load_target
 from nba_data.db.repositories.queries.game_identities import load_game_identity_keys
 from nba_data.db.session import create_db_engine, create_session_factory
 from nba_data.scraping.backfill_manifest import (
@@ -17,7 +18,7 @@ from nba_data.scraping.backfill_manifest import (
     dry_run_backfill_manifest,
     run_backfill_acquisition,
 )
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import CacheMetadataError, HtmlCache
 from nba_data.scraping.client import BasketballReferenceClient
 from nba_data.scraping.current_season_acquisition import (
     CurrentSeasonAcquisitionConfigurationError,
@@ -68,6 +69,11 @@ from nba_data.scraping.game_season_planning import (
     plan_game_schedules,
     write_draft_manifest,
 )
+from nba_data.scraping.loaders.current_season_games import run_current_season_games
+from nba_data.scraping.loaders.current_season_identity import (
+    CurrentSeasonLoadError,
+    run_current_season_identity,
+)
 from nba_data.scraping.nba_team_season_acquisition import (
     NbaTeamSeasonAcquisitionConfigurationError,
     NbaTeamSeasonAcquisitionStopped,
@@ -103,7 +109,7 @@ from nba_data.scraping.player_page_acquisition import (
     validate_player_page_acquisition_settings,
 )
 from nba_data.scraping.player_page_cache import PlayerCacheRootNotFoundError
-from nba_data.scraping.snapshot_cache import SnapshotCache
+from nba_data.scraping.snapshot_cache import SnapshotCache, SnapshotCacheError
 from nba_data.validation.game_pilot import (
     build_game_pilot_validation_report,
     known_player_ids_from_cache,
@@ -1273,6 +1279,93 @@ def _parse_as_of(value: str) -> date:
         return date.fromisoformat(value)
     except ValueError as exc:
         raise typer.BadParameter(f"--as-of must be a YYYY-MM-DD date, not {value!r}") from exc
+
+
+_CURRENT_SEASON_OPTION = typer.Option(..., "--season", help="The season in progress, by end year.")
+_CURRENT_SEASON_GAMES_OUTPUT_OPTION = typer.Option(
+    None, "--output", help="File for the JSON report."
+)
+_CURRENT_SEASON_LOAD_ERRORS = (
+    CurrentSeasonLoadError,
+    CurrentSeasonPlanningError,
+    SnapshotCacheError,
+    CacheMetadataError,
+)
+
+
+_CURRENT_SEASON_LOAD_APPROVAL_OPTION = typer.Option(
+    False,
+    "--execute-approved-current-season-load",
+    help="Required explicit approval to write the season in progress to DATABASE_URL.",
+)
+
+
+def _require_current_season_load_allowed(approved: bool, database_url: str) -> None:
+    if not approved:
+        msg = "Refusing current-season load without --execute-approved-current-season-load"
+        raise typer.BadParameter(msg)
+    try:
+        require_load_target(database_url)
+    except LoadTargetError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@backfill_app.command("current-season-identity")
+def backfill_current_season_identity(
+    season: int = _CURRENT_SEASON_OPTION,
+    execute_approved: bool = _CURRENT_SEASON_LOAD_APPROVAL_OPTION,
+) -> None:
+    """Load the season in progress and its team-seasons from the latest snapshots, offline."""
+
+    settings = get_settings()
+    _require_current_season_load_allowed(execute_approved, settings.database_url)
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            report = run_current_season_identity(
+                session,
+                snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+                season_end_year=season,
+            )
+    except _CURRENT_SEASON_LOAD_ERRORS as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+    console.print_json(data=report.to_dict())
+
+
+@backfill_app.command("current-season-games")
+def backfill_current_season_games(
+    season: int = _CURRENT_SEASON_OPTION,
+    as_of: str = _AS_OF_OPTION,
+    output: Path | None = _CURRENT_SEASON_GAMES_OUTPUT_OPTION,
+    execute_approved: bool = _CURRENT_SEASON_LOAD_APPROVAL_OPTION,
+) -> None:
+    """Apply the latest schedule snapshots and cached box scores to core.games, offline."""
+
+    as_of_date = _parse_as_of(as_of)
+    settings = get_settings()
+    _require_current_season_load_allowed(execute_approved, settings.database_url)
+    engine = create_db_engine(settings)
+    try:
+        with create_session_factory(engine)() as session:
+            report = run_current_season_games(
+                session,
+                snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+                archive=HtmlCache(settings.scraper_cache_dir),
+                season_end_year=season,
+                as_of=as_of_date,
+            )
+    except _CURRENT_SEASON_LOAD_ERRORS as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+    _print_and_optionally_write_json(report.to_dict(), output)
+    if report.run_failed:
+        raise typer.Exit(code=1)
 
 
 @acquisition_app.command("dry-run-current-season")

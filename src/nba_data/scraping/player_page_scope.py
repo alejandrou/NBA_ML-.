@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
-from nba_data.db.repositories.queries.seasons import get_season_years
+from nba_data.db.repositories.queries.seasons import get_archive_season_years
 from nba_data.scraping.loaders.player_page_stats import PlayerPageStatsLoadEntry
 
 # Loader reasons that mean "this row resolved no grain". The postseason
@@ -56,7 +56,7 @@ class UnresolvedRowCounts:
 def load_season_scope(session: Session) -> frozenset[int]:
     """Return the NBA season years the archive loads, refusing an empty scope."""
 
-    loaded_season_years = get_season_years(session)
+    loaded_season_years = get_archive_season_years(session)
     if not loaded_season_years:
         raise EmptySeasonScopeError(_EMPTY_SCOPE_MESSAGE)
     return loaded_season_years

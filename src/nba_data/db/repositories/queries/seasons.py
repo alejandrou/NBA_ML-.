@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from nba_data.db.models.core import Season
 
 NBA_LEAGUE = "NBA"
+ARCHIVE_LAST_SEASON = 2026
+"""Last finished season. Later seasons have identity and games, not player statistics."""
 
 
 def list_seasons(session: Session, *, offset: int, limit: int) -> list[Season]:
@@ -28,6 +30,11 @@ def get_season_years(session: Session) -> frozenset[int]:
     """Return the NBA season years currently present in ``core.seasons``."""
     statement = select(Season.season_year).where(Season.league == NBA_LEAGUE)
     return frozenset(int(season_year) for season_year in session.scalars(statement))
+
+
+def get_archive_season_years(session: Session) -> frozenset[int]:
+    """Return the loaded NBA seasons whose official statistics are expected."""
+    return frozenset(year for year in get_season_years(session) if year <= ARCHIVE_LAST_SEASON)
 
 
 def get_season(session: Session, season_year: int) -> Season | None:

@@ -273,10 +273,21 @@ the 2025-26 Finals) and the 103 newcomers' pages fetched on 2026-10-24.
 
 The newcomers' pages were fetched after the 2026-27 season had started, so they
 also carry **336 regular aggregate rows for season 2027**. Those rows are part
-of the 16,196 above, and they stay out of scope until a current-season card
-loads 2027. Their 2025-26 rows are final. Their 2026-27 rows are a partial
+of the 16,196 above, and they stay out of scope even once F8-014 loads the 2027
+identity: the producers and `validate official-stats` take their scope from
+`core.seasons` only up to `ARCHIVE_LAST_SEASON` (2026). With 2027 loaded, the
+loader reason of those rows becomes `missing_player_season` instead of
+`missing_season`. Their 2025-26 rows are final. Their 2026-27 rows are a partial
 season frozen in the never-overwrite cache, and they need the refresh that
 F8-008 and F8-012 plan for every page.
+
+**The season in progress is excluded from the archive counts.**
+`validate offline-database` pins seasons, team aliases, and team-seasons only up
+to `ARCHIVE_LAST_SEASON`. Once 2027 is loaded, a separate check
+(`current_season_identity_mismatch`) requires exactly 30 team-seasons, zero
+player-seasons, and zero player-team-seasons for it; official team-season
+statistics reference the last of these, so they are zero too. Any later season
+still fails as `season_coverage_mismatch`.
 
 Read `entries_failed`, `rows_failed`, and the in-scope unresolved counter before
 reacting to the exit code. The out-of-scope counter is diagnostic and does not

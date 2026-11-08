@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from nba_data.db.models.core import Season
 from nba_data.db.repositories.queries.seasons import (
     count_seasons,
+    get_archive_season_years,
     get_season,
     get_season_years,
     list_seasons,
@@ -61,3 +62,18 @@ def test_season_query_get_returns_season_or_none(session: Session) -> None:
     assert season.season_year == 2024
     assert season.label == "2024"
     assert get_season(session, 1800) is None
+
+
+@pytest.mark.unit
+def test_archive_season_years_stop_at_the_last_finished_season(session: Session) -> None:
+    session.add_all(
+        [
+            Season(league="NBA", season_year=2026, label="2026"),
+            Season(league="NBA", season_year=2027, label="2027"),
+        ]
+    )
+    session.flush()
+
+    archive = get_archive_season_years(session)
+    assert 2026 in archive
+    assert 2027 not in archive

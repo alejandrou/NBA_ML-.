@@ -18,14 +18,17 @@ from nba_data.db.models import (
     TeamAlias,
     TeamSeason,
 )
+from nba_data.db.repositories.queries.seasons import ARCHIVE_LAST_SEASON
 from nba_data.domain.team_codes import is_synthetic_team_code
+from nba_data.scraping.snapshot_cache import CURRENT_SEASON_END_YEAR
 
 # `core.players` counts only players with at least one `core.player_season`:
 # the players with a cached player page. `backfill games` also creates players
 # from box-score lines with no player page (F8-005); their number is not pinned,
 # but each must have a `stats.player_game_totals` row (F8-017). The validator
 # therefore needs revision 0009 or later. `core.players_total` is the whole
-# table and is not pinned either.
+# table and is not pinned either. The archive counts cover seasons up to
+# `expected_end_year`; the season in progress has its own check.
 DEFAULT_PHASE_4D_TABLE_COUNTS = {
     "core.seasons": 27,
     "core.teams": 37,
@@ -37,6 +40,9 @@ DEFAULT_PHASE_4D_TABLE_COUNTS = {
 }
 
 
+CURRENT_SEASON_TEAM_SEASONS = 30
+
+
 @dataclass(frozen=True)
 class OfflineDatabaseValidationExpectations:
     table_counts: Mapping[str, int] = field(
@@ -44,7 +50,7 @@ class OfflineDatabaseValidationExpectations:
     )
     league: str = "NBA"
     expected_start_year: int = 2000
-    expected_end_year: int = 2026
+    expected_end_year: int = ARCHIVE_LAST_SEASON
     min_team_seasons_per_season: int = 29
     min_player_seasons_per_season: int = 400
     min_player_team_seasons_per_season: int = 400
@@ -101,7 +107,7 @@ def validate_offline_database(
     """Validate the Phase 4D offline core database state without mutating it."""
 
     resolved_expectations = expectations or OfflineDatabaseValidationExpectations()
-    table_counts = _load_table_counts(session)
+    table_counts = _load_table_counts(session, resolved_expectations.expected_end_year)
     season_counts = _load_season_counts(session, resolved_expectations.league)
     backfill_summary = _extract_backfill_summary(backfill_report)
 
@@ -111,6 +117,7 @@ def validate_offline_database(
     issues.extend(_duplicate_issues(session))
     issues.extend(_orphan_issues(session))
     issues.extend(_team_season_player_issues(session, resolved_expectations))
+    issues.extend(_current_season_issues(season_counts, resolved_expectations))
     issues.extend(_synthetic_team_code_issues(session))
     issues.extend(_player_identifier_issues(session))
     issues.extend(_players_without_seasons_or_games_issues(session))
@@ -125,12 +132,25 @@ def validate_offline_database(
     )
 
 
-def _load_table_counts(session: Session) -> dict[str, int]:
+def _load_table_counts(session: Session, last_year: int) -> dict[str, int]:
     return {
-        "core.seasons": _count(session, Season),
+        "core.seasons": _scalar_count(
+            session, select(func.count()).select_from(Season).where(Season.season_year <= last_year)
+        ),
         "core.teams": _count(session, Team),
-        "core.team_aliases": _count(session, TeamAlias),
-        "core.team_seasons": _count(session, TeamSeason),
+        "core.team_aliases": _scalar_count(
+            session,
+            select(func.count())
+            .select_from(TeamAlias)
+            .where(TeamAlias.from_season_year <= last_year),
+        ),
+        "core.team_seasons": _scalar_count(
+            session,
+            select(func.count())
+            .select_from(TeamSeason)
+            .join(Season, TeamSeason.season_id == Season.id)
+            .where(Season.season_year <= last_year),
+        ),
         "core.players": _count_players(session, with_player_season=True),
         "core.players_without_player_seasons": _count_players(session, with_player_season=False),
         "core.players_total": _count(session, Player),
@@ -205,7 +225,10 @@ def _season_coverage_issues(
     expectations: OfflineDatabaseValidationExpectations,
 ) -> list[OfflineDatabaseValidationIssue]:
     issues: list[OfflineDatabaseValidationIssue] = []
-    actual_years = tuple(row["season_year"] for row in season_counts)
+    archive_counts = tuple(
+        row for row in season_counts if not _is_current_season(row["season_year"], expectations)
+    )
+    actual_years = tuple(row["season_year"] for row in archive_counts)
     expected_years = expectations.expected_season_years
     missing_years = tuple(year for year in expected_years if year not in actual_years)
     extra_years = tuple(year for year in actual_years if year not in expected_years)
@@ -218,7 +241,7 @@ def _season_coverage_issues(
             )
         )
 
-    for row in season_counts:
+    for row in archive_counts:
         if row["team_seasons"] < expectations.min_team_seasons_per_season:
             issues.append(
                 OfflineDatabaseValidationIssue(
@@ -248,6 +271,46 @@ def _season_coverage_issues(
                     message=(
                         f"Season {row['season_year']} has "
                         f"{row['player_team_seasons']} player-team seasons."
+                    ),
+                    context=dict(row),
+                )
+            )
+    return issues
+
+
+def _is_current_season(
+    season_year: int,
+    expectations: OfflineDatabaseValidationExpectations,
+) -> bool:
+    return season_year == CURRENT_SEASON_END_YEAR and season_year > expectations.expected_end_year
+
+
+def _current_season_issues(
+    season_counts: tuple[dict[str, int], ...],
+    expectations: OfflineDatabaseValidationExpectations,
+) -> list[OfflineDatabaseValidationIssue]:
+    """Once loaded, the season in progress is exactly its identity.
+
+    Official team-season statistics reference `core.player_team_seasons`, so a
+    count of zero there also means zero statistic rows.
+    """
+
+    issues: list[OfflineDatabaseValidationIssue] = []
+    for row in season_counts:
+        if not _is_current_season(row["season_year"], expectations):
+            continue
+        if (
+            row["team_seasons"] != CURRENT_SEASON_TEAM_SEASONS
+            or row["player_seasons"] != 0
+            or row["player_team_seasons"] != 0
+        ):
+            issues.append(
+                OfflineDatabaseValidationIssue(
+                    code="current_season_identity_mismatch",
+                    message=(
+                        f"Season {row['season_year']} must have exactly "
+                        f"{CURRENT_SEASON_TEAM_SEASONS} team seasons and no player "
+                        "seasons or player-team seasons."
                     ),
                     context=dict(row),
                 )
@@ -392,6 +455,7 @@ def _team_season_player_issues(
         .select_from(TeamSeason)
         .join(Season, TeamSeason.season_id == Season.id)
         .outerjoin(PlayerTeamSeason, PlayerTeamSeason.team_season_id == TeamSeason.id)
+        .where(Season.season_year <= expectations.expected_end_year)
         .group_by(TeamSeason.id, TeamSeason.team_abbreviation, Season.season_year)
         .having(func.count(PlayerTeamSeason.id) == 0)
         .order_by(Season.season_year, TeamSeason.team_abbreviation)
@@ -583,6 +647,10 @@ def _missing_parent_count(
         )
         or 0
     )
+
+
+def _scalar_count(session: Session, statement: Any) -> int:
+    return session.scalar(statement) or 0
 
 
 def _count(session: Session, model: type[Base]) -> int:

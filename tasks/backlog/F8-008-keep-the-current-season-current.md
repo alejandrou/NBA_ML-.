@@ -20,8 +20,8 @@ read:
   - docs/domain/BUSINESS_RULES.md
 validation:
   - uv run nba-data acquisition dry-run-current-season tasks/manifests/F8-008-current-season-2027.json --as-of 2026-11-01
-  - uv run nba-data backfill current-season-identity --season 2027
-  - uv run nba-data backfill current-season-games --season 2027 --as-of 2026-11-01 --output reports/f8-008/current-season.json
+  - uv run nba-data backfill current-season-identity --season 2027 --execute-approved-current-season-load
+  - uv run nba-data backfill current-season-games --season 2027 --as-of 2026-11-01 --output reports/f8-008/current-season.json --execute-approved-current-season-load
   - uv run nba-data validate offline-database
   - uv run pytest
   - uv run python scripts/validate_tasks.py

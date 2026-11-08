@@ -930,6 +930,27 @@ def test_validate_official_stats_coverage_reports_a_missing_in_range_persisted_k
 
 
 @pytest.mark.unit
+def test_validate_official_stats_coverage_excludes_the_season_in_progress(
+    session: Session,
+) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text("insert into core.seasons (id, season_year, league, label) values (9, 2027, 'NBA', 'x')")
+    )
+    artifact = _coverage_artifact_for_clean_dataset()
+    artifact["entries"].append(
+        _fake_aggregate_entry("ghostpl01", 2027, "stats.player_season_totals")
+    )
+
+    report = validate_official_stats(session, coverage_artifact=artifact)
+
+    assert "coverage_missing_regular_aggregate_row" not in {i.code for i in report.issues}
+    scope = report.coverage_summary["dimensions"]["regular_aggregate"]["scope"]
+    assert 2027 not in scope["season_years"]
+    assert 2027 in scope["excluded_seasons"]
+
+
+@pytest.mark.unit
 def test_validate_official_stats_coverage_scopes_expected_keys_to_database_seasons(
     session: Session,
 ) -> None:

@@ -321,6 +321,28 @@ def _latest_month_pages(
     }
 
 
+def require_latest_month_pages(
+    snapshots: SnapshotCache,
+    season_end_year: int,
+) -> dict[str, ParsedLeagueSchedule]:
+    """Every linked month's latest page, or raise: a gap must never read as games gone."""
+
+    pages = _latest_month_pages(snapshots, season_end_year)
+    if pages is None:
+        msg = f"No snapshot of the season page {season_page_url(season_end_year)}"
+        raise CurrentSeasonPlanningError(msg)
+    complete: dict[str, ParsedLeagueSchedule] = {}
+    for month, page in pages.items():
+        if page is None:
+            msg = f"No snapshot of the {month} schedule page"
+            raise CurrentSeasonPlanningError(msg)
+        if not page.games:
+            msg = f"The latest snapshot of the {month} schedule page lists no games"
+            raise CurrentSeasonPlanningError(msg)
+        complete[month] = page
+    return complete
+
+
 def _unscored_before(page: ParsedLeagueSchedule, as_of: date) -> list[str]:
     return [
         f"{game.game_date.isoformat()} {game.visitor_code} at {game.home_code}"
@@ -346,6 +368,7 @@ __all__ = [
     "plan_season_page",
     "plan_team_pages",
     "require_as_of_in_season",
+    "require_latest_month_pages",
     "season_page_url",
     "team_page_url",
     "validate_schedule_page",

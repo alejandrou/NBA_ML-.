@@ -23,6 +23,11 @@ class FakeDatabase:
     relations: tuple[tuple[str, str], ...] = _CLEAN_RAW_RELATIONS
     routines: tuple[tuple[str, str], ...] = ()
     row_counts: dict[str, int] = field(default_factory=dict)
+    team_index_exists: bool = True
+    team_unique_exists: bool = True
+    slug_exists: bool = True
+    populated_slugs: int = 0
+    ml_schema_exists: bool = False
 
 
 class FakeResult:
@@ -60,6 +65,15 @@ class FakeConnection:
 
     def _rows_for(self, sql: str) -> list[tuple[object, ...]]:
         database = self.database
+        extra = {
+            preflight_migration_data._TEAM_INDEX_EXISTS_SQL: database.team_index_exists,
+            preflight_migration_data._TEAM_UNIQUE_EXISTS_SQL: database.team_unique_exists,
+            preflight_migration_data._SLUG_EXISTS_SQL: database.slug_exists,
+            preflight_migration_data._POPULATED_SLUGS_SQL: database.populated_slugs,
+            preflight_migration_data._ML_SCHEMA_EXISTS_SQL: database.ml_schema_exists,
+        }
+        if sql in extra:
+            return [(extra[sql],)]
         if sql == preflight_migration_data._COUNT_NULL_TEAM_CODES_SQL:
             return [(database.null_count,)]
         if sql == preflight_migration_data._RAW_SCHEMA_EXISTS_SQL:
@@ -138,11 +152,7 @@ def test_preflight_reports_the_0007_count_over_a_read_only_connection(
     assert calls == [
         (
             database_url,
-            {
-                "connect_args": {
-                    "connect_timeout": preflight_migration_data.CONNECT_TIMEOUT_SECONDS
-                }
-            },
+            {"connect_args": {"connect_timeout": preflight_migration_data.CONNECT_TIMEOUT_SECONDS}},
         )
     ]
     assert engine.connect_calls == 1
@@ -222,9 +232,7 @@ def test_a_populated_raw_table_blocks_0008_and_names_its_row_count(
 ) -> None:
     """The blocker an owner acts on is the one that says which rows are at risk."""
 
-    exit_code, out, err, _ = _run(
-        monkeypatch, capsys, FakeDatabase(row_counts={"raw_pages": 12})
-    )
+    exit_code, out, err, _ = _run(monkeypatch, capsys, FakeDatabase(row_counts={"raw_pages": 12}))
 
     assert exit_code == 1
     assert "raw.raw_pages row count: 12" in out
@@ -372,3 +380,57 @@ def test_preflight_rejects_a_target_it_could_not_assess(
 
 def _fail_if_called(url: str, **kwargs: object) -> FakeEngine:
     raise AssertionError(f"create_engine should not run: {url}")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("database", "expected_exit", "message"),
+    [
+        (FakeDatabase(), 0, "ml schema exists: False"),
+        (FakeDatabase(team_index_exists=False), 1, "drops it by name"),
+        (FakeDatabase(team_unique_exists=False), 1, "replacement constraint"),
+        (FakeDatabase(slug_exists=False), 1, "core.players.slug is missing"),
+        (FakeDatabase(populated_slugs=2), 1, "dropping it would lose data"),
+        (FakeDatabase(ml_schema_exists=True), 1, "CREATE SCHEMA ml would fail"),
+    ],
+)
+def test_selected_pending_revisions_report_each_blocker_read_only(
+    monkeypatch,
+    capsys,
+    database,
+    expected_exit,
+    message,
+):
+    engine, _ = _install_fake_engine(monkeypatch, database)
+    revisions = ["0010_drop_redundant_team_index", "0011_drop_player_slug", "0012_ml_predictions"]
+    argv = ["--database-url", "postgresql+psycopg://owner:secret@example.test/nba"]
+    for revision in revisions:
+        argv.extend(["--revision", revision])
+    assert preflight_migration_data.main(argv) == expected_exit
+    output = capsys.readouterr()
+    assert message in output.out + output.err
+    assert "All other revisions are NOT assessed" in output.out
+    assert "secret" not in output.out + output.err
+    assert engine.connection.execution_options_seen == {"postgresql_readonly": True}
+    for statement in engine.connection.statements:
+        assert statement.text.strip().startswith("SELECT")
+    if not database.slug_exists:
+        assert preflight_migration_data._POPULATED_SLUGS_SQL not in [
+            statement.text for statement in engine.connection.statements
+        ]
+
+
+@pytest.mark.unit
+def test_unsupported_revision_is_rejected_before_connecting(monkeypatch, capsys):
+    monkeypatch.setattr(preflight_migration_data, "create_engine", _fail_if_called)
+    with pytest.raises(SystemExit) as error:
+        preflight_migration_data.main(
+            [
+                "--database-url",
+                "postgresql+psycopg://owner:secret@example.test/nba",
+                "--revision",
+                "0099_unknown",
+            ]
+        )
+    assert error.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

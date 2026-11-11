@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://nba:nba@localhost:5432/nba"
+    database_url: str = "postgresql+psycopg://nba:nba@127.0.0.1:5432/nba"
     database_connect_timeout_seconds: float = Field(default=5.0, gt=0)
     app_env: str = "local"
     log_level: str = "INFO"

@@ -10,7 +10,7 @@ from nba_data.config.settings import MINIMUM_SCRAPER_DELAY_SECONDS, Settings
 def test_settings_defaults() -> None:
     settings = Settings(_env_file=None)
 
-    assert settings.database_url == "postgresql+psycopg://nba:nba@localhost:5432/nba"
+    assert settings.database_url == "postgresql+psycopg://nba:nba@127.0.0.1:5432/nba"
     assert settings.database_connect_timeout_seconds == 5.0
     assert settings.api_readiness_timeout_seconds == 2.0
     assert settings.scraper_max_requests_per_minute == 10

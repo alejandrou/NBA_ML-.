@@ -4,6 +4,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import make_url
 
 from nba_data.config.settings import get_settings
 from nba_data.db.base import Base
@@ -33,6 +34,7 @@ from nba_data.db.models import (
     TeamAlias,
     TeamSeason,
 )
+from nba_data.db.session import connect_args_for
 
 _ = (
     Player,
@@ -98,6 +100,9 @@ def run_migrations_online() -> None:
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args_for(
+            make_url(settings.database_url), settings.database_connect_timeout_seconds
+        ),
     )
 
     with connectable.connect() as connection:

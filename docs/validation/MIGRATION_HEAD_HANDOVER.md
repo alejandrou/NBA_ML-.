@@ -10,6 +10,57 @@ revision. The worked example is `0008_drop_raw_schema`, the gap
 [the 2026-09-08 audit](PROJECT_DATABASE_AUDIT_2026-09-08.md) recorded as its
 first finding.
 
+## The gap, closed on 2026-11-11: `0010`–`0012` (F8-022)
+
+| | |
+|---|---|
+| `nba` at | `0012_ml_predictions`, the repository head, applied under the owner's instruction on 2026-11-11 |
+| `nba` was at | `0009_games_and_box_scores`, from 2026-10-24 until that upgrade. The head moved through `0010` (F4E-033), `0011` (F4E-021) and `0012` (F8-010) |
+| Consequence while behind | `GET /api/v1/health/ready` answered `503`, and the `ml` schema was missing, so `nba-data ml` could not run against `nba` (finding H-01 of [the 2026-11-10 audit](DATABASE_AUDIT_2026-11-10.md)) |
+
+The run used code identical to `origin/main` at `b094613`.
+
+| Step | Observed |
+|---|---|
+| Target before | `0009_games_and_box_scores`, 502 MB, 27 seasons, 14,435 games, 474,309 player lines |
+| Backup | `pg_dump -U nba -Fc` written inside the container, then copied to `Projects/nba-backups/nba-before-0010.dump`: 32,801,355 bytes, md5 `af0c75e2e9297858df3161945780364e` on both sides. `pg_restore -l` lists 407 entries, including `TABLE DATA` for `core.games`, `stats.team_game_totals` and `stats.player_game_totals` |
+| Off-disk copy | `D:\nba-backups\` (physical disk 1; the project is on disk 0) now holds all four dumps, plus `data/raw/` (32,806 files, 1,215,350,451 bytes) and `data/models/` (2 files). File count and byte total match the source. The md5 of the copied dump also matches |
+| Preflight | Exit 0. `0007` and `0008` pass. The preconditions of `0010`–`0012` were checked by hand: `ix_core_teams_bref_id` exists next to `uq_core_teams_bref_id`, 0 rows have a non-null `core.players.slug`, and the `ml` schema is absent |
+| Readiness before | `503 {"detail":"Database schema not ready"}`, logged as `Database is at Alembic revision(s) ['0009_games_and_box_scores'], not the migration head(s) ['0012_ml_predictions']` |
+| `uv run alembic upgrade head` | `0009 -> 0010 -> 0011 -> 0012`, exit 0. The 2 min 11 s were spent mostly on the `localhost` connection that H-03 describes. `alembic/env.py` does not apply `database_connect_timeout_seconds` |
+| `uv run alembic current` | `0012_ml_predictions (head)` |
+| Readiness after | `200 {"status":"ready"}` |
+| Target after | `ml.model_versions` and `ml.predictions` exist. `core.players.slug` and `ix_core_teams_bref_id` are gone. Row counts are unchanged |
+
+The same session also dropped `nba_f8006_tmp`, the leftover F8-006 rehearsal
+database (354 MB, no connections; finding H-14). It moved `DATABASE_URL` from
+`localhost` to `127.0.0.1` (H-03). The cold connect now takes 7–11 ms instead
+of about 5 s, and readiness answers in 121 ms instead of 5.2 s.
+
+### Review follow-up — 2026-11-11
+
+The owner then instructed implementation of all six review findings and closure
+of F8-022. [Backup and recovery](BACKUP_AND_RESTORE.md#first-recovery-evidence--2026-11-11)
+records successful restores of both the off-disk pre-upgrade dump (rehearsing
+`0009` → `0012`) and the new current-head dump. All 43 existing core/stats
+table counts were preserved; both scratch targets reported readiness `ready`
+and were dropped. Persistent `nba` was checked afterwards: `0012`, unchanged
+counts, readiness HTTP 200.
+
+The new dated snapshot is
+`D:/nba-backups/nba-20261111T200805Z-1cde3c08/`, with 33,120 asset files
+(3,101,161,270 B) and a 32,809,173 B dump. The saved manifest records SHA-256
+for every asset and the dump; source/destination relative paths and hashes match.
+The runbook now requires backups after approved acquisitions, loads and
+model/prediction writes. No scheduler was installed.
+
+`alembic/env.py` now passes the configured connection timeout through the shared
+driver helper (including libpq's whole-second minimum). The focused offline
+tests execute that online-engine path without PostgreSQL. Preflight now has
+explicit revision selection and checks for `0010`–`0012`, exercised on the
+restored pre-upgrade database; default coverage remains `0007`/`0008` only.
+The two original audits are retained as dated evidence with follow-up notes.
+
 ## The gap, closed on 2026-10-24: `0009_games_and_box_scores`
 
 | | |
@@ -62,30 +113,49 @@ Two properties of `0008` shape the whole procedure:
 
 ## Step 1 — Back up
 
-Take the backup before anything else, and keep it outside the repository working
-tree. `nba` was approximately 310 MB at the time of the audit.
+Take the backup before anything else. Follow
+[Backup and recovery](BACKUP_AND_RESTORE.md) to keep a dated snapshot outside
+the worktree on a separate physical disk, including raw data, models and reports.
 
-```bash
-docker compose exec -T postgres pg_dump -U nba -Fc nba > /path/outside/the/repo/nba-before-0008.dump
+```powershell
+uv run python scripts/backup_database.py create --database nba --destination D:/nba-backups
 ```
 
-Confirm the file is non-empty and note its size. A snapshot of the
-`nba_postgres_data` volume is an acceptable substitute. **Never** run
+Require exit 0, recheck the saved manifest, and record the dump hash and the
+snapshot path. Rehearse restoration as described in that runbook. **Never** run
 `docker compose down -v`: that destroys the archive.
 
 ## Step 2 — Preflight
 
 `scripts/preflight_migration_data.py` answers, read-only, whether the target is
-in the shape the pending revisions require. It opens the database with
+in the shape the explicitly selected revisions require. It opens the database with
 `postgresql_readonly=True`, runs count and catalog queries only, and never
 applies a revision, repairs a row, or creates an object.
 
 ```bash
 uv run python scripts/preflight_migration_data.py \
-  --database-url postgresql+psycopg://nba:nba@localhost:5432/nba
+  --database-url postgresql+psycopg://nba:nba@127.0.0.1:5432/nba
 ```
 
-It reports one verdict per migration and exits nonzero if either blocks.
+With no `--revision`, it checks **only `0007` and `0008`**, preserving the
+historical procedure below. It prints its exact coverage; all omitted revisions
+are unassessed. It does not discover the target's pending revision list. Read
+`alembic current` and `alembic heads`, inspect the pending revisions, and select
+the supported ones explicitly. Unknown selections are rejected before connecting.
+For a target restored at `0009`, use:
+
+```powershell
+uv run python scripts/preflight_migration_data.py --database-url <scratch-target-url> --revision 0010_drop_redundant_team_index --revision 0011_drop_player_slug --revision 0012_ml_predictions
+```
+
+`0010` requires the index it drops and the replacement unique constraint;
+`0011` requires the existing `slug` column to contain no values; `0012` requires
+the `ml` schema to be absent. It reports one verdict per selected revision and
+exits nonzero if any check blocks. `0001`–`0006` and `0009` have no checks in this
+script. Any unsupported pending revision needs manual inspection/rehearsal;
+a pass for selected revisions is not whole-upgrade certification or approval.
+
+Historical checks:
 
 `0007_team_bref_id_not_null` — no `core.teams` row may have a NULL
 `basketball_reference_team_id`.
@@ -97,7 +167,7 @@ expected is found rather than discovered mid-upgrade. Indexes, constraint
 indexes, owned sequences, and TOAST tables are excluded, because PostgreSQL drops
 those with their parent table.
 
-Expected output on `nba` before the upgrade:
+Historical output on `nba` before the `0008` upgrade (now preceded by the coverage line):
 
 ```text
 0007_team_bref_id_not_null: core.teams.basketball_reference_team_id NULL count: 0
@@ -134,11 +204,12 @@ uv run alembic upgrade head
 uv run alembic current
 ```
 
-Expect `0008_drop_raw_schema (head)`.
+Expect the current repository head (`0012_ml_predictions` as of 2026-11-11),
+matching `uv run alembic heads`. The examples below retain the `0008` history.
 
 ```bash
 uv run python scripts/preflight_migration_data.py \
-  --database-url postgresql+psycopg://nba:nba@localhost:5432/nba
+  --database-url postgresql+psycopg://nba:nba@127.0.0.1:5432/nba
 ```
 
 Expect `schema raw is absent; the revision has nothing left to drop.` and a pass
@@ -159,8 +230,8 @@ Expect `200` with `{"status":"ready"}`, where the same request answered
 
 Add a dated subsection below when the procedure is actually run: the revision
 applied, where the backup went, the preflight output, `alembic current` after,
-and the readiness status code. Then update the audit's table counts — `nba` has
-44 tables until `0008` lands and 41 afterwards — and
+and the readiness status code. Preserve audits as dated snapshots, recording
+subsequent changes separately. Update
 [`IMPACT_MAP.md`](../architecture/IMPACT_MAP.md) if the recorded head changes.
 
 ### Applied runs

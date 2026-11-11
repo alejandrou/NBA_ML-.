@@ -20,7 +20,7 @@ Use the project defaults unless the owner intentionally overrides environment
 settings:
 
 ```text
-DATABASE_URL=postgresql+psycopg://nba:nba@localhost:5432/nba
+DATABASE_URL=postgresql+psycopg://nba:nba@127.0.0.1:5432/nba
 SCRAPER_CACHE_DIR=data/raw/html
 ```
 
@@ -527,21 +527,27 @@ archive is ever rebuilt again.
 
 Preflight, in order:
 
-1. **Close the migration gap.** `nba` is at `0009_games_and_box_scores`, the
-   head, since 2026-10-24. If the head has moved since, applying the new
+1. **Close the migration gap.** `nba` reached `0012_ml_predictions` on
+   2026-11-11. Read `alembic current` and compare with `alembic heads`; do not
+   infer the target's state from this dated record. If the head has moved, applying the new
    revisions to `nba` is itself a critical action needing its own approval.
    Check where the target actually stands, read-only, before asking for that
    approval:
 
    ```bash
    uv run python scripts/preflight_migration_data.py \
-     --database-url postgresql+psycopg://nba:nba@localhost:5432/nba
+     --database-url postgresql+psycopg://nba:nba@127.0.0.1:5432/nba
    ```
 
-   It reports one verdict per pending revision and exits nonzero if any
-   precondition blocks. The ordered procedure for applying them — back up,
+   By default this checks only `0007` and `0008`, not every pending revision.
+   Select supported pending revisions with repeated `--revision`; omitted
+   revisions remain unassessed, and unsupported ones need manual inspection.
+   It exits nonzero if a selected precondition blocks. The ordered procedure — back up,
    preflight, apply, verify — is
    [`MIGRATION_HEAD_HANDOVER.md`](MIGRATION_HEAD_HANDOVER.md).
+   After each approved load, create a fresh off-disk snapshot using
+   [Backup and recovery](BACKUP_AND_RESTORE.md); the same rule applies to
+   acquisitions, model registration and prediction writes.
 2. **Re-rehearse if the head moved.** `0008` has landed and touches no `stats`
    table — it only drops the unused `raw` schema — so the numbers below still
    hold. If a later revision lands, re-run the rehearsal at the new head before

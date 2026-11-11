@@ -6,7 +6,12 @@ check opens that target read-only where the database driver supports it and
 executes count and catalog queries only; it never runs a migration, creates an
 object, or changes data.
 
-Two preconditions are assessed, each reported with its own verdict:
+Coverage is explicit, not inferred from the database's Alembic version. By
+default only the historical 0007/0008 checks below run. Repeat --revision to
+select pending revisions. Unsupported revisions are rejected before connecting;
+omitted revisions are NOT assessed. A pass never authorizes a migration.
+
+Supported preconditions, each reported with its own verdict:
 
 * ``0007_team_bref_id_not_null`` — no ``core.teams`` row may carry a NULL
   Basketball Reference team code, because the revision makes that column
@@ -16,6 +21,10 @@ Two preconditions are assessed, each reported with its own verdict:
   name and then runs ``DROP SCHEMA IF EXISTS raw`` *without* ``CASCADE``, so any
   other object aborts the upgrade, a missing one aborts it too, and any row
   present is discarded by it.
+* ``0010_drop_redundant_team_index`` — the index to drop and its replacement
+  unique constraint must both exist.
+* ``0011_drop_player_slug`` — the column to drop exists and holds no values.
+* ``0012_ml_predictions`` — the new ml schema must not exist.
 
 Usage:
     uv run python scripts/preflight_migration_data.py \
@@ -35,8 +44,7 @@ from sqlalchemy.exc import ArgumentError
 _MIGRATION_0007 = "0007_team_bref_id_not_null"
 _TARGET_COLUMN = "core.teams.basketball_reference_team_id"
 _COUNT_NULL_TEAM_CODES_SQL = (
-    "SELECT count(*) FROM core.teams "
-    "WHERE basketball_reference_team_id IS NULL"
+    "SELECT count(*) FROM core.teams WHERE basketball_reference_team_id IS NULL"
 )
 
 _MIGRATION_0008 = "0008_drop_raw_schema"
@@ -172,12 +180,8 @@ def check_0008_precondition(connection) -> PreconditionReport:
             (f"schema {_RAW_SCHEMA} is absent; the revision has nothing left to drop.",),
         )
 
-    relations = connection.execute(
-        text(_RAW_RELATION_INVENTORY_SQL), {"schema": _RAW_SCHEMA}
-    ).all()
-    routines = connection.execute(
-        text(_RAW_ROUTINE_INVENTORY_SQL), {"schema": _RAW_SCHEMA}
-    ).all()
+    relations = connection.execute(text(_RAW_RELATION_INVENTORY_SQL), {"schema": _RAW_SCHEMA}).all()
+    routines = connection.execute(text(_RAW_ROUTINE_INVENTORY_SQL), {"schema": _RAW_SCHEMA}).all()
 
     present_names = [str(name) for name, _ in relations]
     observations = [
@@ -217,8 +221,7 @@ def check_0008_precondition(connection) -> PreconditionReport:
         observations.append(f"{_RAW_SCHEMA}.{table} row count: {row_count}")
         if row_count:
             blockers.append(
-                f"{_RAW_SCHEMA}.{table} has {row_count} row(s); "
-                f"{_MIGRATION_0008} discards them."
+                f"{_RAW_SCHEMA}.{table} has {row_count} row(s); {_MIGRATION_0008} discards them."
             )
 
     return PreconditionReport(_MIGRATION_0008, tuple(observations), tuple(blockers))
@@ -231,8 +234,77 @@ def _unrecognized(label: str, name: str) -> str:
     )
 
 
+_TEAM_INDEX_EXISTS_SQL = "SELECT to_regclass('core.ix_core_teams_bref_id') IS NOT NULL"
+_TEAM_UNIQUE_EXISTS_SQL = """
+SELECT count(*) FROM pg_constraint
+WHERE conrelid = 'core.teams'::regclass
+  AND conname = 'uq_core_teams_bref_id' AND contype = 'u'
+"""
+_SLUG_EXISTS_SQL = """
+SELECT count(*) FROM information_schema.columns
+WHERE table_schema = 'core' AND table_name = 'players' AND column_name = 'slug'
+"""
+_POPULATED_SLUGS_SQL = "SELECT count(*) FROM core.players WHERE slug IS NOT NULL"
+_ML_SCHEMA_EXISTS_SQL = "SELECT count(*) FROM pg_namespace WHERE nspname = 'ml'"
+
+
+def check_0010_precondition(connection) -> PreconditionReport:
+    index_exists = bool(connection.execute(text(_TEAM_INDEX_EXISTS_SQL)).scalar_one())
+    unique_exists = bool(connection.execute(text(_TEAM_UNIQUE_EXISTS_SQL)).scalar_one())
+    blockers = []
+    if not index_exists:
+        blockers.append("core.ix_core_teams_bref_id is missing; the revision drops it by name.")
+    if not unique_exists:
+        blockers.append(
+            "uq_core_teams_bref_id is missing; cannot confirm the replacement constraint."
+        )
+    return PreconditionReport(
+        "0010_drop_redundant_team_index",
+        (f"index exists: {index_exists}; unique constraint exists: {unique_exists}",),
+        tuple(blockers),
+    )
+
+
+def check_0011_precondition(connection) -> PreconditionReport:
+    exists = bool(connection.execute(text(_SLUG_EXISTS_SQL)).scalar_one())
+    if not exists:
+        return PreconditionReport(
+            "0011_drop_player_slug",
+            (),
+            ("core.players.slug is missing; check the applied revisions.",),
+        )
+    populated = int(connection.execute(text(_POPULATED_SLUGS_SQL)).scalar_one())
+    return PreconditionReport(
+        "0011_drop_player_slug",
+        (f"populated core.players.slug rows: {populated}",),
+        (f"core.players.slug has {populated} value(s); dropping it would lose data.",)
+        if populated
+        else (),
+    )
+
+
+def check_0012_precondition(connection) -> PreconditionReport:
+    exists = bool(connection.execute(text(_ML_SCHEMA_EXISTS_SQL)).scalar_one())
+    return PreconditionReport(
+        "0012_ml_predictions",
+        (f"ml schema exists: {exists}",),
+        ("ml schema already exists; CREATE SCHEMA ml would fail.",) if exists else (),
+    )
+
+
+CHECKS = {
+    _MIGRATION_0007: check_0007_precondition,
+    _MIGRATION_0008: check_0008_precondition,
+    "0010_drop_redundant_team_index": check_0010_precondition,
+    "0011_drop_player_slug": check_0011_precondition,
+    "0012_ml_predictions": check_0012_precondition,
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    revisions = tuple(dict.fromkeys(args.revision or (_MIGRATION_0007, _MIGRATION_0008)))
+    print(f"Coverage limited to: {', '.join(revisions)}. All other revisions are NOT assessed.")
 
     try:
         engine = create_engine(
@@ -241,10 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         try:
             with connect_read_only(engine) as connection:
-                reports = (
-                    check_0007_precondition(connection),
-                    check_0008_precondition(connection),
-                )
+                reports = tuple(CHECKS[revision](connection) for revision in revisions)
         finally:
             engine.dispose()
     except Exception as exc:  # noqa: BLE001 - do not expose a URL or password
@@ -282,6 +351,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--revision",
+        action="append",
+        choices=tuple(CHECKS),
+        help="Revision to assess; repeat for each pending supported revision. Default: 0007 and 0008 only.",
     )
     parser.add_argument(
         "--database-url",

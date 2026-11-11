@@ -59,10 +59,18 @@ Spell the target out rather than passing a variable: the preflight refuses an
 empty or non-PostgreSQL URL instead of assessing whichever database a shell
 happened to have configured. It stops when migration `0007` would encounter
 teams without a Basketball Reference ID, and it never repairs those rows,
-writes to the target, or applies a migration.
+writes to the target, or applies a migration. Default coverage is limited to
+`0007` and `0008`. Repeat `--revision` to select supported pending revisions
+(`0007`, `0008`, `0010`–`0012`, using their full revision IDs); omitted revisions
+are unassessed and unsupported selections fail before connecting. See the
+[migration handover](docs/validation/MIGRATION_HEAD_HANDOVER.md).
 
-On Windows this needs Git Bash. `scripts/dev/start-dev.ps1` is the PowerShell
-preflight equivalent for lint and tests.
+After approved acquisitions, loads and model/prediction writes, and before
+persistent migrations, follow [Backup and recovery](docs/validation/BACKUP_AND_RESTORE.md)
+to create a dated off-disk snapshot and rehearse restoration.
+
+On Windows the database validation shell script needs Git Bash.
+`scripts/dev/start-dev.ps1` is the PowerShell preflight equivalent for lint and tests.
 
 ## Running the API
 
@@ -156,3 +164,4 @@ legacy database.
 - `docs/specs/PROJECT_SPEC.md` — technical contract and validation rules
 - `docs/decisions/` — architectural decision records
 - `docs/validation/` — operational validation procedures
+- `docs/validation/BACKUP_AND_RESTORE.md` — verified off-disk snapshots and recovery rehearsals

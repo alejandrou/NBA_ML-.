@@ -185,7 +185,8 @@ that a postponed game (`core.games.status`) is served as unavailable whatever it
 rows say. A game no longer `scheduled` gets a new row only if the model has none.
 
 `nba-data ml register-model`, `ml predict`, and `ml activate` are the only writers.
-All three run the same load-target guard as the other loaders. Artifacts stay under `data/models/`,
+All three run the same load-target guard as every other database writer: the five
+historical backfills and the two current-season loads (`db/load_guard.py`). Artifacts stay under `data/models/`,
 and a row's `name` is its directory. The API reads these tables and loads no
 model (F8-010, F6-021).
 

@@ -1,7 +1,8 @@
-from collections.abc import Generator
+import os
+from collections.abc import Collection, Generator
 from math import ceil
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -34,6 +35,111 @@ def create_db_engine(settings: Settings | None = None) -> Engine:
         pool_pre_ping=True,
         connect_args=connect_args_for(url, resolved_settings.database_connect_timeout_seconds),
     )
+
+
+def read_only_connect_options(
+    statement_timeout_seconds: float, existing_options: str | None = None
+) -> str:
+    """libpq `options` that make every API connection read-only and time-bounded.
+
+    The API's read-only guarantee is otherwise code-level only (ADR 0021): this
+    makes PostgreSQL refuse a write as well. The same bound applies to a statement
+    and to a transaction left idle, so one pathological request cannot hold a
+    pooled connection indefinitely. The readiness probe still narrows its own
+    statement with `SET LOCAL`.
+
+    `existing_options` (the URL's or `PGOPTIONS`) are kept, ahead of these: the
+    server applies `-c` settings in order, so ours win on a conflict while
+    `search_path`, `TimeZone` or `application_name` survive.
+    """
+    milliseconds = max(1, ceil(statement_timeout_seconds * 1000))
+    mandatory = (
+        "-c default_transaction_read_only=on"
+        f" -c statement_timeout={milliseconds}"
+        f" -c idle_in_transaction_session_timeout={milliseconds}"
+    )
+    existing = (existing_options or "").strip()
+    return f"{existing} {mandatory}" if existing else mandatory
+
+
+def _existing_connect_options(url: URL) -> str | None:
+    """The libpq `options` a connection would otherwise use: the URL's, else `PGOPTIONS`.
+
+    Passing `options` explicitly replaces both, so they are read here and merged.
+    """
+    value = url.query.get("options")
+    if isinstance(value, tuple):
+        return " ".join(value)
+    if value is not None:
+        return value
+    return os.environ.get("PGOPTIONS")
+
+
+def create_api_engine(settings: Settings | None = None) -> Engine:
+    """The read-only API's engine: every connection opens read-only and time-bounded."""
+    resolved_settings = settings or get_settings()
+    url = make_url(resolved_settings.database_url)
+    connect_args = connect_args_for(url, resolved_settings.database_connect_timeout_seconds)
+    if url.get_backend_name() == "postgresql":
+        connect_args["options"] = read_only_connect_options(
+            resolved_settings.api_statement_timeout_seconds, _existing_connect_options(url)
+        )
+    return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+
+
+# A bulk load writes these schemas; `ml` is written by its own jobs and analyzed there.
+LOADED_SCHEMAS: tuple[str, ...] = ("core", "stats")
+ANALYZE_STATEMENT_TIMEOUT_SECONDS = 600
+ANALYZE_LOCK_TIMEOUT_SECONDS = 10
+
+
+def analyze_database(
+    engine: Engine,
+    schemas: Collection[str] = LOADED_SCHEMAS,
+    *,
+    statement_timeout_seconds: float = ANALYZE_STATEMENT_TIMEOUT_SECONDS,
+    lock_timeout_seconds: float = ANALYZE_LOCK_TIMEOUT_SECONDS,
+) -> bool:
+    """Refresh PostgreSQL planner statistics for the tables a load wrote.
+
+    Autovacuum only analyzes a table after enough changes since its counters
+    were last reset, so after an unclean restart a freshly loaded table can
+    keep stale estimates indefinitely (DATABASE_AUDIT_2026-11-10, H-10).
+
+    Only the tables in `schemas` are analyzed, and the statement is bounded: a
+    lock held by concurrent maintenance or DDL fails it after
+    `lock_timeout_seconds` instead of delaying the report of a committed load.
+    Returns False, doing nothing, for any other database.
+    """
+    if engine.dialect.name != "postgresql":
+        return False
+    with engine.connect() as connection:
+        tables = (
+            connection.execute(
+                text(
+                    "SELECT format('%I.%I', schemaname, tablename) FROM pg_catalog.pg_tables "
+                    "WHERE schemaname = ANY(:schemas) ORDER BY 1"
+                ),
+                {"schemas": sorted(schemas)},
+            )
+            .scalars()
+            .all()
+        )
+        if not tables:
+            connection.rollback()
+            return True
+        connection.execute(
+            text("SELECT set_config('statement_timeout', :value, true)"),
+            {"value": f"{max(1, ceil(statement_timeout_seconds * 1000))}ms"},
+        )
+        connection.execute(
+            text("SELECT set_config('lock_timeout', :value, true)"),
+            {"value": f"{max(1, ceil(lock_timeout_seconds * 1000))}ms"},
+        )
+        # Names come from the catalog, quoted by format('%I').
+        connection.execute(text(f"ANALYZE {', '.join(tables)}"))
+        connection.commit()
+    return True
 
 
 def create_session_factory(engine: Engine | None = None) -> sessionmaker[Session]:

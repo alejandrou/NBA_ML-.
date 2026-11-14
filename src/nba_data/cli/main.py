@@ -5,13 +5,20 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from sqlalchemy import Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from nba_data import __version__
 from nba_data.config.logging_config import configure_logging
 from nba_data.config.settings import get_settings
 from nba_data.db.load_guard import LoadTargetError, require_load_target
 from nba_data.db.repositories.queries.game_identities import load_game_identity_keys
-from nba_data.db.session import create_db_engine, create_session_factory
+from nba_data.db.session import (
+    LOADED_SCHEMAS,
+    analyze_database,
+    create_db_engine,
+    create_session_factory,
+)
 from nba_data.scraping.backfill_manifest import (
     BackfillAcquisitionError,
     ManifestValidationError,
@@ -426,6 +433,7 @@ def backfill_offline(
         raise typer.BadParameter("max_workers must be at least 1")
 
     settings = get_settings()
+    _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
     engine = create_db_engine(settings)
     try:
@@ -436,6 +444,7 @@ def backfill_offline(
                 session=session,
                 max_workers=max_workers,
             )
+        _refresh_planner_statistics(engine)
     finally:
         engine.dispose()
 
@@ -489,6 +498,7 @@ def backfill_stats(
         raise typer.Exit(code=1)
 
     settings = get_settings()
+    _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
     engine = create_db_engine(settings)
     try:
@@ -507,6 +517,7 @@ def backfill_stats(
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
+        _refresh_planner_statistics(engine)
     finally:
         engine.dispose()
 
@@ -568,6 +579,7 @@ def backfill_player_stats(
         raise typer.Exit(code=1)
 
     settings = get_settings()
+    _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
     engine = create_db_engine(settings)
     try:
@@ -585,6 +597,7 @@ def backfill_player_stats(
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
+        _refresh_planner_statistics(engine)
     finally:
         engine.dispose()
 
@@ -644,6 +657,7 @@ def backfill_player_postseason_stats(
         raise typer.Exit(code=1)
 
     settings = get_settings()
+    _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
     engine = create_db_engine(settings)
     try:
@@ -661,6 +675,7 @@ def backfill_player_postseason_stats(
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
+        _refresh_planner_statistics(engine)
     finally:
         engine.dispose()
 
@@ -701,12 +716,14 @@ def backfill_games(
             raise typer.BadParameter("--output must be a directory")
         output.mkdir(parents=True, exist_ok=True)
     settings = get_settings()
+    _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
     engine = create_db_engine(settings)
     try:
         session_factory = create_session_factory(engine)
         with session_factory() as session:
             report = run_offline_games_backfill(session, cache=cache, season_end_years=seasons)
+        _refresh_planner_statistics(engine)
     finally:
         engine.dispose()
 
@@ -941,7 +958,7 @@ def ml_register_model(
     from nba_data.ml.register import register_model
 
     settings = get_settings()
-    _require_ml_write_target(settings.database_url)
+    _require_write_target(settings.database_url)
     engine = create_db_engine(settings)
     try:
         with create_session_factory(engine)() as session:
@@ -963,7 +980,7 @@ def ml_activate(name: str) -> None:
     from nba_data.ml.register import activate_model
 
     settings = get_settings()
-    _require_ml_write_target(settings.database_url)
+    _require_write_target(settings.database_url)
     engine = create_db_engine(settings)
     try:
         with create_session_factory(engine)() as session:
@@ -991,7 +1008,7 @@ def ml_predict(
     from nba_data.ml.predict import publish_predictions
 
     settings = get_settings()
-    _require_ml_write_target(settings.database_url)
+    _require_write_target(settings.database_url)
     engine = create_db_engine(settings)
     try:
         with create_session_factory(engine)() as session:
@@ -1014,7 +1031,25 @@ def ml_predict(
     console.print_json(data=report.to_dict())
 
 
-def _require_ml_write_target(database_url: str) -> None:
+def _refresh_planner_statistics(
+    engine: Engine, schemas: tuple[str, ...] = LOADED_SCHEMAS
+) -> None:
+    """ANALYZE the schemas a load wrote. The rows are already committed, so a failure
+    here warns on stderr, keeping stdout's JSON report intact, instead of failing the load."""
+
+    try:
+        analyze_database(engine, schemas)
+    except SQLAlchemyError as exc:
+        typer.echo(
+            f"Warning: the load committed, but ANALYZE failed ({exc}). "
+            "Run ANALYZE before relying on query plans.",
+            err=True,
+        )
+
+
+def _require_write_target(database_url: str) -> None:
+    """Refuse, before any connection, a write to a persistent database from unmerged code."""
+
     try:
         require_load_target(database_url)
     except LoadTargetError as exc:
@@ -1432,6 +1467,7 @@ def backfill_current_season_identity(
                 snapshots=SnapshotCache(settings.scraper_snapshot_dir),
                 season_end_year=season,
             )
+        _refresh_planner_statistics(engine, ("core",))
     except _CURRENT_SEASON_LOAD_ERRORS as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -1462,6 +1498,7 @@ def backfill_current_season_games(
                 season_end_year=season,
                 as_of=as_of_date,
             )
+        _refresh_planner_statistics(engine)
     except _CURRENT_SEASON_LOAD_ERRORS as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc

@@ -138,7 +138,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
             session.commit()
             session.expunge_all()
 
-            monkeypatch.setattr("nba_data.api.app.create_db_engine", FakeEngine)
+            monkeypatch.setattr("nba_data.api.app.create_api_engine", FakeEngine)
             monkeypatch.setattr(
                 "nba_data.api.app.create_session_factory", lambda received: object()
             )

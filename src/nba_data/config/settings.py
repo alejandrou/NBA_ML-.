@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     log_level: str = "INFO"
     api_readiness_timeout_seconds: float = Field(default=2.0, gt=0)
+    api_statement_timeout_seconds: float = Field(default=30.0, gt=0)
     scraper_user_agent: str = "nba-data-project/0.1 contact:your-email@example.com"
     scraper_max_requests_per_minute: int = Field(default=10, ge=1, le=20)
     scraper_min_delay_seconds: float = Field(default=MINIMUM_SCRAPER_DELAY_SECONDS)

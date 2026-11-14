@@ -93,6 +93,30 @@ The inventory selects only team-season pages. The 2,738 unsupported paths are
 the other pages in the same cache, all expected: 2,654 player pages and the 84
 F8-001 pilot schedule, box-score, and play-by-play pages.
 
+## Every load: guard, ANALYZE, backup
+
+These rules apply to every command that writes the database: `backfill offline`,
+`backfill stats`, `backfill player-stats`, `backfill player-postseason-stats`,
+`backfill games`, `backfill current-season-identity` and
+`backfill current-season-games`.
+
+- **Load-target guard.** Before connecting, each command refuses a persistent
+  database (any name not starting with `nba_test`) unless `HEAD` is on
+  `origin/main` and `src/`/`alembic/` have no uncommitted changes
+  (`db/load_guard.py`). A load into `nba` therefore runs only from a clean,
+  merged checkout. A disposable `nba_test*` database needs no Git check.
+- **ANALYZE.** After its rows are committed, each command runs `ANALYZE` on
+  the tables of the schemas it writes (`core` and `stats`; `core` only for
+  `current-season-identity`), never `ml` or the whole database. The statement is
+  bounded: 10 s to obtain each lock and 600 s overall. If `ANALYZE` fails or
+  times out, the load still stands: the command prints a warning on stderr and
+  the owner runs `ANALYZE` by hand.
+- **Backup.** After a load into `nba` is validated, take a dated backup with
+  `scripts/backup_database.py create` and `verify` it, as in
+  [`BACKUP_AND_RESTORE.md`](BACKUP_AND_RESTORE.md). The script needs the
+  owner's approval for the database and destination each time, so no load
+  command runs it.
+
 ## Run Full Offline Backfill
 
 Run the guarded offline backfill only after the owner has approved Phase 4D
@@ -219,6 +243,20 @@ uv run nba-data validate official-stats \
 When all three reports are supplied, the validator uses each producer's own
 row-count vocabulary and requires their combined total to match `count(*)`
 across every `stats.*` table.
+
+The validator also fails any row that lacks a value the source publishes for
+every row (`missing_required_stat_value`, counted in `missing_required_values`
+as rows), so a loader that drops a value, for every row or only some, cannot
+pass. The required columns (`required_stat_columns` in
+`validation/official_stats.py`) are `player_name`, `position` and `birth_date`
+on the roster, and `age`, `g` and the minutes column (`mp`, or `mp_per_game`)
+on every other stats table; each was full in every row of `nba`, and
+`birth_date` in every cached roster row. Sparse columns (`awards`, percentages
+with a zero denominator, era-dependent stats) are not checked, since an empty
+value there is valid data in a small or historical dataset. Until the roster is
+reloaded with parsed birth dates, `stats.player_team_season_roster.birth_date`
+fails this check on `nba`. Comparing stored values with the cached pages
+themselves is not done here.
 
 Three measured baselines exist, and they are not interchangeable:
 

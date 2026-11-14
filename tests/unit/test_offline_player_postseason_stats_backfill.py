@@ -614,3 +614,11 @@ def _single_postseason_season_html(season: str) -> str:
 
 def _count(session: Session, model: type) -> int:
     return session.scalar(select(func.count()).select_from(model)) or 0
+
+
+@pytest.fixture(autouse=True)
+def _offline_load_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake or disposable target here is not checked against Git (test_load_guard
+    covers refusals) and is not analyzed (test_db_session covers ANALYZE)."""
+    monkeypatch.setattr("nba_data.cli.main.require_load_target", lambda _database_url: None)
+    monkeypatch.setattr("nba_data.cli.main.analyze_database", lambda *_args, **_kwargs: False)

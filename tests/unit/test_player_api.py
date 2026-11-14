@@ -33,7 +33,7 @@ class FakeEngine:
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """An app with no usable session: only requests rejected before any read may succeed."""
     engine = FakeEngine()
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", lambda: engine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", lambda: engine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", lambda received: object())
 
     app = create_app()
@@ -105,7 +105,7 @@ def vertical_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
             )
             session.commit()
 
-            monkeypatch.setattr("nba_data.api.app.create_db_engine", FakeEngine)
+            monkeypatch.setattr("nba_data.api.app.create_api_engine", FakeEngine)
             monkeypatch.setattr(
                 "nba_data.api.app.create_session_factory", lambda received: object()
             )

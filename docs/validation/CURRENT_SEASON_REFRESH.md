@@ -82,6 +82,10 @@ manifest is read); a draft, another season, a ceiling above the maximum, the
 placeholder `SCRAPER_USER_AGENT`, a pace above 10/minute or above the
 manifest's, or a malformed `--as-of` (exit 2).
 
+The two offline loads that follow a refresh (`backfill current-season-identity`
+and `backfill current-season-games`) follow
+[Every load: guard, ANALYZE, backup](OFFLINE_DATABASE_PREPARATION.md#every-load-guard-analyze-backup).
+
 ## The report
 
 Like F8-004's, with a `phase` on every entry: `planned` per phase (`null` for a

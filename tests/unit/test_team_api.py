@@ -22,7 +22,7 @@ class FakeEngine:
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     engine = FakeEngine()
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", lambda: engine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", lambda: engine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", lambda received: object())
 
     app = create_app()
@@ -63,7 +63,7 @@ def app_reading_from(
     raise_server_exceptions: bool = True,
 ) -> Iterator[TestClient]:
     """A real app whose only substitution is the request session."""
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", FakeEngine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", FakeEngine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", lambda received: object())
 
     app = create_app()

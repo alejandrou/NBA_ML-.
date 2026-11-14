@@ -1343,10 +1343,29 @@ def _row_content_issues(
         numeric_examples: list[dict[str, object]] = []
         null_count = 0
         numeric_count = 0
+        row_count = 0
+        required = sorted(
+            column.name
+            for column in data_columns
+            if column.name in required_stat_columns(spec)
+        )
+        missing_counts: dict[str, int] = dict.fromkeys(required, 0)
+        missing_examples: list[dict[str, object]] = []
+        missing_rows = 0
 
         for row in session.execute(select(table)).mappings():
             mapping = dict(row)
             data_values = {column.name: mapping.get(column.name) for column in data_columns}
+            row_count += 1
+            missing = [name for name in required if data_values[name] is None]
+            for name in missing:
+                missing_counts[name] += 1
+            if missing:
+                missing_rows += 1
+            if missing and len(missing_examples) < 10:
+                missing_examples.append(
+                    {spec.grain_column: mapping.get(spec.grain_column), "columns": missing}
+                )
             if all(value is None for value in data_values.values()):
                 null_count += 1
                 if len(null_examples) < 10:
@@ -1375,6 +1394,24 @@ def _row_content_issues(
                     },
                 )
             )
+        incomplete = {name: count for name, count in missing_counts.items() if count}
+        if incomplete:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="missing_required_stat_value",
+                    message=(
+                        f"Rows in stats.{spec.table_name} lack a value the source publishes "
+                        "for every row; a loader may be dropping it."
+                    ),
+                    context={
+                        "table": spec.full_name,
+                        "count": missing_rows,
+                        "null_counts": incomplete,
+                        "rows": row_count,
+                        "examples": missing_examples,
+                    },
+                )
+            )
         if numeric_count:
             issues.append(
                 OfficialStatsValidationIssue(
@@ -1388,6 +1425,23 @@ def _row_content_issues(
                 )
             )
     return issues
+
+
+def required_stat_columns(spec: StatsTableSpec) -> frozenset[str]:
+    """Columns the source publishes for every row of this table, in every loaded season.
+
+    A NULL in any of them means a loader dropped the value (DATABASE_AUDIT_2026-11-10,
+    H-06: every roster `birth_date`), so validation fails on any missing one, not only
+    on a column that is NULL everywhere. Sparse columns (`awards`, percentages with a
+    zero denominator, era-dependent stats) are deliberately absent: an empty value
+    there is valid data. Each entry was full in every row of `nba` and, for
+    `birth_date`, in every cached roster row (15,005 of 15,005).
+    """
+
+    if spec.table_name.endswith("_roster"):
+        return frozenset({"player_name", "position", "birth_date"})
+    minutes = "mp_per_game" if spec.table_name.endswith("_per_game") else "mp"
+    return frozenset({"age", "g", minutes})
 
 
 def _numeric_violations(data_values: Mapping[str, object]) -> list[str]:
@@ -1773,6 +1827,7 @@ def _build_validation_summary(
         "parser_lineage_violations": 0,
         "numeric_range_violations": 0,
         "all_null_data_rows": 0,
+        "missing_required_values": 0,
         "generated_metric_schema_objects": 0,
         "backfill_report_violations": 0,
         "coverage_violations": 0,
@@ -1799,6 +1854,7 @@ def _build_validation_summary(
         "wrong_producer_parser_version": "parser_lineage_violations",
         "impossible_numeric_values": "numeric_range_violations",
         "all_stat_columns_null": "all_null_data_rows",
+        "missing_required_stat_value": "missing_required_values",
         "generated_metric_schema_name": "generated_metric_schema_objects",
         "stats_backfill_report_missing_field": "backfill_report_violations",
         "stats_backfill_report_invalid_field": "backfill_report_violations",

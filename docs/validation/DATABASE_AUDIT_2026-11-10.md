@@ -979,6 +979,20 @@ Ordenado por impacto real dividido por esfuerzo. Ninguna acción se ejecutó.
 | 10 | Eliminar `nba_f8006_tmp` | H-14 |
 | 11 | Corregir los tres pasajes de documentación | H-15 |
 
+**Seguimiento 2026-11-11.** Los puntos 5, 6, 7 (salvo la recarga del roster),
+8, 9 y 11 están resueltos en código y documentación, sin tarjeta, a petición del
+propietario. Pendiente: recargar el roster en `nba` desde `origin/main` con
+aprobación (H-06), y tomar la copia tras cada carga, que sigue siendo un paso
+manual aprobado (`OFFLINE_DATABASE_PREPARATION.md`, "Every load"). De H-15,
+`MIGRATION_HEAD_HANDOVER.md` ya estaba al día (F8-022).
+
+Tras revisión, el punto 8 dejó de ser un control de columnas íntegramente
+nulas: fallaba con datos válidos dispersos (`awards`, estadísticas de otra
+época) y aceptaba una pérdida parcial. Ahora exige un valor en cada fila para
+las columnas que la fuente publica siempre (`required_stat_columns`). El
+`ANALYZE` del punto 9 se limita a los esquemas cargados y tiene tiempos máximos,
+y las opciones de conexión ya presentes en la URL de la API se conservan.
+
 ### Cuando se toque el esquema (agrupar en una revisión)
 
 | # | Acción | Resuelve |

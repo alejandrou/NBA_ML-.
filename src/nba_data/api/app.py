@@ -12,7 +12,7 @@ from nba_data.api.routers.seasons import router as seasons_router
 from nba_data.api.routers.teams import router as teams_router
 from nba_data.config.logging_config import configure_logging
 from nba_data.config.settings import get_settings
-from nba_data.db.session import create_db_engine, create_session_factory
+from nba_data.db.session import create_api_engine, create_session_factory
 
 API_V1_PREFIX = "/api/v1"
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(get_settings())
-    engine = create_db_engine()
+    engine = create_api_engine()
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     try:

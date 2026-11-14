@@ -256,3 +256,11 @@ def test_cli_loads_a_real_fixture_from_cache_and_reruns_without_writes(
         assert list(postgres_session.scalars(select(PlayerGameTotals.updated_at))) == stamps
     finally:
         get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _offline_load_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake or disposable target here is not checked against Git (test_load_guard
+    covers refusals) and is not analyzed (test_db_session covers ANALYZE)."""
+    monkeypatch.setattr("nba_data.cli.main.require_load_target", lambda _database_url: None)
+    monkeypatch.setattr("nba_data.cli.main.analyze_database", lambda *_args, **_kwargs: False)

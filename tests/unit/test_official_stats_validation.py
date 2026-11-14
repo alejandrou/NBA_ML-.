@@ -375,6 +375,109 @@ def test_validate_official_stats_accepts_basketball_reference_numeric_scales(ses
 
 
 @pytest.mark.unit
+def test_a_required_column_null_in_every_row_fails_validation(session: Session) -> None:
+    """The H-06 shape: a loader drops one value for every row, while the rows look fine."""
+    _insert_clean_dataset(session)
+    session.execute(text("alter table stats.player_team_season_roster add column birth_date date"))
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "missing_required_stat_value")
+    assert issue.context["table"] == "stats.player_team_season_roster"
+    assert issue.context["null_counts"] == {"birth_date": 3}
+    assert report.validation_summary["missing_required_values"] == 3
+    assert report.validation_summary["all_null_data_rows"] == 0
+
+
+@pytest.mark.unit
+def test_partial_loss_of_a_required_column_fails_validation(session: Session) -> None:
+    """One populated row must not hide the rows a loader failed to fill."""
+    _insert_clean_dataset(session)
+    session.execute(text("alter table stats.player_team_season_roster add column birth_date date"))
+    session.execute(
+        text(
+            "update stats.player_team_season_roster set birth_date = '1996-10-24' "
+            "where player_team_season_id = 1"
+        )
+    )
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is False
+    issue = next(i for i in report.issues if i.code == "missing_required_stat_value")
+    assert issue.context["null_counts"] == {"birth_date": 2}
+    assert report.validation_summary["missing_required_values"] == 2
+
+
+@pytest.mark.unit
+def test_a_complete_required_column_passes(session: Session) -> None:
+    _insert_clean_dataset(session)
+    session.execute(text("alter table stats.player_team_season_roster add column birth_date date"))
+    session.execute(text("update stats.player_team_season_roster set birth_date = '1996-10-24'"))
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is True
+    assert "missing_required_stat_value" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        # Sparse by nature: no award that season, or a stat the era or a small
+        # dataset does not have. An entirely empty column here is valid data.
+        ("player_season_totals", "awards"),
+        ("player_postseason_adj_shooting", "fg_pts_added"),
+        ("player_team_season_totals", "rk"),
+        ("player_team_season_roster", "college"),
+    ],
+)
+def test_sparse_columns_may_be_entirely_null(session: Session, table: str, column: str) -> None:
+    _insert_clean_dataset(session)
+    session.execute(text(f"alter table stats.{table} add column {column} text"))
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    assert report.passed is True
+    assert "missing_required_stat_value" not in _issue_codes(report)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        ("player_season_totals", "g"),
+        ("player_team_postseason_per_game", "mp_per_game"),
+        ("player_season_advanced", "age"),
+        ("player_team_season_roster", "position"),
+    ],
+)
+def test_a_required_stat_missing_in_one_row_fails(
+    session: Session, table: str, column: str
+) -> None:
+    _insert_clean_dataset(session)
+    grain = "player_team_season_id" if "team_" in table else "player_season_id"
+    session.execute(text(f"update stats.{table} set {column} = null where {grain} = 1"))
+
+    report = validate_official_stats(
+        session, coverage_artifact=_coverage_artifact_for_clean_dataset()
+    )
+
+    issue = next(i for i in report.issues if i.code == "missing_required_stat_value")
+    assert issue.context["null_counts"] == {column: 1}
+
+
+@pytest.mark.unit
 def test_validate_official_stats_detects_invalid_numeric_ranges(session: Session) -> None:
     _insert_clean_dataset(session)
     session.execute(text("update stats.player_team_season_totals set fg_pct = 1.1 where player_team_season_id = 1"))

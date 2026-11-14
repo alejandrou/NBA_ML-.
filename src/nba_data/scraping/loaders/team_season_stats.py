@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -1023,7 +1024,27 @@ def _to_decimal(value: object) -> Decimal | None:
     return decimal_value
 
 
+_MONTHS = MappingProxyType(
+    {
+        name: number
+        for number, name in enumerate(
+            (
+                "january", "february", "march", "april", "may", "june", "july",
+                "august", "september", "october", "november", "december",
+            ),
+            start=1,
+        )
+    }
+)
+_DISPLAY_DATE_RE = re.compile(r"^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$")
+
+
 def _to_date(value: object) -> date | None:
+    """Read an ISO date or Basketball Reference's display form, e.g. ``August 9, 1982``.
+
+    A value that is neither fails the row instead of becoming a silent NULL.
+    """
+
     if value is None:
         return None
     if isinstance(value, date):
@@ -1035,8 +1056,16 @@ def _to_date(value: object) -> date | None:
         try:
             return date.fromisoformat(cleaned)
         except ValueError:
-            return None
-    return None
+            pass
+        match = _DISPLAY_DATE_RE.match(cleaned)
+        month = _MONTHS.get(match.group(1).lower()) if match else None
+        if match and month:
+            try:
+                return date(int(match.group(3)), month, int(match.group(2)))
+            except ValueError:
+                pass
+    msg = f"Expected a date, got {value!r}."
+    raise ValueError(msg)
 
 
 def _to_string(value: object) -> str | None:

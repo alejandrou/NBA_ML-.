@@ -43,7 +43,7 @@ def test_lifespan_owns_one_engine_and_session_factory_per_app(monkeypatch: pytes
         factory_engines.append(engine)
         return object()
 
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", fake_create_engine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", fake_create_engine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", fake_create_session_factory)
 
     first_app = create_app()
@@ -76,7 +76,7 @@ def test_health_does_not_open_a_database_session(monkeypatch: pytest.MonkeyPatch
         assert received_engine is engine
         return session_factory
 
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", lambda: engine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", lambda: engine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", fake_create_session_factory)
 
     with TestClient(create_app()) as client:
@@ -116,7 +116,7 @@ def test_request_session_dependency_can_be_overridden(monkeypatch: pytest.Monkey
         assert received_engine is engine
         return fail_if_session_is_opened
 
-    monkeypatch.setattr("nba_data.api.app.create_db_engine", lambda: engine)
+    monkeypatch.setattr("nba_data.api.app.create_api_engine", lambda: engine)
     monkeypatch.setattr("nba_data.api.app.create_session_factory", fake_create_session_factory)
 
     app = create_app()

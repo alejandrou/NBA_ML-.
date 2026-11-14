@@ -1,4 +1,4 @@
-"""The guard on the two current-season load commands: refusals happen before any connection."""
+"""The guard on the database load commands: refusals happen before any connection."""
 
 from __future__ import annotations
 
@@ -102,3 +102,43 @@ def test_each_command_refuses_a_persistent_target_before_connecting(
 
     assert result.exit_code == 1
     assert "not on origin/main" in result.output
+
+
+HISTORICAL_BACKFILLS = (
+    ["backfill", "offline", "--execute-approved-backfill"],
+    ["backfill", "stats", "--execute-approved-stats-backfill"],
+    ["backfill", "player-stats", "--execute-approved-player-stats-backfill"],
+    ["backfill", "player-postseason-stats", "--execute-approved-player-postseason-stats-backfill"],
+    ["backfill", "games", "--season", "2020", "--execute-approved-games-backfill"],
+)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("command", HISTORICAL_BACKFILLS)
+@pytest.mark.usefixtures("no_database")
+def test_each_historical_backfill_refuses_a_persistent_target_before_connecting(
+    command: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refused(_database_url: str) -> None:
+        raise LoadTargetError("Refusing to load: HEAD is not on origin/main")
+
+    monkeypatch.setattr(cli_main, "require_load_target", refused)
+
+    result = CliRunner().invoke(cli_main.app, command)
+
+    assert result.exit_code == 1
+    assert "not on origin/main" in result.output
+
+
+@pytest.mark.unit
+def test_a_failed_analyze_warns_without_failing_the_committed_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    def broken(_engine: object, _schemas: object = None) -> bool:
+        raise OperationalError("ANALYZE", {}, Exception("server closed the connection"))
+
+    monkeypatch.setattr(cli_main, "analyze_database", broken)
+
+    cli_main._refresh_planner_statistics(object())  # type: ignore[arg-type]

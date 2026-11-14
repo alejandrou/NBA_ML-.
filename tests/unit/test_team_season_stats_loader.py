@@ -205,6 +205,50 @@ def test_roster_loads_type_converted_values(session: Session) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("August 9, 1982", date(1982, 8, 9)),
+        ("february 14, 1990", date(1990, 2, 14)),
+        ("1998-03-03", date(1998, 3, 3)),
+        ("", None),
+    ],
+)
+def test_roster_birth_date_reads_the_page_display_format(
+    session: Session, raw: str, expected: date | None
+) -> None:
+    _create_core_grains(session)
+
+    report = load_team_season_stats(
+        session,
+        [_row(source_table="roster", values={"player": "Jayson Tatum", "birth_date": raw})],
+        **_lineage(),
+    )
+
+    assert report.loaded_rows == 1
+    roster = session.scalar(select(PlayerTeamSeasonRoster))
+    assert roster is not None
+    assert roster.birth_date == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("raw", ["not-a-date", "Smarch 1, 1990", "February 30, 1990"])
+def test_roster_birth_date_that_cannot_be_read_fails_the_row(session: Session, raw: str) -> None:
+    _create_core_grains(session)
+
+    report = load_team_season_stats(
+        session,
+        [_row(source_table="roster", values={"player": "Jayson Tatum", "birth_date": raw})],
+        **_lineage(),
+    )
+
+    assert report.loaded_rows == 0
+    assert report.entries[0].status == "failed"
+    assert report.entries[0].reason == "invalid_values"
+    assert _count(session, PlayerTeamSeasonRoster) == 0
+
+
+@pytest.mark.unit
 def test_team_page_loader_populates_player_name_display_from_source_cell(
     session: Session,
 ) -> None:
@@ -573,7 +617,7 @@ def _values_for_source_table(source_table: str) -> dict[str, object]:
             "player": "Jayson Tatum",
             "pos": "SF",
             "weight": 210,
-            "birth_date": "not-a-date",
+            "birth_date": "March 3, 1998",
         },
         "totals": {"name_display": "Jayson Tatum", "games": 74, "pts": 1987},
         "per_game": {"name_display": "Jayson Tatum", "pts_per_g": 26.9},

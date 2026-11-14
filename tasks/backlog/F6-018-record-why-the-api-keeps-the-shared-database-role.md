@@ -39,6 +39,12 @@ the next audit does not re-raise the same finding as open work.
 - The API's read-only guarantee is enforced by code at three layers: reads only
   through `db/repositories/queries/` (`API_ARCHITECTURE.md`), a request-scoped
   Session that never commits (`api/dependencies.py`), and a GET-only surface.
+- Since 2026-11-11 (DATABASE_AUDIT_2026-11-10, H-04/R-01, done on `main`
+  without a card) the API's Engine is `create_api_engine()`: every connection
+  opens with `default_transaction_read_only=on` and `statement_timeout` /
+  `idle_in_transaction_session_timeout` from `api_statement_timeout_seconds`.
+  The read-only guarantee is therefore also enforced by PostgreSQL, though the
+  role is still the shared superuser, which could turn read-only off.
 - The network half is closed: F6-016 binds the database to
   `127.0.0.1` by default (`docker-compose.yml`).
 - The platform is local and single-owner (`docs/ml/PREDICTOR_PLAN.md` §5:
@@ -71,8 +77,9 @@ the next audit does not re-raise the same finding as open work.
   costs, and the design to follow when it reopens.
 - `PROJECT_DATABASE_AUDIT_2026-09-08.md` finding 2 gains one line pointing at
   F6-016 (network) and ADR 0021 (privilege).
-- `API_ARCHITECTURE.md` states in one sentence that the read-only guarantee is
-  code-level by decision (ADR 0021).
+- `API_ARCHITECTURE.md` states in one sentence that keeping the shared role is
+  a decision (ADR 0021): the read-only guarantee rests on code and on
+  connection-level `default_transaction_read_only`, not on privileges.
 - No code, setting, role, or grant changes.
 
 # Scope

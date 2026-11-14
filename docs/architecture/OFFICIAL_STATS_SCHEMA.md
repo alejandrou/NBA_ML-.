@@ -230,9 +230,13 @@ Columns and mapping:
 | `college` | `college` | `String(200)` |
 | `flag` | `country_flag` | `String(20)` |
 
-Missing columns are stored as `NULL`. `birth_date` should be parsed from the
-official display string when possible; blank or unparseable values remain
-`NULL` and may be reported by validation if suspicious.
+Missing columns are stored as `NULL`. `birth_date` is parsed from the page's
+display string (`October 24, 1996`) or an ISO date; a blank cell is `NULL`, and
+any other value fails the row as `invalid_values` instead of becoming a silent
+`NULL`. Until 2026-11-11 the loader accepted only ISO dates, so every row loaded
+before then has `birth_date` `NULL` until the roster is reloaded
+(DATABASE_AUDIT_2026-11-10, H-06). `validate official-stats` fails a column that
+is `NULL` in every row.
 
 Legacy reference: legacy `models/player/player.py` is retained only as the
 conceptual roster source. F4E improves it by using `core.player_team_seasons.id`

@@ -627,3 +627,11 @@ def test_an_earlier_runs_quarantine_does_not_excuse_a_later_missing_box_score(
     assert report.quarantined == {}
     assert report.missing_box_score == ["202310250NYK"]
     _assert_deferred(report, session, flags)
+
+
+@pytest.fixture(autouse=True)
+def _offline_load_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake or disposable target here is not checked against Git (test_load_guard
+    covers refusals) and is not analyzed (test_db_session covers ANALYZE)."""
+    monkeypatch.setattr("nba_data.cli.main.require_load_target", lambda _database_url: None)
+    monkeypatch.setattr("nba_data.cli.main.analyze_database", lambda *_args, **_kwargs: False)

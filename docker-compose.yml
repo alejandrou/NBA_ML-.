@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:16
     container_name: nba_postgres
+    # Comes back after a Docker or host restart; `docker compose stop` still stops it.
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-nba}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nba}

@@ -136,12 +136,10 @@ task card can note that one is needed but never authorizes it.
 
 ## Legacy scraper
 
-```bash
-python scrape_main.py
-```
-
-Do not run this casually. It can contact Basketball Reference and write to the
-legacy database.
+`scrape_main.py` is retired and exits at once: it scraped Basketball Reference
+without the owner-approval gate. The legacy Peewee config (`db_manager/db_conf.py`)
+has no default database and refuses `nba`; the legacy unit tests only import it.
+Use the `nba-data` CLI instead.
 
 ## Responsible scraping
 

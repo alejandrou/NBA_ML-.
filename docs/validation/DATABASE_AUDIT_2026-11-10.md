@@ -993,6 +993,39 @@ las columnas que la fuente publica siempre (`required_stat_columns`). El
 `ANALYZE` del punto 9 se limita a los esquemas cargados y tiene tiempos máximos,
 y las opciones de conexión ya presentes en la URL de la API se conservan.
 
+**Seguimiento 2026-11-14 (F8-023).** El propietario ordenó cerrar lo pendiente
+sin cambio de esquema en una sola tarjeta:
+
+- **H-06.** Copia verificada antes de la recarga
+  (`D:/nba-backups/nba-20261114T182339Z-f0c9f944`). `backfill stats` desde
+  `origin/main` (f8057a9) recargó 805 páginas sin fallos (134.949 filas). Las
+  15.005 filas del roster tienen `birth_date`, y `validate official-stats`
+  informa `missing_required_values` 0. El único fallo que queda es
+  `coverage_artifact_stale`, porque la caché creció después de generar el
+  artefacto. Copia verificada después
+  (`nba-20261114T184738Z-9ec22378`, volcado SHA-256 `80aa208c…5a9a5541`).
+- **R-02.** Cada comando de carga toma un bloqueo consultivo de sesión
+  (`db/load_lock.py`) y una segunda carga sale con código 1 sin escribir. La
+  carga escribe por la misma conexión que tiene el bloqueo: si esa conexión se
+  pierde, la carga se detiene en vez de reconectar y escribir sin bloqueo.
+- **R-03.** Los tres backfills de estadísticas confirman cada página en caché;
+  una interrupción conserva lo ya cargado y repetir el comando reanuda. Un
+  diario de progreso (`*.progress.jsonl`) registra cada página confirmada y cómo
+  terminó la ejecución, porque el informe solo se escribe al final. Pruebas en
+  PostgreSQL para los tres productores: la página uno sobrevive a una
+  interrupción en la página dos y la repetición completa la carga sin duplicar.
+- **R-04.** `restart: unless-stopped` en `docker-compose.yml`, aplicado al
+  contenedor en marcha con `docker update`, sin reiniciarlo. `down -v` sigue
+  destruyendo el volumen; las copias de H-02 son la protección.
+- **R-05.** `db_manager/db_conf.py` ya no tiene base por defecto y rechaza `nba`;
+  `scrape_main.py` se niega a ejecutarse.
+- **R-07.** Las listas de jugadores y equipos ordenan con la intercalación raíz
+  de ICU (`und-x-icu`), independiente de la configuración regional del sistema.
+  Se descartó `"C"`, que cambiaba de posición 2.511 de 2.693 jugadores y llevaba
+  los nombres acentuados al final. ICU cambia 1.738, porque deja de ignorar los
+  espacios ("Al Horford" antes que "Alan Anderson").
+  `GET /api/v1/health/ready` responde 503 si la base no tiene esa intercalación.
+
 ### Cuando se toque el esquema (agrupar en una revisión)
 
 | # | Acción | Resuelve |

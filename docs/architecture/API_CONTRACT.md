@@ -49,7 +49,7 @@ It is liveness only: it does not verify the database, scraping, or external serv
 
 ## Readiness
 
-`GET /api/v1/health/ready` reports whether the database is reachable, migrated, and carrying the tables the data routes read. It answers `GET` only.
+`GET /api/v1/health/ready` reports whether the database is reachable, migrated, carrying the tables the data routes read, and providing the `und-x-icu` collation the list routes order names by. It answers `GET` only.
 
 Ready returns 200:
 
@@ -65,7 +65,7 @@ Not ready returns 503 with one of exactly three `detail` strings:
 |---|---|
 | The database could not be reached | `{"detail": "Database unavailable"}` |
 | The readiness check exceeded its time bound | `{"detail": "Database readiness check timed out"}` |
-| Connected, but the Alembic revision is not at head or a required table is missing | `{"detail": "Database schema not ready"}` |
+| Connected, but the Alembic revision is not at head, a required table is missing, or the `und-x-icu` collation is absent | `{"detail": "Database schema not ready"}` |
 
 These strings are fixed. They never interpolate the exception, the driver message, a SQL statement, the connection string, a credential, or a filesystem path — the underlying cause is logged server-side, exactly as it is for a 500. If a fourth cause is ever needed it gets its own fixed string; the existing three are never reshaped into a template.
 
@@ -347,6 +347,13 @@ inferred from two sections a reader may not have read together.
 
 All collections use the collection envelope and the `page` / `page_size` bounds
 defined above; neither is restated here.
+
+Names (`full_name`, and `current_name` for `/teams`) are compared under ICU's
+root collation (`COLLATE "und-x-icu"`), not the server's default. The default
+comes from the operating system's C library, so a database rebuilt elsewhere
+could page the same players differently (DATABASE_AUDIT_2026-11-10, R-07). ICU
+also keeps spaces significant ("Al Horford" before "Alan Anderson") and accented
+names beside their plain neighbours ("Álex Abrines" before "Alex Len").
 
 ### Status codes
 

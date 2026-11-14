@@ -9,6 +9,7 @@ from typing import Literal
 from sqlalchemy.orm import Session
 
 from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.load_journal import PageCommittedCallback
 from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
 from nba_data.scraping.parsers.player_page import parse_player_page_regular_season
@@ -116,8 +117,18 @@ def run_offline_player_stats_backfill(
     start_year: int | None = None,
     end_year: int | None = None,
     parser_version: str = DEFAULT_PLAYER_STATS_PARSER_VERSION,
+    commit_each_page: bool = False,
+    on_page_committed: PageCommittedCallback | None = None,
 ) -> OfflinePlayerStatsBackfillReport:
-    """Run cache-only player-page processing into regular-season player-season stats tables."""
+    """Run cache-only player-page processing into regular-season player-season stats tables.
+
+    With `commit_each_page`, each cached page is committed before the next one, so
+    a failure late in the archive keeps the pages already loaded
+    (DATABASE_AUDIT_2026-11-10, R-03); the loaders upsert, so a rerun resumes
+    safely. `on_page_committed` then receives each page's report entry once its
+    commit has succeeded (the CLI's progress journal). Without the flag the
+    caller owns the transaction.
+    """
 
     validate_backfill_inputs(
         limit=limit,
@@ -138,19 +149,25 @@ def run_offline_player_stats_backfill(
     # such a run could be misread as a success against an unseeded database.
     loaded_season_years = load_season_scope(session) if cache_entries else frozenset()
 
-    entries = tuple(
-        _process_one_player_page(
-            session,
-            cache_path=cache_path,
-            player_identifier=player_identifier,
-            source_url=source_url,
-            start_year=start_year,
-            end_year=end_year,
-            parser_version=parser_version,
-            loaded_season_years=loaded_season_years,
+    processed = []
+    for cache_path, player_identifier, source_url in cache_entries:
+        processed.append(
+            _process_one_player_page(
+                session,
+                cache_path=cache_path,
+                player_identifier=player_identifier,
+                source_url=source_url,
+                start_year=start_year,
+                end_year=end_year,
+                parser_version=parser_version,
+                loaded_season_years=loaded_season_years,
+            )
         )
-        for cache_path, player_identifier, source_url in cache_entries
-    )
+        if commit_each_page:
+            session.commit()
+            if on_page_committed is not None:
+                on_page_committed(processed[-1].to_dict())
+    entries = tuple(processed)
 
     return OfflinePlayerStatsBackfillReport(
         player_pages_processed=len(entries),

@@ -13,6 +13,7 @@ from nba_data.scraping.cache_inventory import (
     CachedHtmlInventoryEntry,
     build_cached_html_inventory,
 )
+from nba_data.scraping.load_journal import PageCommittedCallback
 from nba_data.scraping.loaders import TeamSeasonStatsLoadReport, load_team_season_stats
 from nba_data.scraping.offline_processor import (
     OfflineTeamSeasonEntryResult,
@@ -107,8 +108,18 @@ def run_offline_stats_backfill(
     start_year: int | None = None,
     end_year: int | None = None,
     parser_version: str = DEFAULT_STATS_PARSER_VERSION,
+    commit_each_page: bool = False,
+    on_page_committed: PageCommittedCallback | None = None,
 ) -> OfflineStatsBackfillReport:
-    """Run cache-only team-season processing into official wide stats tables."""
+    """Run cache-only team-season processing into official wide stats tables.
+
+    With `commit_each_page`, each cached page is committed before the next one, so
+    a failure late in the archive keeps the pages already loaded
+    (DATABASE_AUDIT_2026-11-10, R-03); the loaders upsert, so a rerun resumes
+    safely. `on_page_committed` then receives each page's report entry once its
+    commit has succeeded (the CLI's progress journal). Without the flag the
+    caller owns the transaction.
+    """
 
     total_start = perf_counter()
     normalized_team = _normalize_team_filter(team)
@@ -147,6 +158,8 @@ def run_offline_stats_backfill(
         selected_entries=selected_entries,
         processed_entries=processing_report.entries,
         parser_version=parser_version,
+        commit_each_page=commit_each_page,
+        on_page_committed=on_page_committed,
     )
     loading_seconds = perf_counter() - loading_start
 
@@ -250,16 +263,24 @@ def _load_processed_entries(
     selected_entries: tuple[CachedHtmlInventoryEntry, ...],
     processed_entries: tuple[OfflineTeamSeasonEntryResult, ...],
     parser_version: str,
+    commit_each_page: bool = False,
+    on_page_committed: PageCommittedCallback | None = None,
 ) -> tuple[OfflineStatsBackfillEntry, ...]:
-    return tuple(
-        _load_one_processed_entry(
-            session,
-            inventory_entry=inventory_entry,
-            processed_entry=processed_entry,
-            parser_version=parser_version,
+    loaded = []
+    for inventory_entry, processed_entry in zip(selected_entries, processed_entries, strict=True):
+        loaded.append(
+            _load_one_processed_entry(
+                session,
+                inventory_entry=inventory_entry,
+                processed_entry=processed_entry,
+                parser_version=parser_version,
+            )
         )
-        for inventory_entry, processed_entry in zip(selected_entries, processed_entries, strict=True)
-    )
+        if commit_each_page:
+            session.commit()
+            if on_page_committed is not None:
+                on_page_committed(loaded[-1].to_dict())
+    return tuple(loaded)
 
 
 def _load_one_processed_entry(

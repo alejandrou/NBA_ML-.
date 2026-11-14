@@ -34,3 +34,5 @@ that card's own track.
 - 2026-11-08 | F8-010 (data) -> F6-021 (app) | additive | New ml.model_versions and ml.predictions (revision 0012) for the game prediction route
 
 ## Log
+
+- 2026-11-14 | F8-023 (shared) -> none | breaking | /players and /teams order names by ICU root collation (und-x-icu) instead of glibc en_US; page contents change, fields and routes do not; /health/ready answers 503 "Database schema not ready" when that collation is absent

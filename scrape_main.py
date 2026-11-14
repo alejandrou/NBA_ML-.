@@ -13,6 +13,14 @@ from nba_data.scraping.team_season_pages import (
 )
 
 
+RETIRED_MESSAGE = (
+    "scrape_main.py is retired: it scraped Basketball Reference live without the "
+    "owner-approval gate and wrote prototype tables (DATABASE_AUDIT_2026-11-10, R-05). "
+    "Use the `nba-data` CLI: `acquisition` commands with an approved manifest, "
+    "then `backfill` commands offline."
+)
+
+
 def parse_years():
     if len(sys.argv) == 1:
         return [2024]
@@ -20,6 +28,7 @@ def parse_years():
 
 
 async def main():
+    raise SystemExit(RETIRED_MESSAGE)
     years = parse_years()
     data_manager = DBManager()
     settings = get_settings()

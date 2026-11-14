@@ -19,6 +19,7 @@ from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from nba_data.api.services.player_stats import served_stat_tables
+from nba_data.db.repositories.queries.ordering import NAME_COLLATION
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,8 @@ class ReadinessOutcome(Enum):
 
 
 def check_database_readiness(session: Session, *, timeout_seconds: float) -> ReadinessOutcome:
-    """Report whether the database is reachable, at the migration head, and stocked."""
+    """Report whether the database is reachable, at the migration head, stocked, and
+    able to order names the way the list routes do."""
     try:
         return _probe(session, timeout_seconds=timeout_seconds)
     except OperationalError as exc:
@@ -93,6 +95,13 @@ def _probe(session: Session, *, timeout_seconds: float) -> ReadinessOutcome:
         logger.warning("Database is missing required table(s): %s", ", ".join(missing))
         return ReadinessOutcome.SCHEMA_NOT_READY
 
+    if not _has_name_collation(session):
+        logger.warning(
+            "Database has no usable %r collation, which /players and /teams order names by",
+            NAME_COLLATION,
+        )
+        return ReadinessOutcome.SCHEMA_NOT_READY
+
     return ReadinessOutcome.READY
 
 
@@ -114,6 +123,23 @@ def _missing_required_tables(session: Session) -> list[str]:
     ).bindparams(bindparam("schemas", expanding=True))
     present = set(session.scalars(statement, {"schemas": list(REQUIRED_SCHEMAS)}).all())
     return [name for name in REQUIRED_TABLES if name not in present]
+
+
+def _has_name_collation(session: Session) -> bool:
+    """Whether the collation the list routes order by exists for this database.
+
+    A server built without ICU, or a database whose encoding the collation does
+    not support, would otherwise answer ready while every `/players` and
+    `/teams` request fails (R-07). Other databases do not use it.
+    """
+    if session.get_bind().dialect.name != "postgresql":
+        return True
+    statement = text(
+        "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_collation WHERE collname = :name "
+        "AND collencoding IN (-1, pg_catalog.pg_char_to_encoding("
+        "pg_catalog.current_setting('server_encoding'))))"
+    )
+    return bool(session.scalar(statement, {"name": NAME_COLLATION}))
 
 
 def _is_query_canceled(exc: DBAPIError) -> bool:

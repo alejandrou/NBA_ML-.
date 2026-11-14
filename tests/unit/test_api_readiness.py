@@ -62,12 +62,14 @@ class FakeSession:
         dialect: str = "postgresql",
         failure: Exception | None = None,
         fail_on: str | None = None,
+        has_name_collation: bool = True,
     ) -> None:
         self.revisions = tuple(readiness.migration_heads() if revisions is None else revisions)
         self.tables = tuple(tables)
         self.dialect = dialect
         self.failure = failure
         self.fail_on = fail_on
+        self.has_name_collation = has_name_collation
         self.statements: list[str] = []
 
     def get_bind(self) -> SimpleNamespace:
@@ -82,6 +84,12 @@ class FakeSession:
         if "alembic_version" in sql:
             return _ScalarResult(self.revisions)
         return _ScalarResult(self.tables)
+
+    def scalar(self, statement: Any, params: Any = None) -> bool:
+        sql = self._record(statement)
+        assert "pg_collation" in sql
+        assert params == {"name": "und-x-icu"}
+        return self.has_name_collation
 
     def _record(self, statement: Any) -> str:
         sql = str(statement)
@@ -204,6 +212,30 @@ def test_readiness_reports_503_when_a_required_table_is_missing() -> None:
 
     assert response.status_code == 503
     assert response.json() == {"detail": "Database schema not ready"}
+
+
+@pytest.mark.unit
+def test_readiness_reports_503_when_the_name_collation_is_missing() -> None:
+    """/players and /teams order by ICU root collation (R-07); without it they fail."""
+    session = FakeSession(has_name_collation=False)
+
+    with readiness_client(session) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database schema not ready"}
+    assert "pg_collation" in session.statements[-1]
+
+
+@pytest.mark.unit
+def test_readiness_does_not_look_for_the_collation_outside_postgresql() -> None:
+    session = FakeSession(dialect="sqlite", has_name_collation=False)
+
+    with readiness_client(session) as client:
+        response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert not any("pg_collation" in sql for sql in session.statements)
 
 
 @pytest.mark.unit

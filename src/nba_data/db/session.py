@@ -1,9 +1,10 @@
 import os
 from collections.abc import Collection, Generator
+from contextlib import nullcontext
 from math import ceil
 
 from sqlalchemy import Engine, create_engine, text
-from sqlalchemy.engine import URL, make_url
+from sqlalchemy.engine import URL, Connection, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from nba_data.config.settings import Settings, get_settings
@@ -94,7 +95,7 @@ ANALYZE_LOCK_TIMEOUT_SECONDS = 10
 
 
 def analyze_database(
-    engine: Engine,
+    bind: Engine | Connection,
     schemas: Collection[str] = LOADED_SCHEMAS,
     *,
     statement_timeout_seconds: float = ANALYZE_STATEMENT_TIMEOUT_SECONDS,
@@ -109,11 +110,13 @@ def analyze_database(
     Only the tables in `schemas` are analyzed, and the statement is bounded: a
     lock held by concurrent maintenance or DDL fails it after
     `lock_timeout_seconds` instead of delaying the report of a committed load.
-    Returns False, doing nothing, for any other database.
+    Returns False, doing nothing, for any other database. Given a Connection
+    (a load's locked one), it runs there and commits; given an Engine, on a
+    connection of its own.
     """
-    if engine.dialect.name != "postgresql":
+    if bind.dialect.name != "postgresql":
         return False
-    with engine.connect() as connection:
+    with bind.connect() if isinstance(bind, Engine) else nullcontext(bind) as connection:
         tables = (
             connection.execute(
                 text(
@@ -142,9 +145,13 @@ def analyze_database(
     return True
 
 
-def create_session_factory(engine: Engine | None = None) -> sessionmaker[Session]:
-    resolved_engine = engine or create_db_engine()
-    return sessionmaker(bind=resolved_engine, autoflush=False, expire_on_commit=False)
+def create_session_factory(
+    bind: Engine | Connection | None = None,
+) -> sessionmaker[Session]:
+    """Sessions on `bind`. A load passes its locked Connection, so that its
+    sessions' commits are that connection's commits (R-02)."""
+    resolved_bind = bind if bind is not None else create_db_engine()
+    return sessionmaker(bind=resolved_bind, autoflush=False, expire_on_commit=False)
 
 
 def get_session(settings: Settings | None = None) -> Generator[Session, None, None]:

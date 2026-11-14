@@ -25,3 +25,14 @@ def _restore_nba_data_logger_state() -> None:
     yield
     logger.handlers[:] = handlers_before
     logger.setLevel(level_before)
+
+
+@pytest.fixture(autouse=True)
+def _load_journals_in_tmp(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A load run without `--output` journals under `logs/`; never the repo's in a test."""
+    monkeypatch.setattr(
+        "nba_data.scraping.load_journal.DEFAULT_JOURNAL_DIR",
+        tmp_path_factory.mktemp("load-progress"),
+    )

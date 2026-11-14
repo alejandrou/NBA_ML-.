@@ -13,6 +13,7 @@ from nba_data.db.models.core import (
     Team,
     TeamSeason,
 )
+from nba_data.db.repositories.queries.ordering import portable_name_order
 from nba_data.db.repositories.queries.seasons import NBA_LEAGUE
 
 
@@ -31,7 +32,7 @@ def list_players(session: Session, *, offset: int, limit: int) -> list[Player]:
         select(Player)
         .where(Player.basketball_reference_player_id.is_not(None))
         .order_by(
-            Player.full_name.asc(),
+            portable_name_order(session, Player.full_name).asc(),
             Player.basketball_reference_player_id.asc(),
         )
         .offset(offset)

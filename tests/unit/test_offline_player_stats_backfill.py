@@ -3,8 +3,9 @@ from __future__ import annotations
 import gzip
 import inspect
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -276,6 +277,8 @@ def test_cli_player_stats_runs_and_writes_report(
             }
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             events.append("engine_dispose")
 
@@ -320,8 +323,12 @@ def test_cli_player_stats_runs_and_writes_report(
         start_year: int | None,
         end_year: int | None,
         parser_version: str,
+        commit_each_page: bool,
+        on_page_committed: Callable[[Mapping[str, object]], None],
     ) -> FakeReport:
         assert session is fake_session
+        assert commit_each_page is True  # R-03: the CLI commits page by page
+        on_page_committed({"page": "one"})  # the CLI journals each committed page
         assert cache.root_dir == tmp_path / "cache"
         assert limit == 2
         assert player == "hardeja01"
@@ -355,18 +362,20 @@ def test_cli_player_stats_runs_and_writes_report(
     )
 
     assert result.exit_code == 0, result.output
+    (journal_path,) = output_path.parent.glob(f"{output_path.name}.*.progress.jsonl")
+    journal = [json.loads(line) for line in journal_path.read_text(encoding="utf-8").splitlines()]
+    assert [line["event"] for line in journal] == ["run_started", "page_committed", "run_finished"]
+    assert journal[1]["entry"] == {"page": "one"}
+    assert journal[2]["status"] == "completed"
     assert events == [
         "engine_create",
         "session_factory_create",
         "session_enter",
-        "session_begin",
-        "transaction_enter",
         "player_stats_backfill_run",
-        "transaction_exit",
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {
+    assert json.loads(result.stdout) == {
         "player_pages_processed": 1,
         "rows_loaded_or_updated": 8,
         "entries_failed": 0,
@@ -412,6 +421,8 @@ def test_cli_player_stats_prints_and_writes_before_nonzero_failure(
             }
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             return None
 
@@ -455,7 +466,7 @@ def test_cli_player_stats_prints_and_writes_before_nonzero_failure(
         get_settings.cache_clear()
 
     assert result.exit_code == 1
-    printed = json.loads(result.output)
+    printed = json.loads(result.stdout)
     written = json.loads(output_path.read_text(encoding="utf-8"))
     for counter, value in failure_counters.items():
         assert printed[counter] == value
@@ -476,10 +487,13 @@ def test_offline_player_stats_backfill_source_has_no_network_or_client_boundarie
             "import requests",
             "import httpx",
             "cache.set",
-            ".commit(",
             ".rollback(",
         ):
             assert forbidden not in source
+    # The CLI leaves commits to the producer, which commits only when asked (R-03).
+    assert ".commit(" not in command_source
+    assert module_source.count(".commit(") == 1
+    assert "if commit_each_page:" in module_source
 
 
 @pytest.mark.unit
@@ -535,6 +549,8 @@ def test_cli_player_stats_reports_a_missing_cache_root_without_a_traceback(
     get_settings.cache_clear()
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             return None
 

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import inspect
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -385,6 +386,92 @@ def test_stats_backfill_aggregates_counts_and_is_json_serializable(
     json.dumps(payload)
 
 
+class _CommitRecordingSession:
+    def __init__(self) -> None:
+        self.nested_count = 0
+        self.commits = 0
+
+    def begin_nested(self) -> _FakeTransaction:
+        self.nested_count += 1
+        return _FakeTransaction()
+
+    def commit(self) -> None:
+        self.commits += 1
+
+
+def _two_page_backfill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, second_load: BaseException
+) -> HtmlCache:
+    cache = HtmlCache(tmp_path / "cache")
+    inventory = _inventory(
+        cache.root_dir,
+        [
+            _entry(cache.path_for_url(BOS_2024_URL), "valid", team="BOS", season=2024),
+            _entry(cache.path_for_url(ATL_2024_URL), "valid", team="ATL", season=2024),
+        ],
+    )
+    loads = iter([_stats_report(loaded=1), second_load])
+
+    def fake_loader(*args: object, **kwargs: object) -> TeamSeasonStatsLoadReport:
+        outcome = next(loads)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(
+        offline_stats_backfill, "build_cached_html_inventory", lambda *, cache: inventory
+    )
+    monkeypatch.setattr(
+        offline_stats_backfill,
+        "process_offline_team_season_sources",
+        lambda sources, **kwargs: _processing_report(
+            [_validated_entry(team="ATL"), _validated_entry(team="BOS")]
+        ),
+    )
+    monkeypatch.setattr(offline_stats_backfill, "load_team_season_stats", fake_loader)
+    return cache
+
+
+@pytest.mark.unit
+def test_each_page_is_committed_before_the_next_one_is_loaded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R-03: an interruption on a later page keeps the pages already committed."""
+    session = _CommitRecordingSession()
+    cache = _two_page_backfill(tmp_path, monkeypatch, KeyboardInterrupt())
+
+    with pytest.raises(KeyboardInterrupt):
+        run_offline_stats_backfill(session, cache=cache, commit_each_page=True)  # type: ignore[arg-type]
+
+    assert session.nested_count == 2
+    assert session.commits == 1
+
+
+@pytest.mark.unit
+def test_a_failed_page_is_committed_without_its_rows_and_the_run_continues(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _CommitRecordingSession()
+    cache = _two_page_backfill(tmp_path, monkeypatch, RuntimeError("bad page"))
+
+    report = run_offline_stats_backfill(session, cache=cache, commit_each_page=True)  # type: ignore[arg-type]
+
+    assert [entry.status for entry in report.entries] == ["loaded", "failed"]
+    assert session.commits == 2
+
+
+@pytest.mark.unit
+def test_without_the_flag_the_caller_owns_the_transaction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _CommitRecordingSession()
+    cache = _two_page_backfill(tmp_path, monkeypatch, RuntimeError("bad page"))
+
+    run_offline_stats_backfill(session, cache=cache)  # type: ignore[arg-type]
+
+    assert session.commits == 0
+
+
 @pytest.mark.unit
 def test_cli_backfill_stats_refuses_without_explicit_flag(
     tmp_path: Path,
@@ -427,6 +514,8 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
             }
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             events.append("engine_dispose")
 
@@ -472,8 +561,12 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
         start_year: int | None,
         end_year: int | None,
         parser_version: str,
+        commit_each_page: bool,
+        on_page_committed: Callable[[Mapping[str, object]], None],
     ) -> FakeReport:
         assert session is fake_session
+        assert commit_each_page is True  # R-03: the CLI commits page by page
+        on_page_committed({"page": "one"})  # the CLI journals each committed page
         assert cache.root_dir == tmp_path / "cache"
         assert max_workers == 2
         assert limit == 5
@@ -512,18 +605,20 @@ def test_cli_backfill_stats_runs_with_fake_session_and_writes_report(
     )
 
     assert result.exit_code == 0, result.output
+    (journal_path,) = output_path.parent.glob(f"{output_path.name}.*.progress.jsonl")
+    journal = [json.loads(line) for line in journal_path.read_text(encoding="utf-8").splitlines()]
+    assert [line["event"] for line in journal] == ["run_started", "page_committed", "run_finished"]
+    assert journal[1]["entry"] == {"page": "one"}
+    assert journal[2]["status"] == "completed"
     assert events == [
         "engine_create",
         "session_factory_create",
         "session_enter",
-        "session_begin",
-        "transaction_enter",
         "stats_backfill_run",
-        "transaction_exit",
         "session_exit",
         "engine_dispose",
     ]
-    assert json.loads(result.output) == {
+    assert json.loads(result.stdout) == {
         "selected_sources": 1,
         "stats_loaded_rows": 2,
         "entries_failed": 0,
@@ -558,6 +653,8 @@ def test_cli_backfill_stats_prints_and_writes_before_nonzero_failure(
             return {"stats_loaded_rows": 2, "entries_failed": 1, "rows_failed": 3}
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             return None
 
@@ -601,7 +698,7 @@ def test_cli_backfill_stats_prints_and_writes_before_nonzero_failure(
         get_settings.cache_clear()
 
     assert result.exit_code == 1
-    assert json.loads(result.output) == {
+    assert json.loads(result.stdout) == {
         "stats_loaded_rows": 2,
         "entries_failed": 1,
         "rows_failed": 3,
@@ -624,10 +721,13 @@ def test_stats_backfill_source_has_no_network_core_loader_or_commit_boundaries()
             "HtmlCache.set",
             "load_offline_team_season_report",
             "load_team_season_core",
-            ".commit(",
             ".rollback(",
         ):
             assert forbidden not in source
+    # The CLI leaves commits to the producer, which commits only when asked (R-03).
+    assert ".commit(" not in command_source
+    assert module_source.count(".commit(") == 1
+    assert "if commit_each_page:" in module_source
 
 
 @pytest.mark.unit

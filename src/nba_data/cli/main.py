@@ -1,17 +1,21 @@
 import json
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from sqlalchemy import Engine
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from nba_data import __version__
 from nba_data.config.logging_config import configure_logging
-from nba_data.config.settings import get_settings
+from nba_data.config.settings import Settings, get_settings
 from nba_data.db.load_guard import LoadTargetError, require_load_target
+from nba_data.db.load_lock import LoadInProgressError, LoadLockLostError, exclusive_load
 from nba_data.db.repositories.queries.game_identities import load_game_identity_keys
 from nba_data.db.session import (
     LOADED_SCHEMAS,
@@ -76,6 +80,7 @@ from nba_data.scraping.game_season_planning import (
     plan_game_schedules,
     write_draft_manifest,
 )
+from nba_data.scraping.load_journal import LoadJournal, open_load_journal
 from nba_data.scraping.loaders.current_season_games import run_current_season_games
 from nba_data.scraping.loaders.current_season_identity import (
     CurrentSeasonLoadError,
@@ -435,18 +440,15 @@ def backfill_offline(
     settings = get_settings()
     _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
-    engine = create_db_engine(settings)
-    try:
-        session_factory = create_session_factory(engine)
+    with _locked_load(settings) as bind:
+        session_factory = create_session_factory(bind)
         with session_factory() as session, session.begin():
             report = run_full_offline_backfill(
                 cache=cache,
                 session=session,
                 max_workers=max_workers,
             )
-        _refresh_planner_statistics(engine)
-    finally:
-        engine.dispose()
+        _refresh_planner_statistics(bind)
 
     _print_and_optionally_write_json(report.to_dict(), output)
 
@@ -500,10 +502,23 @@ def backfill_stats(
     settings = get_settings()
     _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
-    engine = create_db_engine(settings)
-    try:
-        session_factory = create_session_factory(engine)
-        with session_factory() as session, session.begin():
+    with (
+        _locked_load(settings) as bind,
+        _progress_journal(
+            "backfill-stats",
+            {
+                "max_workers": max_workers,
+                "limit": limit,
+                "team": team,
+                "start_year": start_year,
+                "end_year": end_year,
+                "parser_version": parser_version,
+            },
+            output,
+        ) as journal,
+    ):
+        session_factory = create_session_factory(bind)
+        with session_factory() as session:
             try:
                 report = run_offline_stats_backfill(
                     session,
@@ -514,12 +529,12 @@ def backfill_stats(
                     start_year=start_year,
                     end_year=end_year,
                     parser_version=parser_version,
+                    commit_each_page=True,
+                    on_page_committed=journal.page_committed,
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
-        _refresh_planner_statistics(engine)
-    finally:
-        engine.dispose()
+        _refresh_planner_statistics(bind)
 
     _print_backfill_report_and_exit_if_failed(
         report.to_dict(),
@@ -581,10 +596,22 @@ def backfill_player_stats(
     settings = get_settings()
     _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
-    engine = create_db_engine(settings)
-    try:
-        session_factory = create_session_factory(engine)
-        with session_factory() as session, session.begin():
+    with (
+        _locked_load(settings) as bind,
+        _progress_journal(
+            "backfill-player-stats",
+            {
+                "limit": limit,
+                "player": player,
+                "start_year": start_year,
+                "end_year": end_year,
+                "parser_version": parser_version,
+            },
+            output,
+        ) as journal,
+    ):
+        session_factory = create_session_factory(bind)
+        with session_factory() as session:
             try:
                 report = run_offline_player_stats_backfill(
                     session,
@@ -594,12 +621,12 @@ def backfill_player_stats(
                     start_year=start_year,
                     end_year=end_year,
                     parser_version=parser_version,
+                    commit_each_page=True,
+                    on_page_committed=journal.page_committed,
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
-        _refresh_planner_statistics(engine)
-    finally:
-        engine.dispose()
+        _refresh_planner_statistics(bind)
 
     _print_backfill_report_and_exit_if_failed(
         report.to_dict(),
@@ -659,10 +686,22 @@ def backfill_player_postseason_stats(
     settings = get_settings()
     _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
-    engine = create_db_engine(settings)
-    try:
-        session_factory = create_session_factory(engine)
-        with session_factory() as session, session.begin():
+    with (
+        _locked_load(settings) as bind,
+        _progress_journal(
+            "backfill-player-postseason-stats",
+            {
+                "limit": limit,
+                "player": player,
+                "start_year": start_year,
+                "end_year": end_year,
+                "parser_version": parser_version,
+            },
+            output,
+        ) as journal,
+    ):
+        session_factory = create_session_factory(bind)
+        with session_factory() as session:
             try:
                 report = run_offline_player_postseason_stats_backfill(
                     session,
@@ -672,12 +711,12 @@ def backfill_player_postseason_stats(
                     start_year=start_year,
                     end_year=end_year,
                     parser_version=parser_version,
+                    commit_each_page=True,
+                    on_page_committed=journal.page_committed,
                 )
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
-        _refresh_planner_statistics(engine)
-    finally:
-        engine.dispose()
+        _refresh_planner_statistics(bind)
 
     _print_backfill_report_and_exit_if_failed(
         report.to_dict(),
@@ -718,14 +757,11 @@ def backfill_games(
     settings = get_settings()
     _require_write_target(settings.database_url)
     cache = HtmlCache(settings.scraper_cache_dir)
-    engine = create_db_engine(settings)
-    try:
-        session_factory = create_session_factory(engine)
+    with _locked_load(settings) as bind:
+        session_factory = create_session_factory(bind)
         with session_factory() as session:
             report = run_offline_games_backfill(session, cache=cache, season_end_years=seasons)
-        _refresh_planner_statistics(engine)
-    finally:
-        engine.dispose()
+        _refresh_planner_statistics(bind)
 
     data = report.to_dict()
     if output is None:
@@ -1032,19 +1068,56 @@ def ml_predict(
 
 
 def _refresh_planner_statistics(
-    engine: Engine, schemas: tuple[str, ...] = LOADED_SCHEMAS
+    bind: Engine | Connection, schemas: tuple[str, ...] = LOADED_SCHEMAS
 ) -> None:
     """ANALYZE the schemas a load wrote. The rows are already committed, so a failure
     here warns on stderr, keeping stdout's JSON report intact, instead of failing the load."""
 
     try:
-        analyze_database(engine, schemas)
+        analyze_database(bind, schemas)
     except SQLAlchemyError as exc:
         typer.echo(
             f"Warning: the load committed, but ANALYZE failed ({exc}). "
             "Run ANALYZE before relying on query plans.",
             err=True,
         )
+
+
+@contextmanager
+def _progress_journal(
+    command: str, parameters: dict[str, object], output: Path | None
+) -> Iterator[LoadJournal]:
+    """The durable record of a page-committing load's committed pages (R-03).
+
+    The report is written only when the run ends; if it never ends cleanly, the
+    journal still says which pages are in the database and how the run stopped.
+    """
+
+    with open_load_journal(command=command, parameters=parameters, output=output) as journal:
+        typer.echo(f"Progress journal: {journal.path}", err=True)
+        yield journal
+
+
+@contextmanager
+def _locked_load(settings: Settings) -> Iterator[Engine | Connection]:
+    """What a load writes through, holding the database's load lock.
+
+    On PostgreSQL that is the very connection holding the lock, so the lock and
+    the writes cannot part ways. A second load started while this one runs exits
+    1 at once instead of colliding with it halfway, and a load whose locked
+    connection is lost stops instead of writing unlocked (R-02). The ANALYZE
+    that follows a load runs inside the lock too.
+    """
+
+    engine = create_db_engine(settings)
+    try:
+        with exclusive_load(engine) as bind:
+            yield bind
+    except (LoadInProgressError, LoadLockLostError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
 
 
 def _require_write_target(database_url: str) -> None:
@@ -1459,20 +1532,18 @@ def backfill_current_season_identity(
 
     settings = get_settings()
     _require_current_season_load_allowed(execute_approved, settings.database_url)
-    engine = create_db_engine(settings)
     try:
-        with create_session_factory(engine)() as session:
-            report = run_current_season_identity(
-                session,
-                snapshots=SnapshotCache(settings.scraper_snapshot_dir),
-                season_end_year=season,
-            )
-        _refresh_planner_statistics(engine, ("core",))
+        with _locked_load(settings) as bind:
+            with create_session_factory(bind)() as session:
+                report = run_current_season_identity(
+                    session,
+                    snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+                    season_end_year=season,
+                )
+            _refresh_planner_statistics(bind, ("core",))
     except _CURRENT_SEASON_LOAD_ERRORS as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
-    finally:
-        engine.dispose()
     console.print_json(data=report.to_dict())
 
 
@@ -1488,22 +1559,20 @@ def backfill_current_season_games(
     as_of_date = _parse_as_of(as_of)
     settings = get_settings()
     _require_current_season_load_allowed(execute_approved, settings.database_url)
-    engine = create_db_engine(settings)
     try:
-        with create_session_factory(engine)() as session:
-            report = run_current_season_games(
-                session,
-                snapshots=SnapshotCache(settings.scraper_snapshot_dir),
-                archive=HtmlCache(settings.scraper_cache_dir),
-                season_end_year=season,
-                as_of=as_of_date,
-            )
-        _refresh_planner_statistics(engine)
+        with _locked_load(settings) as bind:
+            with create_session_factory(bind)() as session:
+                report = run_current_season_games(
+                    session,
+                    snapshots=SnapshotCache(settings.scraper_snapshot_dir),
+                    archive=HtmlCache(settings.scraper_cache_dir),
+                    season_end_year=season,
+                    as_of=as_of_date,
+                )
+            _refresh_planner_statistics(bind)
     except _CURRENT_SEASON_LOAD_ERRORS as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
-    finally:
-        engine.dispose()
     _print_and_optionally_write_json(report.to_dict(), output)
     if report.run_failed:
         raise typer.Exit(code=1)

@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from nba_data.db.models.core import Team
+from nba_data.db.repositories.queries.ordering import portable_name_order
 
 
 def list_teams(session: Session, *, offset: int, limit: int) -> list[Team]:
@@ -9,7 +10,7 @@ def list_teams(session: Session, *, offset: int, limit: int) -> list[Team]:
     statement = (
         select(Team)
         .order_by(
-            Team.current_name.asc(),
+            portable_name_order(session, Team.current_name).asc(),
             Team.basketball_reference_team_id.asc(),
         )
         .offset(offset)

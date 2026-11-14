@@ -93,7 +93,7 @@ The inventory selects only team-season pages. The 2,738 unsupported paths are
 the other pages in the same cache, all expected: 2,654 player pages and the 84
 F8-001 pilot schedule, box-score, and play-by-play pages.
 
-## Every load: guard, ANALYZE, backup
+## Every load: guard, lock, commits, ANALYZE, backup
 
 These rules apply to every command that writes the database: `backfill offline`,
 `backfill stats`, `backfill player-stats`, `backfill player-postseason-stats`,
@@ -105,6 +105,33 @@ These rules apply to every command that writes the database: `backfill offline`,
   `origin/main` and `src/`/`alembic/` have no uncommitted changes
   (`db/load_guard.py`). A load into `nba` therefore runs only from a clean,
   merged checkout. A disposable `nba_test*` database needs no Git check.
+- **One load at a time.** Each command takes a PostgreSQL session advisory lock
+  (`db/load_lock.py`) before writing and holds it through `ANALYZE`. A second
+  load started meanwhile exits 1 at once with "Another load is already writing
+  this database" and writes nothing; run it again when the first finishes. The
+  load writes through the very connection that holds the lock, which is idle
+  between transactions, so it pins no snapshot. If that connection is lost, the
+  server releases the lock and the load stops with "The connection holding the
+  load lock was lost" instead of reconnecting and writing unlocked. PostgreSQL
+  also releases it if the process dies. Other tools, such as
+  `scripts/backup_database.py`, do not take it: stop loads before a backup, as
+  that procedure says.
+- **Commit scope.** `backfill stats`, `player-stats` and
+  `player-postseason-stats` commit each cached page before the next, so a
+  failure or interruption late in the archive keeps the pages already loaded.
+  Rows upsert, so rerunning the same command resumes safely. During a run,
+  readers can see a mix of reloaded and not-yet-reloaded pages. `backfill
+  offline` (core identity) stays one transaction; `games` commits per game.
+- **Progress journal.** Those three commands also write a JSON Lines journal,
+  named on stderr at start: beside the report as
+  `<output>.<start time>.progress.jsonl`, or under `logs/load-progress/` without
+  `--output`. It records the run (`run_started`: id, command, parameters), one
+  `page_committed` line per page after its commit succeeds, and `run_finished`
+  with `completed`, `interrupted` or `failed`. A journal without `run_finished`
+  belongs to a killed process. After a run that did not complete, the journal
+  says which pages are in the database; the report was never written, so rerun
+  the command to get one. The journal is evidence, not a report: no validator
+  accepts it.
 - **ANALYZE.** After its rows are committed, each command runs `ANALYZE` on
   the tables of the schemas it writes (`core` and `stats`; `core` only for
   `current-season-identity`), never `ml` or the whole database. The statement is
@@ -253,9 +280,10 @@ on the roster, and `age`, `g` and the minutes column (`mp`, or `mp_per_game`)
 on every other stats table; each was full in every row of `nba`, and
 `birth_date` in every cached roster row. Sparse columns (`awards`, percentages
 with a zero denominator, era-dependent stats) are not checked, since an empty
-value there is valid data in a small or historical dataset. Until the roster is
-reloaded with parsed birth dates, `stats.player_team_season_roster.birth_date`
-fails this check on `nba`. Comparing stored values with the cached pages
+value there is valid data in a small or historical dataset. The roster was
+reloaded into `nba` on 2026-11-14 (`backfill stats`, 805 pages, 0 failures):
+all 15,005 rows now carry `birth_date`, and `missing_required_values` is 0.
+Comparing stored values with the cached pages
 themselves is not done here.
 
 Three measured baselines exist, and they are not interchangeable:

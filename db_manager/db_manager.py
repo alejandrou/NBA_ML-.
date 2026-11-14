@@ -1,9 +1,10 @@
-from db_manager.db_conf import db
+from db_manager.db_conf import configure_legacy_database, db
 
 class DBManager:
-    
+
     @staticmethod
     def connect_db():
+        configure_legacy_database()
         db.connect()
 
     @staticmethod

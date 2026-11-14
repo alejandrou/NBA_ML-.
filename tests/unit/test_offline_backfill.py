@@ -5,6 +5,7 @@ import inspect
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -380,6 +381,8 @@ def _invoke_cli_backfill_offline_with_fake_session(
             return _FAKE_OFFLINE_BACKFILL_REPORT
 
     class FakeEngine:
+
+        dialect = SimpleNamespace(name="sqlite")  # no load lock outside PostgreSQL
         def dispose(self) -> None:
             events.append("engine_dispose")
 

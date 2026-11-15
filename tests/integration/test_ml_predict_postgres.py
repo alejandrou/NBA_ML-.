@@ -111,7 +111,7 @@ class League:
                 is_home=is_home,
                 **counters,
                 source_url="https://www.basketball-reference.com/boxscores/x.html",
-                cache_path="boxscores/x.html",
+                cache_path="basketball-reference/x.html.gz",
                 parser_version="probe",
             )
         )

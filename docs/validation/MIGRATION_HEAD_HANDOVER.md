@@ -10,6 +10,34 @@ revision. The worked example is `0008_drop_raw_schema`, the gap
 [the 2026-09-08 audit](PROJECT_DATABASE_AUDIT_2026-09-08.md) recorded as its
 first finding.
 
+## Pending: `0013_portable_lineage_checks` (F8-024)
+
+`0013` rewrites `cache_path` in place in all 35 lineage tables (832,616 rows in
+`nba` on 2026-11-15), and adds 51 `CHECK` constraints. It runs in one
+transaction under `ACCESS EXCLUSIVE` locks and refuses, changing nothing, if any
+value cannot be reduced to a key or any row violates a new check.
+
+Once `0013` is on `main`, the API answers `503 Database schema not ready` until
+`nba` is upgraded, and a loader from before `0013` would write an absolute path
+the new check rejects. So the writers stop first:
+
+1. Merge F8-024 to `main`; work from `origin/main`.
+2. Stop `nba-data serve` and any load or current-season refresh.
+3. Step 1 — verified backup.
+4. Step 2 — `--revision 0013_portable_lineage_checks` must exit 0. On
+   2026-11-15 (read-only, before merge) it reported `51 refusal counts checked`,
+   `82027 distinct (source_url, cache_path) pairs compared`, and passed.
+5. Step 3 — `uv run alembic upgrade head`.
+6. `uv run nba-data validate offline-database` and
+   `uv run nba-data validate official-stats`.
+7. `VACUUM (ANALYZE)` the 35 rewritten `stats` tables: the rewrite leaves one
+   dead version of every row.
+8. Restart the API and expect `200` from `/api/v1/health/ready`.
+
+Recovery: a failed upgrade rolls back and leaves `nba` at `0012`. A bad result
+after commit is restored from the step 3 backup. `downgrade()` restores the
+schema but keeps the keys; the original absolute paths are gone by design.
+
 ## The gap, closed on 2026-11-11: `0010`–`0012` (F8-022)
 
 | | |
@@ -150,7 +178,8 @@ uv run python scripts/preflight_migration_data.py --database-url <scratch-target
 
 `0010` requires the index it drops and the replacement unique constraint;
 `0011` requires the existing `slug` column to contain no values; `0012` requires
-the `ml` schema to be absent. It reports one verdict per selected revision and
+the `ml` schema to be absent. `0013` runs the revision's own refusal counts and
+compares each Basketball Reference `source_url` with the key `0013` would store. It reports one verdict per selected revision and
 exits nonzero if any check blocks. `0001`–`0006` and `0009` have no checks in this
 script. Any unsupported pending revision needs manual inspection/rehearsal;
 a pass for selected revisions is not whole-upgrade certification or approval.

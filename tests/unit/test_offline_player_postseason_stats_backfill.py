@@ -106,6 +106,10 @@ def test_offline_player_postseason_stats_backfill_loads_harden_rows(tmp_path: Pa
     assert aggregate is not None
     assert aggregate.source_team_code == "BRK"
     assert team is not None
+    # The cache root is absolute (tmp_path); the stored lineage is still the key.
+    expected_key = cache.cache_key_for_url(PLAYER_URLS["hardeja01"])
+    assert aggregate.cache_path == expected_key
+    assert team.cache_path == expected_key
     assert _count(session, PlayerPostseasonTotals) == 1
     assert _count(session, PlayerTeamPostseasonTotals) == 1
 

@@ -103,7 +103,7 @@ Every table has the same lineage columns:
 | Column | SQL type | Nullability | Notes |
 | --- | --- | --- | --- |
 | `source_url` | `Text` | not null | Basketball Reference source URL for the cached page. |
-| `cache_path` | `Text` | not null | Local `.html.gz` cache path used for the row. |
+| `cache_path` | `Text` | not null | Key of the cached `.html.gz` file actually read, relative to `SCRAPER_CACHE_DIR`, `/`-separated (`basketball-reference/<file>.html.gz`). Never an absolute or OS-specific path: `require_cache_key` refuses one before the write and `ck_stats_<table>_cache_path_key` (revision `0013`) refuses it in PostgreSQL. The file is `SCRAPER_CACHE_DIR / cache_path`. |
 | `parser_version` | `String(50)` | not null | Version label for parser/normalizer contract. `src/nba_data/validation/parser_contracts.py` defines the known vocabulary and the current identifier per producer. |
 | `created_at` | `DateTime(timezone=True)` | not null | Server default `func.now()` in F4E-002. |
 | `updated_at` | `DateTime(timezone=True)` | not null | Server default `func.now()` and updated on update. |
@@ -249,6 +249,17 @@ Target tables:
 
 - Team-stint: `stats.player_team_season_totals`
 - Player-season: `stats.player_season_totals`
+
+Integrity checks (revision `0013`, on these two tables and their two
+postseason counterparts). A NULL value satisfies its own comparison:
+
+- `ck_stats_<table>_non_negative` — every counting column `>= 0`.
+- `ck_stats_<table>_gs_le_g` — `gs <= g`.
+- `ck_stats_<table>_makes_le_attempts` — `fg <= fga`, `fg2 <= fg2a`,
+  `fg3 <= fg3a`, `ft <= fta`.
+- `ck_stats_<table>_pct_range` — `fg_pct`, `fg2_pct`, `fg3_pct`, `ft_pct` in
+  [0, 1]; `efg_pct` in [0, 1.5], because eFG% = (FG + 0.5·3P) / FGA reaches 1.5
+  when every make is a three. `validate official-stats` uses the same bound.
 
 Grain:
 

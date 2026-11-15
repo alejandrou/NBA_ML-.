@@ -100,7 +100,8 @@ def _load(session: Session, season_year: int, schedule: ScheduleGame):  # type: 
         parse_box_score_page(path.read_text(encoding="utf-8")),
         GameLineage(
             source_url=box_score_url(schedule.game_id),
-            cache_path=str(path),
+            # The stored lineage is a cache key, not the fixture's filesystem path.
+            cache_path=f"basketball-reference/{path.stem}.html.gz",
             parser_version=DEFAULT_GAMES_PARSER_VERSION,
         ),
         season_end_year=season_year,
@@ -195,7 +196,11 @@ def test_a_corrected_away_team_replaces_obsolete_totals_and_player_lines(
     box = parse_box_score_page(path.read_text(encoding="utf-8"))
     assert box.visitor is not None
     box = replace(box, visitor=replace(box.visitor, code="MIN"))
-    lineage = GameLineage(box_score_url(schedule.game_id), str(path), DEFAULT_GAMES_PARSER_VERSION)
+    lineage = GameLineage(
+        box_score_url(schedule.game_id),
+        f"basketball-reference/{path.stem}.html.gz",
+        DEFAULT_GAMES_PARSER_VERSION,
+    )
     corrected_schedule = replace(schedule, visitor_code="MIN")
 
     result = load_game(

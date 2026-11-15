@@ -45,6 +45,7 @@ from nba_data.db.models import (
     PlayerTeamSeasonShooting,
     PlayerTeamSeasonTotals,
 )
+from nba_data.domain.cache_key import require_cache_key
 
 StatsModel = type[Any]
 
@@ -993,7 +994,7 @@ class StatsRepository:
         )
         lineage = {
             "source_url": _clean_required(source_url, field_name="source_url"),
-            "cache_path": _clean_required(cache_path, field_name="cache_path"),
+            "cache_path": require_cache_key(_clean_required(cache_path, field_name="cache_path")),
             "parser_version": _clean_required(parser_version, field_name="parser_version"),
         }
         if record is None:

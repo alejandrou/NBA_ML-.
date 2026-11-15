@@ -1026,6 +1026,26 @@ sin cambio de esquema en una sola tarjeta:
   espacios ("Al Horford" antes que "Alan Anderson").
   `GET /api/v1/health/ready` responde 503 si la base no tiene esa intercalación.
 
+**Seguimiento 2026-11-15 (F8-024).** La revisión `0013_portable_lineage_checks`
+resuelve en código H-07 y parte de H-12; H-09 queda aplazado a su propia tarjeta. Aún no
+está aplicada a `nba`.
+
+- **H-07.** Cada `cache_path` pasa a ser la clave del archivo leído, relativa a
+  `SCRAPER_CACHE_DIR` y con `/`. La migración reescribe las 832.616 filas
+  existentes quitando todo hasta `data/raw/html/` y conserva `created_at` y
+  `updated_at`. Un `CHECK` por tabla y `require_cache_key` en los cargadores
+  impiden volver a guardar una ruta absoluta. El preflight de `0013` comparó en
+  `nba`, en solo lectura, 82.027 pares (`source_url`, `cache_path`) distintos
+  con la clave canónica de su URL: 0 discrepancias.
+- **H-12, en parte.** Las cuatro tablas `totals` tienen cuatro `CHECK` cada una (no negativos,
+  `gs <= g`, aciertos ≤ intentos, porcentajes en [0, 1] y `efg_pct` en
+  [0, 1,5]). En `nba` hay 0 filas que los incumplan; el máximo de `efg_pct` es
+  exactamente 1,5, por eso ese límite no es 1. El `NOT NULL` en
+  `core.players.basketball_reference_player_id` se aplaza a la tarjeta
+  compartida F8-025: las pruebas del track `app` siembran un jugador sin
+  identificador para probar el filtro de la API, así que el cambio rompería ese
+  track.
+
 ### Cuando se toque el esquema (agrupar en una revisión)
 
 | # | Acción | Resuelve |

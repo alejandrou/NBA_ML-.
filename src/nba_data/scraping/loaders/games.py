@@ -32,6 +32,7 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from nba_data.db.repositories.games import FinalGameVenue, GameRepository, TeamSeasonKey
+from nba_data.domain.cache_key import require_cache_key
 from nba_data.scraping.parsers.box_score import (
     COUNTING_STATS,
     GAME_TYPE_CUP_FINAL,
@@ -647,6 +648,7 @@ def _require_lineage(lineage: GameLineage) -> None:
         if not getattr(lineage, field_name).strip():
             msg = f"{field_name} is required"
             raise ValueError(msg)
+    require_cache_key(lineage.cache_path)
 
 
 __all__ = [

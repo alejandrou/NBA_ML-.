@@ -152,3 +152,28 @@ def _url_of(engine: Engine) -> str:
     """The disposable database's URL, password included, as the CLI takes it."""
 
     return engine.url.render_as_string(hide_password=False)
+
+
+@pytest.mark.integration
+def test_the_0013_check_runs_against_the_real_catalog_read_only(
+    postgres_engine: Engine, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every refusal count and the URL/key query resolve on real PostgreSQL.
+
+    The lane's database is at head and empty, so every count is zero.
+    """
+
+    exit_code = preflight_migration_data.main(
+        [
+            "--database-url",
+            _url_of(postgres_engine),
+            "--revision",
+            "0013_portable_lineage_checks",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0, captured.err
+    assert "51 refusal counts checked" in captured.out
+    assert "0 distinct (source_url, cache_path) pairs compared" in captured.out
+    assert "Preflight passed for 0013_portable_lineage_checks" in captured.out

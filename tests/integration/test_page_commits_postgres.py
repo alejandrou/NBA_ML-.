@@ -161,7 +161,8 @@ def _team_processing(sources: object, **_kwargs: object) -> OfflineTeamSeasonPro
                 team_abbreviation=team,
                 season_year=2024,
                 url=_team_url(team),
-                cache_path=f"cache/{team}.html.gz",
+                # None: the backfill falls back to the inventory path under the root.
+                cache_path=None,
             ),
             status="validated",
             parsed_row_count=1,

@@ -45,7 +45,7 @@ ABSENT_PARTICIPATIONS = (
 
 _LINEAGE = {
     "source_url": "https://www.basketball-reference.com/boxscores/probe.html",
-    "cache_path": "boxscores/probe.html",
+    "cache_path": "basketball-reference/probe.html.gz",
     "parser_version": "probe",
 }
 

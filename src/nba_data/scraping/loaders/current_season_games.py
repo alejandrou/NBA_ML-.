@@ -397,7 +397,7 @@ def _load_result(
     url = box_score_url(row.game_id)
     lineage = GameLineage(
         source_url=url,
-        cache_path=str(archive.path_for_url(url)),
+        cache_path=archive.cache_key_for_url(url),
         parser_version=parser_version,
     )
     try:

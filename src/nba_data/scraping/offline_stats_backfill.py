@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from time import perf_counter
 from typing import Literal
 
 from sqlalchemy.orm import Session
 
 from nba_data.domain.team_codes import is_synthetic_team_code
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import HtmlCache, relative_cache_key
 from nba_data.scraping.cache_inventory import (
     CachedHtmlInventoryEntry,
     build_cached_html_inventory,
@@ -155,6 +156,7 @@ def run_offline_stats_backfill(
     loading_start = perf_counter()
     entries = _load_processed_entries(
         session,
+        cache_root=cache.root_dir,
         selected_entries=selected_entries,
         processed_entries=processing_report.entries,
         parser_version=parser_version,
@@ -260,6 +262,7 @@ def _source_from_inventory_entry(entry: CachedHtmlInventoryEntry) -> OfflineTeam
 def _load_processed_entries(
     session: Session,
     *,
+    cache_root: Path,
     selected_entries: tuple[CachedHtmlInventoryEntry, ...],
     processed_entries: tuple[OfflineTeamSeasonEntryResult, ...],
     parser_version: str,
@@ -271,6 +274,7 @@ def _load_processed_entries(
         loaded.append(
             _load_one_processed_entry(
                 session,
+                cache_root=cache_root,
                 inventory_entry=inventory_entry,
                 processed_entry=processed_entry,
                 parser_version=parser_version,
@@ -286,6 +290,7 @@ def _load_processed_entries(
 def _load_one_processed_entry(
     session: Session,
     *,
+    cache_root: Path,
     inventory_entry: CachedHtmlInventoryEntry,
     processed_entry: OfflineTeamSeasonEntryResult,
     parser_version: str,
@@ -314,7 +319,7 @@ def _load_one_processed_entry(
                 session,
                 processed_entry.normalized_rows,
                 source_url=source_url,
-                cache_path=cache_path,
+                cache_path=relative_cache_key(cache_path, cache_root),
                 parser_version=parser_version,
             )
     except Exception as exc:

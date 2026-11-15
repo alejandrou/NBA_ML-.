@@ -12,6 +12,7 @@ from sqlalchemy import MetaData, Table, func, inspect, or_, select
 from sqlalchemy.orm import Session
 
 from nba_data.db.repositories.queries.seasons import NBA_LEAGUE, get_archive_season_years
+from nba_data.domain.cache_key import is_cache_key
 from nba_data.domain.team_codes import (
     is_aggregate_only_team_code,
     is_multi_team_marker,
@@ -65,8 +66,14 @@ _ADVANCED_PERCENTAGE_COLUMNS = {
     "usg_pct",
 }
 _PBP_POSITION_COLUMNS = {"pct_pg", "pct_sg", "pct_sf", "pct_pf", "pct_c"}
-_TWO_POINT_PERCENTAGE_COLUMNS = {"efg_pct", "ts_pct"}
+# True shooting can exceed 1 (free throws count without a field-goal attempt).
+_TWO_POINT_PERCENTAGE_COLUMNS = {"ts_pct"}
+# The same pairs as the `makes_le_attempts` CHECK on the totals tables.
+_MAKES_AND_ATTEMPTS = (("fg", "fga"), ("fg2", "fg2a"), ("fg3", "fg3a"), ("ft", "fta"))
 _SPECIAL_RATE_RANGES = {
+    # eFG% = (FG + 0.5 * 3P) / FGA peaks at 1.5 when every make is a three. The
+    # same bound is a CHECK on the totals tables (revision 0013).
+    "efg_pct": (0, 1.5),
     "fg3a_per_fga_pct": (0, 1),
     "fta_per_fga_pct": (0, 10),
     "adj_efg_pct": (0, 350),
@@ -1352,11 +1359,21 @@ def _row_content_issues(
         missing_counts: dict[str, int] = dict.fromkeys(required, 0)
         missing_examples: list[dict[str, object]] = []
         missing_rows = 0
+        bad_key_count = 0
+        bad_key_examples: list[dict[str, object]] = []
 
         for row in session.execute(select(table)).mappings():
             mapping = dict(row)
             data_values = {column.name: mapping.get(column.name) for column in data_columns}
             row_count += 1
+            # NULL passes, exactly as for the `cache_path_key` CHECK.
+            cache_path = mapping.get("cache_path")
+            if cache_path is not None and not is_cache_key(cache_path):
+                bad_key_count += 1
+                if len(bad_key_examples) < 10:
+                    bad_key_examples.append(
+                        {spec.grain_column: mapping.get(spec.grain_column), "cache_path": cache_path}
+                    )
             missing = [name for name in required if data_values[name] is None]
             for name in missing:
                 missing_counts[name] += 1
@@ -1421,6 +1438,21 @@ def _row_content_issues(
                         "table": spec.full_name,
                         "count": numeric_count,
                         "examples": numeric_examples,
+                    },
+                )
+            )
+        if bad_key_count:
+            issues.append(
+                OfficialStatsValidationIssue(
+                    code="invalid_cache_key",
+                    message=(
+                        f"Rows in stats.{spec.table_name} store a cache_path that is not a "
+                        "portable cache key (relative to the cache root, forward slashes)."
+                    ),
+                    context={
+                        "table": spec.full_name,
+                        "count": bad_key_count,
+                        "examples": bad_key_examples,
                     },
                 )
             )
@@ -1503,6 +1535,11 @@ def _numeric_violations(data_values: Mapping[str, object]) -> list[str]:
 
     if games_played is not None and games_started is not None and games_started > games_played:
         violations.append("gs greater than g")
+    for makes_column, attempts_column in _MAKES_AND_ATTEMPTS:
+        makes = _as_number(data_values.get(makes_column))
+        attempts = _as_number(data_values.get(attempts_column))
+        if makes is not None and attempts is not None and makes > attempts:
+            violations.append(f"{makes_column} greater than {attempts_column}")
     return violations
 
 
@@ -1825,6 +1862,7 @@ def _build_validation_summary(
         "source_metadata_violations": 0,
         "regular_postseason_separation_violations": 0,
         "parser_lineage_violations": 0,
+        "invalid_cache_key_rows": 0,
         "numeric_range_violations": 0,
         "all_null_data_rows": 0,
         "missing_required_values": 0,
@@ -1853,6 +1891,7 @@ def _build_validation_summary(
         "stale_parser_version": "parser_lineage_violations",
         "wrong_producer_parser_version": "parser_lineage_violations",
         "impossible_numeric_values": "numeric_range_violations",
+        "invalid_cache_key": "invalid_cache_key_rows",
         "all_stat_columns_null": "all_null_data_rows",
         "missing_required_stat_value": "missing_required_values",
         "generated_metric_schema_name": "generated_metric_schema_objects",

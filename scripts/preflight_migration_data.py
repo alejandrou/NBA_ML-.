@@ -25,6 +25,12 @@ Supported preconditions, each reported with its own verdict:
   unique constraint must both exist.
 * ``0011_drop_player_slug`` — the column to drop exists and holds no values.
 * ``0012_ml_predictions`` — the new ml schema must not exist.
+* ``0013_portable_lineage_checks`` — every count the revision itself refuses on
+  must be zero (each ``cache_path`` reducible to a cache key and no row violating
+  a new totals check), using the revision's own queries; and,
+  for every Basketball Reference ``source_url``, the key the revision would
+  store must equal the canonical cache key of that URL, so a path that names a
+  different file than its URL is caught before it becomes a valid-looking key.
 
 Usage:
     uv run python scripts/preflight_migration_data.py \
@@ -34,8 +40,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import re
 import sys
 from dataclasses import dataclass
+from pathlib import Path
+from types import ModuleType
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
@@ -292,12 +302,87 @@ def check_0012_precondition(connection) -> PreconditionReport:
     )
 
 
+_MIGRATION_0013 = "0013_portable_lineage_checks"
+_MIGRATION_0013_FILE = (
+    Path(__file__).resolve().parents[1] / "alembic" / "versions" / f"{_MIGRATION_0013}.py"
+)
+_BASKETBALL_REFERENCE_URL_PREFIX = "https://www.basketball-reference.com/"
+_MISMATCH_EXAMPLES = 3
+
+
+def _load_migration_0013() -> ModuleType:
+    """The revision module itself, so the preflight counts exactly what it refuses on."""
+
+    spec = importlib.util.spec_from_file_location("migration_0013", _MIGRATION_0013_FILE)
+    if spec is None or spec.loader is None:
+        msg = f"cannot load {_MIGRATION_0013_FILE}"
+        raise ImportError(msg)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def stored_key_after_0013(cache_path: str, *, marker: str) -> str:
+    """What 0013 writes for `cache_path`: stripped to the root if it names it, else kept.
+
+    A forward-slash path such as `data/raw/html/basketball-reference/x.html.gz`
+    already matches the key grammar but still names the root, so it is stripped.
+    """
+
+    normalized = cache_path.replace("\\", "/")
+    if marker not in normalized:
+        return cache_path
+    return re.sub(rf"^.*{re.escape(marker)}", "", normalized)
+
+
+def check_0013_precondition(connection) -> PreconditionReport:
+    from nba_data.scraping.cache import HtmlCache
+
+    migration = _load_migration_0013()
+    observations: list[str] = []
+    blockers: list[str] = []
+
+    for label, query in migration.precondition_counts():
+        count = connection.execute(text(query)).scalar_one()
+        if count:
+            blockers.append(f"{label}: {count}")
+    observations.append(f"{len(migration.precondition_counts())} refusal counts checked")
+
+    canonical = HtmlCache(Path("cache-root"))
+    checked_pairs = 0
+    for table in migration.LINEAGE_TABLES:
+        rows = connection.execute(
+            text(
+                f"SELECT DISTINCT source_url, cache_path FROM stats.{table} "
+                "WHERE source_url LIKE :prefix"
+            ),
+            {"prefix": f"{_BASKETBALL_REFERENCE_URL_PREFIX}%"},
+        ).all()
+        mismatches: list[str] = []
+        for source_url, cache_path in rows:
+            checked_pairs += 1
+            stored = stored_key_after_0013(cache_path, marker=migration.CACHE_ROOT_MARKER)
+            expected = canonical.cache_key_for_url(source_url)
+            if stored != expected:
+                mismatches.append(f"{source_url} -> {stored} (expected {expected})")
+        if mismatches:
+            examples = "; ".join(mismatches[:_MISMATCH_EXAMPLES])
+            blockers.append(
+                f"stats.{table}: {len(mismatches)} cache_path value(s) name a different "
+                f"file than the canonical key of their source_url, e.g. {examples}"
+            )
+    observations.append(f"{checked_pairs} distinct (source_url, cache_path) pairs compared")
+
+    return PreconditionReport(_MIGRATION_0013, tuple(observations), tuple(blockers))
+
+
 CHECKS = {
     _MIGRATION_0007: check_0007_precondition,
     _MIGRATION_0008: check_0008_precondition,
     "0010_drop_redundant_team_index": check_0010_precondition,
     "0011_drop_player_slug": check_0011_precondition,
     "0012_ml_predictions": check_0012_precondition,
+    _MIGRATION_0013: check_0013_precondition,
 }
 
 

@@ -166,7 +166,11 @@ def test_team_game_totals_keys_and_columns() -> None:
         ),
     }
     assert _indexes(table) == {"ix_stats_team_game_totals_team_season_id": ("team_season_id",)}
-    assert set(_check_names(table)) == {"ck_stats_team_game_totals_non_negative"}
+    # Plus the cache-key format check added by 0013 (pinned in test_cache_key.py).
+    assert set(_check_names(table)) == {
+        "ck_stats_team_game_totals_non_negative",
+        "ck_stats_team_game_totals_cache_path_key",
+    }
 
     for name in ("game_id", "team_season_id", "is_home", "seconds_played", "pts"):
         assert table.c[name].nullable is False, name
@@ -190,9 +194,10 @@ def test_player_game_totals_keys_and_columns() -> None:
         ),
     }
     assert _indexes(table) == {"ix_stats_player_game_totals_player_id": ("player_id",)}
+    # Plus the cache-key format check added by 0013 (pinned in test_cache_key.py).
     assert set(_check_names(table)) == {
         name for table_key, name, _ in FROZEN_CHECKS if table_key == "stats.player_game_totals"
-    }
+    } | {"ck_stats_player_game_totals_cache_path_key"}
     # Not routed through `core.player_team_seasons`: inactive-only and
     # current-season players have no player-season row.
     assert "player_team_season_id" not in table.c

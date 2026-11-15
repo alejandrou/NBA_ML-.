@@ -299,7 +299,7 @@ def test_stats_backfill_calls_stats_loader_for_validated_entries(
         "session": fake_session,
         "rows": tuple(rows),
         "source_url": BOS_2024_URL,
-        "cache_path": str(cache_path),
+        "cache_path": cache.cache_key_for_url(BOS_2024_URL),
         "parser_version": "parser-test",
     }
 
@@ -885,7 +885,7 @@ def _validated_entry(
     team: str = "BOS",
     season: int = 2024,
     source_url: str | None = None,
-    cache_path: str | None = "cache/bos.html.gz",
+    cache_path: str | None = None,
     rows: list[dict[str, object]] | None = None,
 ) -> OfflineTeamSeasonEntryResult:
     normalized_rows = tuple(rows or [_row(season_year=season, team_abbreviation=team)])
@@ -907,7 +907,7 @@ def _failed_entry(
     *,
     team: str = "BOS",
     season: int = 2024,
-    cache_path: str | None = "cache/bos.html.gz",
+    cache_path: str | None = None,
     error_message: str = "Offline processing failed.",
     quarantined_rows: list[dict[str, object]] | None = None,
 ) -> OfflineTeamSeasonEntryResult:
@@ -1025,3 +1025,53 @@ def _offline_load_target(monkeypatch: pytest.MonkeyPatch) -> None:
     covers refusals) and is not analyzed (test_db_session covers ANALYZE)."""
     monkeypatch.setattr("nba_data.cli.main.require_load_target", lambda _database_url: None)
     monkeypatch.setattr("nba_data.cli.main.analyze_database", lambda *_args, **_kwargs: False)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("processed_path", "expected_key"),
+    [
+        # An explicit file directly under the root keeps its own name.
+        ("{root}/fixture.html.gz", "fixture.html.gz"),
+        ("{root}/basketball-reference/fixture.html.gz", "basketball-reference/fixture.html.gz"),
+        # Not under the root: the page fails and nothing is loaded.
+        ("{tmp}/elsewhere/fixture.html.gz", None),
+    ],
+)
+def test_stats_backfill_stores_the_relative_key_of_the_file_actually_processed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    processed_path: str,
+    expected_key: str | None,
+) -> None:
+    cache = HtmlCache(tmp_path / "cache")
+    inventory_path = cache.path_for_url(BOS_2024_URL)
+    inventory = _inventory(
+        cache.root_dir, [_entry(inventory_path, "valid", team="BOS", season=2024)]
+    )
+    explicit = processed_path.format(root=cache.root_dir.resolve(), tmp=tmp_path.resolve())
+    loader_keys: list[str] = []
+
+    def fake_loader(session: object, rows: object, **kwargs: str) -> TeamSeasonStatsLoadReport:
+        loader_keys.append(kwargs["cache_path"])
+        return _stats_report(loaded=1)
+
+    monkeypatch.setattr(
+        offline_stats_backfill, "build_cached_html_inventory", lambda *, cache: inventory
+    )
+    monkeypatch.setattr(
+        offline_stats_backfill,
+        "process_offline_team_season_sources",
+        lambda sources, **kwargs: _processing_report([_validated_entry(cache_path=explicit)]),
+    )
+    monkeypatch.setattr(offline_stats_backfill, "load_team_season_stats", fake_loader)
+
+    report = run_offline_stats_backfill(_FakeSession(), cache=cache, parser_version="parser-test")
+
+    if expected_key is None:
+        assert loader_keys == []
+        assert report.entries[0].status == "failed"
+        assert "not under the cache root" in str(report.entries[0].reason)
+    else:
+        assert loader_keys == [expected_key]
+        assert report.entries[0].status == "loaded"

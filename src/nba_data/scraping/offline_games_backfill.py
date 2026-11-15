@@ -188,7 +188,7 @@ def _backfill_season(
         url = box_score_url(game.game_id)
         lineage = GameLineage(
             source_url=url,
-            cache_path=str(cache.path_for_url(url)),
+            cache_path=cache.cache_key_for_url(url),
             parser_version=parser_version,
         )
         try:

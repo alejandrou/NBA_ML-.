@@ -130,6 +130,9 @@ def test_offline_player_stats_backfill_loads_selected_rows_from_cached_player_pa
     assert report.to_dict()["discovery_status"] == "ok"
     assert totals is not None
     assert totals.source_team_code == "2TM"
+    # The cache root is absolute (tmp_path); the stored lineage is still the key.
+    assert totals.cache_path == cache.cache_key_for_url(PLAYER_URL)
+    assert totals.cache_path.startswith("basketball-reference/")
     assert _count(session, PlayerSeasonTotals) == 1
 
 

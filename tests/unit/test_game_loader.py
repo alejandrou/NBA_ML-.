@@ -950,3 +950,30 @@ def test_the_neutral_pass_over_an_unknown_season_changes_nothing(session: Sessio
     result = derive_neutral_sites(session, 1990)
 
     assert (result.updated, result.neutral_games) == (0, ())
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "bad_path",
+    [
+        r"C:\Users\someone\data\raw\html\basketball-reference\boxscores-x.html.gz",
+        r"data\raw\html\basketball-reference\boxscores-x.html.gz",
+        "/abs/boxscores-x.html.gz",
+        "../boxscores-x.html.gz",
+    ],
+)
+def test_a_machine_specific_cache_path_is_refused_before_any_write(
+    session: Session, bad_path: str
+) -> None:
+    from nba_data.domain.cache_key import InvalidCacheKeyError
+
+    with pytest.raises(InvalidCacheKeyError):
+        load_game(
+            session,
+            _schedule(),
+            _box(),
+            replace(LINEAGE, cache_path=bad_path),
+            season_end_year=SEASON,
+        )
+
+    assert _count(session, Game) == 0

@@ -540,3 +540,29 @@ def _lineage(label: str) -> dict[str, str]:
 
 def _count(session: Session, model: type) -> int:
     return session.scalar(select(func.count()).select_from(model)) or 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "bad_path",
+    [
+        r"C:\Users\someone\data\raw\html\basketball-reference\players-a-x.html.gz",
+        r"data\raw\html\basketball-reference\players-a-x.html.gz",
+        "/abs/players-a-x.html.gz",
+        "../players-a-x.html.gz",
+    ],
+)
+def test_a_machine_specific_cache_path_is_refused(session: Session, bad_path: str) -> None:
+    from nba_data.domain.cache_key import InvalidCacheKeyError
+
+    player_team_season, _ = _create_core_grains(session)
+    repository = StatsRepository(session)
+
+    with pytest.raises(InvalidCacheKeyError):
+        repository.upsert_player_team_season_totals(
+            player_team_season_id=player_team_season.id,
+            values={"g": 70},
+            **{**_lineage("first"), "cache_path": bad_path},
+        )
+
+    assert _count(session, PlayerTeamSeasonTotals) == 0

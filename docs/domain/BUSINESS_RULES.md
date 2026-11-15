@@ -378,6 +378,16 @@ snapshots, and `core.games` holds the current observation.
   is loaded only from a checkout whose `HEAD` is on `origin/main` and whose `src`
   and `alembic` have no uncommitted changes.
 
+## Lineage
+
+- `cache_path` on every `stats` row is the key of the cached file that was
+  actually read, relative to `SCRAPER_CACHE_DIR` with `/` separators. The same
+  page has the same key on every machine, worktree and OS.
+- It is never recomputed from `source_url`: an explicit file under the cache
+  root keeps its own name. The `0013` preflight checks that, for Basketball
+  Reference URLs, the stored key equals the URL's canonical cache key.
+- Keys are private lineage; the API never serves them.
+
 ## Official Stats and Generated Metrics
 
 - Official scraped data remains separate from project-generated metrics.

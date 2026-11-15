@@ -21,6 +21,7 @@ from nba_data.validation.official_stats import (
     STATS_TABLE_SPECS,
     _backfill_report_issues,
     _extract_backfill_summary,
+    _numeric_violations,
     validate_official_stats,
 )
 from nba_data.validation.parser_contracts import current_parser_version
@@ -490,6 +491,46 @@ def test_validate_official_stats_detects_invalid_numeric_ranges(session: Session
     assert report.passed is False
     assert "impossible_numeric_values" in _issue_codes(report)
     assert report.validation_summary["numeric_range_violations"] >= 4
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("makes", "attempts"), [("fg", "fga"), ("fg2", "fg2a"), ("fg3", "fg3a"), ("ft", "fta")])
+def test_more_makes_than_attempts_fails_like_the_database_check(makes: str, attempts: str) -> None:
+    assert _numeric_violations({makes: 11, attempts: 10}) == [f"{makes} greater than {attempts}"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "values", [{"fg": 10, "fga": 10}, {"fg": 0, "fga": 0}, {"fg": 11, "fga": None}]
+)
+def test_equal_or_unknown_makes_and_attempts_pass(values: dict[str, object]) -> None:
+    assert _numeric_violations(values) == []
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "cache_path",
+    [
+        r"C:\Users\someone\repo\data\raw\html\basketball-reference\x.html.gz",
+        r"data\raw\html\basketball-reference\x.html.gz",
+        "/abs/basketball-reference/x.html.gz",
+        "../basketball-reference/x.html.gz",
+    ],
+)
+def test_a_cache_path_that_is_not_a_key_fails_validation(session: Session, cache_path: str) -> None:
+    _insert_clean_dataset(session)
+    session.execute(
+        text("update stats.player_season_advanced set cache_path = :p where player_season_id = 2"),
+        {"p": cache_path},
+    )
+
+    report = validate_official_stats(session)
+
+    assert report.passed is False
+    (issue,) = [i for i in report.issues if i.code == "invalid_cache_key"]
+    assert issue.context["table"] == "stats.player_season_advanced"
+    assert issue.context["examples"][0]["cache_path"] == cache_path
+    assert report.validation_summary["invalid_cache_key_rows"] == 1
 
 
 @pytest.mark.unit
@@ -2037,3 +2078,27 @@ def _postseason_stats_report(
 
 def _issue_codes(report) -> set[str]:
     return {issue.code for issue in report.issues}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"efg_pct": 0}, []),
+        ({"efg_pct": 1.5}, []),
+        ({"efg_pct": None}, []),
+        ({"efg_pct": -0.001}, ["efg_pct is negative", "efg_pct outside 0-1.5"]),
+        ({"efg_pct": 1.501}, ["efg_pct outside 0-1.5"]),
+        ({"ts_pct": 2}, []),
+        ({"ts_pct": None}, []),
+        ({"ts_pct": 2.001}, ["ts_pct outside 0-2"]),
+    ],
+)
+def test_effective_and_true_shooting_have_their_own_bounds(
+    values: dict[str, object], expected: list[str]
+) -> None:
+    """eFG% matches the 0013 CHECK (at most 1.5); TS% keeps its wider 0-2 range."""
+
+    from nba_data.validation.official_stats import _numeric_violations
+
+    assert _numeric_violations(values) == expected

@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+from nba_data.domain.cache_key import InvalidCacheKeyError, require_cache_key
+
 METADATA_SUFFIX = ".meta.json"
 METADATA_SCHEMA_VERSION = 1
 
@@ -118,6 +120,11 @@ class HtmlCache:
     def exists(self, url: str) -> bool:
         return self.path_for_url(url).exists()
 
+    def cache_key_for_url(self, url: str) -> str:
+        """The stored lineage key of the file `get(url)` reads."""
+
+        return relative_cache_key(self.path_for_url(url), self.root_dir)
+
     def metadata_path_for_url(self, url: str) -> Path:
         path = self.path_for_url(url)
         return path.with_name(path.name + METADATA_SUFFIX)
@@ -212,3 +219,20 @@ def _metadata_from_payload(payload: object, path: Path) -> CacheFetchMetadata:
 
 def _safe_part(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]+", "-", value).strip("-").lower()
+
+
+def relative_cache_key(path: str | Path, root: str | Path) -> str:
+    """Return the stored lineage key of the cached file `path` under `root`.
+
+    `path` is the file that was actually read, absolute or relative to the
+    working directory; it is never replaced by the canonical key of a URL. The
+    result is `path` relative to `root` with `/` separators, and it must match
+    `nba_data.domain.cache_key.CACHE_KEY_PATTERN`. A path outside `root` raises.
+    """
+
+    resolved_root = Path(root).resolve(strict=False)
+    resolved = Path(path).resolve(strict=False)
+    if resolved_root not in resolved.parents:
+        msg = f"Cached file is not under the cache root {resolved_root}: {resolved}"
+        raise InvalidCacheKeyError(msg)
+    return require_cache_key(resolved.relative_to(resolved_root).as_posix())

@@ -21,9 +21,55 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from nba_data.db.base import Base
+from nba_data.domain.cache_key import CACHE_KEY_PATTERN
+
+# The check conditions below are frozen as the same literal text in revision
+# `0013_portable_lineage_checks`; `tests/unit/test_cache_key.py`
+# pins the two together. A NULL value satisfies its own comparison: a blank is
+# unknown, not invalid. `efg_pct` reaches 1.5 when every make is a three.
+CACHE_KEY_CHECK = f"cache_path ~ '{CACHE_KEY_PATTERN}'"
+TOTALS_CHECKS = {
+    "non_negative": (
+        "g >= 0 AND gs >= 0 AND mp >= 0 AND fg >= 0 AND fga >= 0 AND fg3 >= 0 "
+        "AND fg3a >= 0 AND fg2 >= 0 AND fg2a >= 0 AND ft >= 0 AND fta >= 0 "
+        "AND orb >= 0 AND drb >= 0 AND trb >= 0 AND ast >= 0 AND stl >= 0 "
+        "AND blk >= 0 AND tov >= 0 AND pf >= 0 AND pts >= 0 AND tpl_dbl >= 0"
+    ),
+    "gs_le_g": "gs <= g",
+    "makes_le_attempts": "fg <= fga AND fg2 <= fg2a AND fg3 <= fg3a AND ft <= fta",
+    "pct_range": (
+        "fg_pct BETWEEN 0 AND 1 AND fg2_pct BETWEEN 0 AND 1 "
+        "AND fg3_pct BETWEEN 0 AND 1 AND ft_pct BETWEEN 0 AND 1 "
+        "AND efg_pct BETWEEN 0 AND 1.5"
+    ),
+}
 
 
-def _team_stint_table_args(table_name: str) -> tuple[object, object, dict[str, str]]:
+def cache_key_check_name(table_name: str) -> str:
+    return f"ck_stats_{table_name}_cache_path_key"
+
+
+def cache_key_check(table_name: str) -> CheckConstraint:
+    """The key-format check. `~` is PostgreSQL's regex operator, so other
+    dialects (the SQLite unit-test schemas) skip it; `require_cache_key` still
+    guards every write in Python."""
+
+    return CheckConstraint(CACHE_KEY_CHECK, name=cache_key_check_name(table_name)).ddl_if(
+        dialect="postgresql"
+    )
+
+
+def _lineage_and_totals_checks(table_name: str) -> tuple[CheckConstraint, ...]:
+    checks = [cache_key_check(table_name)]
+    if table_name.endswith("_totals"):
+        checks.extend(
+            CheckConstraint(condition, name=f"ck_stats_{table_name}_{suffix}")
+            for suffix, condition in TOTALS_CHECKS.items()
+        )
+    return tuple(checks)
+
+
+def _team_stint_table_args(table_name: str) -> tuple[object, ...]:
     constraint_suffix = (
         "pts_id" if table_name.startswith("player_team_postseason_") else "player_team_season_id"
     )
@@ -37,11 +83,12 @@ def _team_stint_table_args(table_name: str) -> tuple[object, object, dict[str, s
             "player_team_season_id",
             name=f"uq_stats_{table_name}_{constraint_suffix}",
         ),
+        *_lineage_and_totals_checks(table_name),
         {"schema": "stats"},
     )
 
 
-def _player_season_table_args(table_name: str) -> tuple[object, object, dict[str, str]]:
+def _player_season_table_args(table_name: str) -> tuple[object, ...]:
     constraint_suffix = "ps_id" if table_name.startswith("player_postseason_") else "player_season_id"
     return (
         ForeignKeyConstraint(
@@ -50,6 +97,7 @@ def _player_season_table_args(table_name: str) -> tuple[object, object, dict[str
             name=f"fk_stats_{table_name}_{constraint_suffix}",
         ),
         UniqueConstraint("player_season_id", name=f"uq_stats_{table_name}_{constraint_suffix}"),
+        *_lineage_and_totals_checks(table_name),
         {"schema": "stats"},
     )
 
@@ -737,6 +785,7 @@ class TeamGameTotals(_PrimaryKeyMixin, _GameCountersMixin, _LineageMixin, Base):
         CheckConstraint(
             _GAME_COUNTERS_NON_NEGATIVE, name="ck_stats_team_game_totals_non_negative"
         ),
+        cache_key_check("team_game_totals"),
         Index("ix_stats_team_game_totals_team_season_id", "team_season_id"),
         {"schema": "stats"},
     )
@@ -785,6 +834,7 @@ class PlayerGameTotals(_PrimaryKeyMixin, _GameCountersMixin, _LineageMixin, Base
         CheckConstraint(
             _GAME_COUNTERS_NON_NEGATIVE, name="ck_stats_player_game_totals_non_negative"
         ),
+        cache_key_check("player_game_totals"),
         Index("ix_stats_player_game_totals_player_id", "player_id"),
         {"schema": "stats"},
     )

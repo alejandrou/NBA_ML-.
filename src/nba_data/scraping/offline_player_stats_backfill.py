@@ -8,7 +8,7 @@ from typing import Literal
 
 from sqlalchemy.orm import Session
 
-from nba_data.scraping.cache import HtmlCache
+from nba_data.scraping.cache import HtmlCache, relative_cache_key
 from nba_data.scraping.load_journal import PageCommittedCallback
 from nba_data.scraping.loaders.player_page_stats import load_player_page_stats
 from nba_data.scraping.normalizers.player_page import normalize_player_page_regular_season
@@ -155,6 +155,7 @@ def run_offline_player_stats_backfill(
             _process_one_player_page(
                 session,
                 cache_path=cache_path,
+                cache_root=cache_root,
                 player_identifier=player_identifier,
                 source_url=source_url,
                 start_year=start_year,
@@ -193,6 +194,7 @@ def _process_one_player_page(
     session: Session,
     *,
     cache_path: Path,
+    cache_root: Path,
     player_identifier: str,
     source_url: str,
     start_year: int | None,
@@ -229,7 +231,7 @@ def _process_one_player_page(
                 session,
                 normalized.selected_rows,
                 source_url=source_url,
-                cache_path=str(cache_path),
+                cache_path=relative_cache_key(cache_path, cache_root),
                 parser_version=parser_version,
             )
     except Exception as exc:
